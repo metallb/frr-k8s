@@ -1,0 +1,9 @@
+resources:
+- frr-k8s.yaml
+- frr-cm.yaml
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+images:
+- name: controller
+  newName: quay.io/metallb/frrk8s
+  newTag: 0.1.0

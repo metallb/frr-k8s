@@ -1,0 +1,4 @@
+## Append samples of your project ##
+resources:
+- k8sfrr_v1_frrconfiguration.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

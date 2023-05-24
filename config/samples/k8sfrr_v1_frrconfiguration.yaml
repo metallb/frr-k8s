@@ -1,0 +1,12 @@
+apiVersion: k8sfrr.frr.metallb.io/v1
+kind: FRRConfiguration
+metadata:
+  labels:
+    app.kubernetes.io/name: frrconfiguration
+    app.kubernetes.io/instance: frrconfiguration-sample
+    app.kubernetes.io/part-of: frr-k8s
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: frr-k8s
+  name: frrconfiguration-sample
+spec:
+  # TODO(user): Add fields here
