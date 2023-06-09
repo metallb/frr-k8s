@@ -195,3 +195,7 @@ lint:
 .PHONY: bumplicense
 bumplicense:
 	hack/bumplicense.sh
+
+.PHONY: checkuncommitted
+checkuncommitted:
+	git diff --exit-code
