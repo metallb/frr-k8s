@@ -191,3 +191,7 @@ load-on-kind: docker-build kind-cluster ## Load the docker image into the kind c
 .PHONY: lint
 lint:
 	hack/lint.sh
+
+.PHONY: bumplicense
+bumplicense:
+	hack/bumplicense.sh
