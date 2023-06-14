@@ -23,13 +23,18 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	"github.com/metallb/frrk8s/internal/frr"
 )
 
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	FRR    *frr.FRR
+	Logger log.Logger
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -37,6 +42,30 @@ type FRRConfigurationReconciler struct {
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations/finalizers,verbs=update
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
+	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.NamespacedName.String())
+
+	configs := frrk8sv1beta1.FRRConfigurationList{}
+	err := r.Client.List(ctx, &configs)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if len(configs.Items) > 1 { // TODO implement merging
+		return ctrl.Result{}, nil
+	}
+
+	if len(configs.Items) == 0 {
+		config := frrk8sv1beta1.FRRConfiguration{}
+		if err := r.FRR.ApplyConfig(config); err != nil {
+			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
+		}
+		return ctrl.Result{}, nil
+	}
+	if err := r.FRR.ApplyConfig(configs.Items[0]); err != nil {
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
+		return ctrl.Result{}, nil
+	}
+
 	return ctrl.Result{}, nil
 }
 
