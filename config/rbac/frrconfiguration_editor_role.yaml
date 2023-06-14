@@ -1,0 +1,31 @@
+# permissions for end users to edit frrconfigurations.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  labels:
+    app.kubernetes.io/name: clusterrole
+    app.kubernetes.io/instance: frrconfiguration-editor-role
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/part-of: frr-k8s
+    app.kubernetes.io/managed-by: kustomize
+  name: frrconfiguration-editor-role
+rules:
+- apiGroups:
+  - k8sfrr.frr.metallb.io
+  resources:
+  - frrconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - k8sfrr.frr.metallb.io
+  resources:
+  - frrconfigurations/status
+  verbs:
+  - get
