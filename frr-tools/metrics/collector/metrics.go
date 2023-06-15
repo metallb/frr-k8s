@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package metrics
+package collector
 
 type metric struct {
 	Name string
@@ -8,7 +8,7 @@ type metric struct {
 }
 
 var (
-	Namespace = "frr-k8s"
+	Namespace = "frrk8s"
 	Subsystem = "bgp"
 
 	SessionUp = metric{

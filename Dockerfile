@@ -15,6 +15,7 @@ RUN go mod download
 COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
+COPY frr-tools/metrics ./frr-tools/metrics/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
@@ -22,9 +23,12 @@ COPY internal/ internal/
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o frr-k8s cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /build/frr-metrics frr-tools/metrics/exporter.go
 
 FROM alpine:latest
 WORKDIR /
 COPY --from=builder /workspace/frr-k8s .
+COPY --from=builder /build/frr-metrics /frr-metrics
+COPY frr-tools/reloader/frr-reloader.sh /frr-reloader.sh
 
 ENTRYPOINT ["/frr-k8s"]

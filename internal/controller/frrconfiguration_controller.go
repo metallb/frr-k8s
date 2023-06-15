@@ -55,13 +55,25 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	if len(configs.Items) == 0 {
-		config := frrk8sv1beta1.FRRConfiguration{}
+		empty := frrk8sv1beta1.FRRConfiguration{}
+		config, err := apiToFRR(empty)
+		if err != nil {
+			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
+			return ctrl.Result{}, nil
+		}
+
 		if err := r.FRR.ApplyConfig(config); err != nil {
 			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
 		}
 		return ctrl.Result{}, nil
 	}
-	if err := r.FRR.ApplyConfig(configs.Items[0]); err != nil {
+	config, err := apiToFRR(configs.Items[0])
+	if err != nil {
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
+		return ctrl.Result{}, nil
+	}
+
+	if err := r.FRR.ApplyConfig(config); err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
 	}

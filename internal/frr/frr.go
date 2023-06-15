@@ -6,7 +6,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -125,17 +124,4 @@ func logLevelToFRR(level logging.Level) string {
 	}
 
 	return "informational"
-}
-
-func sortMap[T any](toSort map[string]T) []T {
-	keys := make([]string, 0)
-	for k := range toSort {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	res := make([]T, 0)
-	for _, k := range keys {
-		res = append(res, toSort[k])
-	}
-	return res
 }
