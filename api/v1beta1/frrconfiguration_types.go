@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// FRRConfigurationSpec defines the desired state of FRRConfiguration
+// FRRConfigurationSpec defines the desired state of FRRConfiguration.
 type FRRConfigurationSpec struct {
 	// +optional
 	BGP BGPConfig `json:"bgp,omitempty"`
@@ -38,7 +38,7 @@ type BGPConfig struct {
 	BFDProfiles []BFDProfile `json:"bfdProfiles,omitempty"`
 }
 
-// Router represent a neighbor router we want FRR to connect to
+// Router represent a neighbor router we want FRR to connect to.
 type Router struct {
 	// AS number to use for the local end of the session.
 	// +kubebuilder:validation:Minimum=0
@@ -221,7 +221,7 @@ type BFDProfile struct {
 	MinimumTTL uint32 `json:"minimumTtl,omitempty"`
 }
 
-// FRRConfigurationStatus defines the observed state of FRRConfiguration
+// FRRConfigurationStatus defines the observed state of FRRConfiguration.
 type FRRConfigurationStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -230,7 +230,7 @@ type FRRConfigurationStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// FRRConfiguration is the Schema for the frrconfigurations API
+// FRRConfiguration is the Schema for the frrconfigurations API.
 type FRRConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -241,7 +241,7 @@ type FRRConfiguration struct {
 
 //+kubebuilder:object:root=true
 
-// FRRConfigurationList contains a list of FRRConfiguration
+// FRRConfigurationList contains a list of FRRConfiguration.
 type FRRConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
