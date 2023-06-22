@@ -1,0 +1,53 @@
+run:
+  issues-exit-code: 2
+linters:
+  enable:
+  - godot
+  - goimports
+  - gofmt
+  - ginkgolinter
+  - dogsled
+  - exportloopref
+  - gocritic
+  - misspell
+  - nolintlint
+  - stylecheck
+  - unconvert
+  - unparam
+  - whitespace
+  - revive
+  - unused
+  - wastedassign
+linters-settings:
+  errcheck:
+    exclude: .golangci.exclude
+  godot:
+    scope: toplevel
+    capital: true
+    exclude:
+    - 'SPDX-License-Identifier.*'
+    - '\+groupName.*'
+  misspell:
+    locale: US
+    ignore-words:
+      - neighbours
+      - neighbour
+  stylecheck:
+    dot-import-whitelist:
+    - github.com/onsi/ginkgo
+    - github.com/onsi/gomega
+  gocritic:
+    disabled-checks:
+      - captLocal
+      - exitAfterDefer
+  revive:
+    rules:
+    - name: receiver-naming
+      disabled: true
+    - name: dot-imports
+      disabled: true
+issues:
+  exclude-rules:
+    - path: 'api'
+      linters:
+        - stylecheck
