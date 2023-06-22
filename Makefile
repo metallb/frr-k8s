@@ -187,3 +187,19 @@ kind-cluster: kind
 .PHONY: load-on-kind
 load-on-kind: docker-build kind-cluster ## Load the docker image into the kind cluster.
 	kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
+
+.PHONY: lint
+lint:
+	hack/lint.sh
+
+.PHONY: bumplicense
+bumplicense:
+	hack/bumplicense.sh
+
+.PHONY: checkuncommitted
+checkuncommitted:
+	git diff --exit-code
+
+.PHONY: bumpall
+bumpall: bumplicense manifests
+	go mod tidy
