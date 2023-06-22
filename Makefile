@@ -102,22 +102,6 @@ ifndef ignore-not-found
   ignore-not-found = false
 endif
 
-.PHONY: install
-install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | kubectl apply -f -
-
-.PHONY: uninstall
-uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/crd | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
-
-.PHONY: deploy
-deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | kubectl apply -f -
-
-.PHONY: undeploy
-undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Build Dependencies
 
@@ -127,13 +111,38 @@ $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
 
 ## Tool Binaries
+KIND ?= $(LOCALBIN)/kind
+KUBECTL ?= $(LOCALBIN)/kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+KUBECONFIG_PATH ?= $(LOCALBIN)/kubeconfig
+export KUBECONFIG=$(KUBECONFIG_PATH)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
+KUBECTL_VERSION ?= v1.27.0
+KIND_VERSION ?= v0.19.0
+KIND_CLUSTER_NAME ?= frr-k8s
+
+.PHONY: install
+install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
+
+.PHONY: uninstall
+uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
+
+.PHONY: deploy
+deploy: kubectl manifests kustomize kind load-on-kind ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
+
+.PHONY: undeploy
+undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
+	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 KUSTOMIZE_INSTALL_SCRIPT ?= "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"
 .PHONY: kustomize
@@ -151,7 +160,30 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
+.PHONY: kubectl
+kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be overwritten.
+$(KUBECTL): $(LOCALBIN)
+	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	curl -o $(LOCALBIN)/kubectl -LO https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl
+	chmod +x $(LOCALBIN)/kubectl
+
+.PHONY: kind
+kind: $(KIND) ## Download kind locally if necessary. If wrong version is installed, it will be overwritten.
+$(KIND): $(LOCALBIN)
+	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@$(KIND_VERSION)
+
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: kind-cluster
+kind-cluster: kind
+	KIND_BIN=$(LOCALBIN)/kind hack/kind.sh
+	@echo 'kind cluster created, to use it please'
+	@echo 'export KUBECONFIG=${KUBECONFIG_PATH}'
+
+.PHONY: load-on-kind
+load-on-kind: docker-build kind-cluster ## Load the docker image into the kind cluster.
+	kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
