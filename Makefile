@@ -199,3 +199,7 @@ bumplicense:
 .PHONY: checkuncommitted
 checkuncommitted:
 	git diff --exit-code
+
+.PHONY: bumpall
+bumpall: bumplicense manifests
+	go mod tidy
