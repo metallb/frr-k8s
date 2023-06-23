@@ -32,9 +32,9 @@ import (
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	FRR    *frr.FRR
-	Logger log.Logger
+	Scheme     *runtime.Scheme
+	FRRHandler frr.ConfigHandler
+	Logger     log.Logger
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -62,7 +62,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, nil
 		}
 
-		if err := r.FRR.ApplyConfig(config); err != nil {
+		if err := r.FRRHandler.ApplyConfig(config); err != nil {
 			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
 		}
 		return ctrl.Result{}, nil
@@ -73,7 +73,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	if err := r.FRR.ApplyConfig(config); err != nil {
+	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
 	}

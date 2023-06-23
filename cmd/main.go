@@ -89,10 +89,10 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 	if err = (&controller.FRRConfigurationReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		FRR:    frr.NewFRR(ctx, logger, logging.Level(logLevel)),
-		Logger: logger,
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		FRRHandler: frr.NewFRR(ctx, logger, logging.Level(logLevel)),
+		Logger:     logger,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
 		os.Exit(1)

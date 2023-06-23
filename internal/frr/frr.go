@@ -15,8 +15,9 @@ import (
 	"github.com/metallb/frrk8s/internal/logging"
 )
 
-// As the MetalLB controller should handle messages synchronously, there should
-// no need to lock this data structure. TODO: confirm this.
+type ConfigHandler interface {
+	ApplyConfig(config *Config) error
+}
 
 type FRR struct {
 	reloadConfig chan reloadEvent
