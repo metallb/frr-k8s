@@ -18,7 +18,7 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: FRRConfiguration is the Schema for the frrconfigurations API
+        description: FRRConfiguration is the Schema for the frrconfigurations API.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -33,7 +33,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: FRRConfigurationSpec defines the desired state of FRRConfiguration
+            description: FRRConfigurationSpec defines the desired state of FRRConfiguration.
             properties:
               bgp:
                 properties:
@@ -110,7 +110,7 @@ spec:
                       per VRF).
                     items:
                       description: Router represent a neighbor router we want FRR
-                        to connect to
+                        to connect to.
                       properties:
                         asn:
                           description: AS number to use for the local end of the session.
@@ -204,17 +204,16 @@ spec:
                                   withCommunity:
                                     description: PrefixesWithCommunity is a list of
                                       prefixes that are associated to a bgp community
-                                      when being advertised.
+                                      when being advertised. The prefixes associated
+                                      to a given local pref must be in the prefixes
+                                      allowed to be advertised.
                                     items:
                                       properties:
                                         community:
                                           type: string
                                         prefixes:
                                           description: Prefixes is the list of prefixes
-                                            associated to the community. They must
-                                            be defined in the router configuration
-                                            and the neighbor must be allowed to receive
-                                            them.
+                                            associated to the community.
                                           format: cidr
                                           items:
                                             type: string
@@ -225,17 +224,16 @@ spec:
                                   withLocalPref:
                                     description: PrefixesWithLocalPref is a list of
                                       prefixes that are associated to a local preference
-                                      when being advertised.
+                                      when being advertised. The prefixes associated
+                                      to a given local pref must be in the prefixes
+                                      allowed to be advertised.
                                     items:
                                       properties:
                                         localPref:
                                           type: integer
                                         prefixes:
                                           description: Prefixes is the list of prefixes
-                                            associated to the local preference. They
-                                            must be defined in the router configuration
-                                            and the neighbor must be allowed to receive
-                                            them.
+                                            associated to the local preference.
                                           format: cidr
                                           items:
                                             type: string
@@ -295,7 +293,7 @@ spec:
                 type: object
             type: object
           status:
-            description: FRRConfigurationStatus defines the observed state of FRRConfiguration
+            description: FRRConfigurationStatus defines the observed state of FRRConfiguration.
             type: object
         type: object
     served: true
