@@ -36,13 +36,6 @@ func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 		IPV6Prefixes: make([]string, 0),
 	}
 
-	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n)
-		if err != nil {
-			return nil, err
-		}
-		res.Neighbors = append(res.Neighbors, frrNeigh)
-	}
 	for _, p := range r.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {
@@ -53,12 +46,20 @@ func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 		case ipfamily.Unknown:
 			return nil, fmt.Errorf("unknown ipfamily for %s", p)
 		}
-
 	}
+
+	for _, n := range r.Neighbors {
+		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes)
+		if err != nil {
+			return nil, err
+		}
+		res.Neighbors = append(res.Neighbors, frrNeigh)
+	}
+
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
@@ -73,7 +74,20 @@ func neighborToFRR(n v1beta1.Neighbor) (*frr.NeighborConfig, error) {
 		IPFamily:       neighborFamily,
 		EBGPMultiHop:   n.EBGPMultiHop,
 	}
-	// TODO allow all
+
+	if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
+		for _, p := range ipv4Prefixes {
+			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv4})
+			res.HasV4Advertisements = true
+		}
+		for _, p := range ipv6Prefixes {
+			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv6})
+			res.HasV6Advertisements = true
+		}
+
+		return res, nil
+	}
+
 	for _, p := range n.ToAdvertise.Allowed.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {

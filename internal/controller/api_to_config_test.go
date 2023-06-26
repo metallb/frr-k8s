@@ -321,6 +321,105 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "Two Neighbor with ToAdvertise, one advertise all",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+										{
+											ASN:     65041,
+											Address: "192.0.2.22",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      65041,
+								Addr:     "192.0.2.21",
+								Port:     179,
+								Advertisements: []*frr.AdvertisementConfig{
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.0.2.0/24",
+									},
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.0.4.0/24",
+									},
+								},
+								HasV4Advertisements: true,
+							},
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.22",
+								ASN:      65041,
+								Addr:     "192.0.2.22",
+								Port:     179,
+								Advertisements: []*frr.AdvertisementConfig{
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.0.2.0/24",
+									},
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.0.3.0/24",
+									},
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.0.4.0/24",
+									},
+									{
+										IPFamily: ipfamily.IPv6,
+										Prefix:   "2001:db8::/64",
+									},
+								},
+								HasV4Advertisements: true,
+								HasV6Advertisements: true,
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
