@@ -199,7 +199,7 @@ kind-cluster: kind
 	@echo 'export KUBECONFIG=${KUBECONFIG_PATH}'
 
 .PHONY: load-on-kind
-load-on-kind: docker-build kind-cluster ## Load the docker image into the kind cluster.
+load-on-kind: kind-cluster ## Load the docker image into the kind cluster.
 	kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
 
 .PHONY: lint
