@@ -137,6 +137,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: kubectl manifests kustomize kind load-on-kind ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
 
