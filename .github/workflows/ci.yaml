@@ -63,6 +63,9 @@ jobs:
           ENV=host make lint
           make bumplicense
           go mod tidy
+          pushd e2etests
+          go mod tidy
+          popd
           make manifests
           make checkuncommitted
 
@@ -91,3 +94,49 @@ jobs:
           retention-days: 1
           name: image-tar-frrk8s
           path: /tmp/frrk8s.tar
+  e2e:
+    runs-on: ubuntu-22.04
+    needs:
+      - unit-tests
+      - build-test-images
+      - commitlint
+    strategy:
+      fail-fast: false
+      matrix:
+        ip-family: [ipv4, ipv6, dual]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Install kernel modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install linux-modules-extra-$(uname -r)
+
+      - name: Download frr8ks images
+        uses: actions/download-artifact@v3
+        with:
+          path: image
+
+      - name: Load image
+        working-directory: image
+        run: |
+          docker load -i image-tar-frrk8s/frrk8s.tar
+
+      - name: Deploy on kind
+        run: |
+          IP_FAMILY="${{ matrix.ip-family }}" IMG=quay.io/metallb/frrk8s:dev-amd64 make deploy
+
+      - name: E2E
+        run: |
+          SKIP="none"
+          if [ "${{ matrix.ip-family }}" == "ipv4" ]; then SKIP="$SKIP\|IPV6\|DUALSTACK"; fi
+          if [ "${{ matrix.ip-family }}" == "dual" ]; then SKIP="$SKIP\|IPV6"; fi
+          if [ "${{ matrix.ip-family }}" == "ipv6" ]; then SKIP="$SKIP\|IPV4\|DUALSTACK"; fi
+          GINKGO_ARGS="--skip $SKIP" make e2etests
+
+      - name: Collect Logs
+        if: ${{ failure() }}
+        uses: ./.github/workflows/composite/collectlogs
+        with:
+          artifact-name: kind-logs-${{ matrix.ip-family }}

@@ -115,6 +115,7 @@ KIND ?= $(LOCALBIN)/kind
 KUBECTL ?= $(LOCALBIN)/kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+GINKGO ?= $(LOCALBIN)/ginkgo
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 KUBECONFIG_PATH ?= $(LOCALBIN)/kubeconfig
 export KUBECONFIG=$(KUBECONFIG_PATH)
@@ -123,6 +124,7 @@ export KUBECONFIG=$(KUBECONFIG_PATH)
 KUSTOMIZE_VERSION ?= v5.0.0
 CONTROLLER_TOOLS_VERSION ?= v0.11.3
 KUBECTL_VERSION ?= v1.27.0
+GINKGO_VERSION ?= v2.11.0
 KIND_VERSION ?= v0.19.0
 KIND_CLUSTER_NAME ?= frr-k8s
 
@@ -164,20 +166,31 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be overwritten.
 $(KUBECTL): $(LOCALBIN)
-	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(KUBECTL_VERSION) || \
 	curl -o $(LOCALBIN)/kubectl -LO https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl
 	chmod +x $(LOCALBIN)/kubectl
 
 .PHONY: kind
 kind: $(KIND) ## Download kind locally if necessary. If wrong version is installed, it will be overwritten.
 $(KIND): $(LOCALBIN)
-	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(KIND_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@$(KIND_VERSION)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
 $(ENVTEST): $(LOCALBIN)
 	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
+
+.PHONY: ginkgo
+ginkgo: $(GINKGO) ## Download ginkgo locally if necessary. If wrong version is installed, it will be overwritten.
+$(GINKGO): $(LOCALBIN)
+	test -s $(LOCALBIN)/ginkgo && $(LOCALBIN)/ginkgo version | grep -q $(GINKGO_VERSION) || \
+	GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
+
+.PHONY: e2etests
+e2etests: ginkgo
+	$(GINKGO) -v $(GINKGO_ARGS) ./e2etests
+
 
 .PHONY: kind-cluster
 kind-cluster: kind
@@ -186,7 +199,7 @@ kind-cluster: kind
 	@echo 'export KUBECONFIG=${KUBECONFIG_PATH}'
 
 .PHONY: load-on-kind
-load-on-kind: docker-build kind-cluster ## Load the docker image into the kind cluster.
+load-on-kind: kind-cluster ## Load the docker image into the kind cluster.
 	kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
 
 .PHONY: lint
