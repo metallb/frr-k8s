@@ -63,6 +63,9 @@ jobs:
           ENV=host make lint
           make bumplicense
           go mod tidy
+          pushd e2etests
+          go mod tidy
+          popd
           make manifests
           make checkuncommitted
 
