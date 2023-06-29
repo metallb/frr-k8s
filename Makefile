@@ -166,14 +166,14 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be overwritten.
 $(KUBECTL): $(LOCALBIN)
-	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(KUBECTL_VERSION) || \
 	curl -o $(LOCALBIN)/kubectl -LO https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl
 	chmod +x $(LOCALBIN)/kubectl
 
 .PHONY: kind
 kind: $(KIND) ## Download kind locally if necessary. If wrong version is installed, it will be overwritten.
 $(KIND): $(LOCALBIN)
-	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
+	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(KIND_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@$(KIND_VERSION)
 
 .PHONY: envtest
