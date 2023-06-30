@@ -8,6 +8,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	_ "github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
@@ -53,6 +54,7 @@ func handleFlags() {
 	if _, res := os.LookupEnv("RUN_FRR_CONTAINER_ON_HOST_NETWORK"); res {
 		runOnHost = true
 	}
+	dump.ReportPath = reportPath
 }
 
 func TestMain(m *testing.M) {
@@ -100,7 +102,6 @@ var _ = ginkgo.BeforeSuite(func() {
 		*/
 	}
 
-	//reporter := k8s.InitReporter(framework.TestContext.KubeConfig, reportPath, metallb.Namespace)
 })
 
 var _ = ginkgo.AfterSuite(func() {
