@@ -189,7 +189,7 @@ $(GINKGO): $(LOCALBIN)
 
 .PHONY: e2etests
 e2etests: ginkgo
-	$(GINKGO) -v $(GINKGO_ARGS) ./e2etests
+	$(GINKGO) -v $(GINKGO_ARGS) ./e2etests -- $(TEST_ARGS)
 
 
 .PHONY: kind-cluster
