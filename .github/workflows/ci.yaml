@@ -67,6 +67,7 @@ jobs:
           go mod tidy
           popd
           make manifests
+          make generate-all-in-one
           make checkuncommitted
 
   build-test-images:
