@@ -225,3 +225,10 @@ KIND_EXPORT_LOGS ?=/tmp/kind_logs
 .PHONY: kind-export-logs
 kind-export-logs:
 	$(LOCALBIN)/kind export logs --name ${KIND_CLUSTER_NAME} ${KIND_EXPORT_LOGS}
+
+.PHONY: generate-all-in-one
+generate-all-in-one: manifests kustomize ## Create manifests
+	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/frr-k8s && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+
+	$(KUSTOMIZE) build config/default > config/all-in-one/frr-k8s.yaml
