@@ -37,6 +37,7 @@ spec:
         kubectl.kubernetes.io/default-container: frr-k8s
       labels:
         control-plane: frr-k8s
+        app: frr-k8s
     spec:
       containers:
       - command:

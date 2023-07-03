@@ -10,7 +10,9 @@ import (
 
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
+	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
+	"github.com/metallb/frrk8stests/pkg/k8s"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -19,24 +21,26 @@ import (
 	admissionapi "k8s.io/pod-security-admission/api"
 )
 
-var (
-	updater *config.Updater
-)
-
 var _ = ginkgo.Describe("FRR k8s", func() {
 	var cs clientset.Interface
 	var f *framework.Framework
 
+	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
 	framework.ExpectNoError(err)
-	updater, err = config.NewUpdater(clientconfig)
+	updater, err := config.NewUpdater(clientconfig)
 	framework.ExpectNoError(err)
+	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
 
 	ginkgo.AfterEach(func() {
-		// TODO: dump the failure information via a reporter
+		if ginkgo.CurrentSpecReport().Failed() {
+			testName := ginkgo.CurrentSpecReport().LeafNodeText
+			dump.K8sInfo(testName, reporter)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+		}
 	})
 
 	ginkgo.BeforeEach(func() {

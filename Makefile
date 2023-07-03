@@ -189,7 +189,7 @@ $(GINKGO): $(LOCALBIN)
 
 .PHONY: e2etests
 e2etests: ginkgo
-	$(GINKGO) -v $(GINKGO_ARGS) ./e2etests
+	$(GINKGO) -v $(GINKGO_ARGS) ./e2etests -- $(TEST_ARGS)
 
 
 .PHONY: kind-cluster
@@ -217,3 +217,9 @@ checkuncommitted:
 .PHONY: bumpall
 bumpall: bumplicense manifests
 	go mod tidy
+
+KIND_EXPORT_LOGS ?=/tmp/kind_logs
+
+.PHONY: kind-export-logs
+kind-export-logs:
+	$(LOCALBIN)/kind export logs --name ${KIND_CLUSTER_NAME} ${KIND_EXPORT_LOGS}
