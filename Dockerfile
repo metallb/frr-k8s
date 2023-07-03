@@ -1,34 +1,60 @@
-# Build the frr-k8s binary
-FROM golang:1.19 as builder
-ARG TARGETOS
-ARG TARGETARCH
+# syntax=docker/dockerfile:1.2
 
-WORKDIR /workspace
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
-# cache deps before building and copying source so that we don't need to re-download as much
-# and so that source changes don't invalidate our downloaded layer
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.19.5 AS builder
+ARG GIT_COMMIT=dev
+ARG GIT_BRANCH=dev
+WORKDIR $GOPATH/frr-k8s
+
+# Cache the downloads
+COPY go.mod go.sum ./
 RUN go mod download
 
-# Copy the go source
 COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
 COPY frr-tools/metrics ./frr-tools/metrics/
 
-# Build
-# the GOARCH has not a default value to allow the binary be built according to the host where the command
-# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
-# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
-# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o frr-k8s cmd/main.go
-RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o /build/frr-metrics frr-tools/metrics/exporter.go
+ARG TARGETARCH
+ARG TARGETOS
+ARG TARGETPLATFORM
 
-FROM alpine:latest
-WORKDIR /
-COPY --from=builder /workspace/frr-k8s .
+# have to manually convert as building the different arms can cause issues
+# Extract variant
+RUN case ${TARGETPLATFORM} in \
+  "linux/arm/v6") export VARIANT="6" ;; \
+  "linux/arm/v7") export VARIANT="7" ;; \
+  *) export VARIANT="" ;; \
+  esac
+
+# Cache builds directory for faster rebuild
+RUN --mount=type=cache,target=/root/.cache/go-build \
+  --mount=type=cache,target=/go/pkg \
+  # build frr metrics
+  CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
+  go build -v -o /build/frr-metrics \
+  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
+  frr-tools/metrics/exporter.go \
+  && \
+  CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
+  go build -v -o /build/frr-k8s \
+  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
+  cmd/main.go
+
+FROM docker.io/alpine:latest
+
+
+COPY --from=builder /build/frr-k8s /frr-k8s
 COPY --from=builder /build/frr-metrics /frr-metrics
 COPY frr-tools/reloader/frr-reloader.sh /frr-reloader.sh
+COPY LICENSE /
+
+LABEL org.opencontainers.image.authors="metallb" \
+  org.opencontainers.image.url="https://github.com/metallb/frr-k8s" \
+  org.opencontainers.image.source="https://github.com/metallb/frr-k8s" \
+  org.opencontainers.image.vendor="metallb" \
+  org.opencontainers.image.licenses="Apache-2.0" \
+  org.opencontainers.image.description="FRR-K8s" \
+  org.opencontainers.image.title="frr-k8s" \
+  org.opencontainers.image.base.name="docker.io/alpine:latest"
 
 ENTRYPOINT ["/frr-k8s"]
