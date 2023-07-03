@@ -5,5 +5,6 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-  newName: quay.io/metallb/frrk8s
-  newTag: 0.1.0
+  newName: quay.io/metallb/frr-k8s
+  newTag: dev
+namespace: frr-k8s-system
