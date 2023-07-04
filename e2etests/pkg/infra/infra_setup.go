@@ -21,12 +21,14 @@ import (
 const (
 	kindNetwork         = "kind"
 	vrfNetwork          = "vrf-net"
-	vrfName             = "red"
+	VRFName             = "red"
 	defaultRoutingTable = ""
 	FRRK8sASN           = 64512
 	FRRK8sASNVRF        = 64513
 	externalASN         = 4200000000
 )
+
+var VRFs = []string{"", VRFName}
 
 type nextHopSettings struct {
 	nodeNetwork          string
@@ -276,7 +278,7 @@ func vrfSetup(cs *clientset.Clientset) error {
 			return errors.Wrapf(err, "failed to connect %s to %s", node.Name, vrfNetwork)
 		}
 
-		err = container.SetupVRFForNetwork(node.Name, vrfNetwork, vrfName, vrfNextHopSettings.nodeRoutingTable)
+		err = container.SetupVRFForNetwork(node.Name, vrfNetwork, VRFName, vrfNextHopSettings.nodeRoutingTable)
 		if err != nil {
 			return err
 		}
@@ -342,8 +344,8 @@ func externalContainersConfigs() map[string]frrcontainer.Config {
 func hostnetContainerConfig(image string) map[string]frrcontainer.Config {
 	res := make(map[string]frrcontainer.Config)
 	res["ibgp-single-hop"] = frrcontainer.Config{
-		Name: "ibgp-single-hop",
-		// Image: image,
+		Name:  "ibgp-single-hop",
+		Image: image,
 		Neighbor: frrconfig.NeighborConfig{
 			ASN:      FRRK8sASN,
 			Password: "ibgp-test",
@@ -432,66 +434,66 @@ func frrContainersConfigs(image string) map[string]frrcontainer.Config {
 func vrfContainersConfig(image string) map[string]frrcontainer.Config {
 	res := make(map[string]frrcontainer.Config)
 	res["ebgp-vrf-single-hop"] = frrcontainer.Config{
-		Name: "ebgp-vrf-single-hop",
-		// Image:   image,
+		Name:    "ebgp-vrf-single-hop",
+		Image:   image,
 		Network: vrfNetwork,
 		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASNVRF,
-			Password: "vrf-test",
+			ASN: FRRK8sASNVRF,
+			// Password: "vrf-test",
 			MultiHop: false,
 		},
 		Router: frrconfig.RouterConfig{
-			ASN:      externalASN,
-			Password: "vrf-test",
-			BGPPort:  179,
-			VRF:      vrfName,
+			ASN: externalASN,
+			// Password: "vrf-test",
+			BGPPort: 179,
+			VRF:     VRFName,
 		},
 	}
 	res["ibgp-vrf-single-hop"] = frrcontainer.Config{
-		Name: "ibgp-vrf-single-hop",
-		// Image:   image,
+		Name:    "ibgp-vrf-single-hop",
+		Image:   image,
 		Network: vrfNetwork,
 		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASNVRF,
-			Password: "vrf-test",
+			ASN: FRRK8sASNVRF,
+			// Password: "vrf-test",
 			MultiHop: false,
 		},
 		Router: frrconfig.RouterConfig{
-			ASN:      FRRK8sASNVRF,
-			BGPPort:  179,
-			Password: "vrf-test",
-			VRF:      vrfName,
+			ASN:     FRRK8sASNVRF,
+			BGPPort: 179,
+			// Password: "vrf-test",
+			VRF: VRFName,
 		},
 	}
 	res["ibgp-vrf-multi-hop"] = frrcontainer.Config{
-		Name: "ibgp-vrf-multi-hop",
-		// Image: image,
+		Name:  "ibgp-vrf-multi-hop",
+		Image: image,
 		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASNVRF,
-			Password: "ibgp-test",
+			ASN: FRRK8sASNVRF,
+			// Password: "ibgp-test",
 			MultiHop: true,
 		},
 		Router: frrconfig.RouterConfig{
-			ASN:      FRRK8sASNVRF,
-			BGPPort:  180,
-			Password: "ibgp-test",
-			VRF:      vrfName,
+			ASN:     FRRK8sASNVRF,
+			BGPPort: 180,
+			// Password: "ibgp-test",
+			VRF: VRFName,
 		},
 		Network: vrfNextHopSettings.multiHopNetwork,
 	}
 	res["ebgp-vrf-multi-hop"] = frrcontainer.Config{
-		Name: "ebgp-vrf-multi-hop",
-		// Image: image,
+		Name:  "ebgp-vrf-multi-hop",
+		Image: image,
 		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASNVRF,
-			Password: "ebgp-test",
+			ASN: FRRK8sASNVRF,
+			//Password: "ebgp-test",
 			MultiHop: true,
 		},
 		Router: frrconfig.RouterConfig{
-			ASN:      externalASN,
-			BGPPort:  180,
-			Password: "ebgp-test",
-			VRF:      vrfName,
+			ASN:     externalASN,
+			BGPPort: 180,
+			// Password: "ebgp-test",
+			VRF: VRFName,
 		},
 		Network: vrfNextHopSettings.multiHopNetwork,
 	}
