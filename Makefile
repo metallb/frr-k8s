@@ -141,6 +141,7 @@ deploy: kubectl manifests kustomize kind load-on-kind ## Deploy controller to th
 	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
 
 .PHONY: undeploy
@@ -166,7 +167,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be overwritten.
 $(KUBECTL): $(LOCALBIN)
-	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl --version | grep -q $(KUBECTL_VERSION) || \
+	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl version | grep -q $(KUBECTL_VERSION) || \
 	curl -o $(LOCALBIN)/kubectl -LO https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl
 	chmod +x $(LOCALBIN)/kubectl
 

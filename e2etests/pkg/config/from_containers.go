@@ -31,3 +31,15 @@ func NeighborsForContainers(frrs []*frrcontainer.FRR, modify ...func(frr.Neighbo
 	}
 	return res
 }
+
+// ContainersForVRF filters the current list of FRR containers to only those
+// that are configured for the given VRF.
+func ContainersForVRF(frrs []*frrcontainer.FRR, vrf string) []*frrcontainer.FRR {
+	res := make([]*frrcontainer.FRR, 0)
+	for _, f := range frrs {
+		if f.RouterConfig.VRF == vrf {
+			res = append(res, f)
+		}
+	}
+	return res
+}

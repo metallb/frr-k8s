@@ -95,11 +95,9 @@ var _ = ginkgo.BeforeSuite(func() {
 	default:
 		infra.FRRContainers, err = infra.KindnetContainersSetup(cs, frrImage)
 		framework.ExpectNoError(err)
-		/*
-			vrfFRRContainers, err := bgptests.VRFContainersSetup(cs)
-			framework.ExpectNoError(err)
-			bgptests.FRRContainers = append(bgptests.FRRContainers, vrfFRRContainers...)
-		*/
+		vrfFRRContainers, err := infra.VRFContainersSetup(cs, frrImage)
+		framework.ExpectNoError(err)
+		infra.FRRContainers = append(infra.FRRContainers, vrfFRRContainers...)
 	}
 
 })
@@ -110,8 +108,6 @@ var _ = ginkgo.AfterSuite(func() {
 
 	err = infra.InfraTearDown(cs)
 	framework.ExpectNoError(err)
-	/*
-		err = bgptests.InfraTearDownVRF(cs)
-		framework.ExpectNoError(err)
-	*/
+	err = infra.InfraTearDownVRF(cs)
+	framework.ExpectNoError(err)
 })

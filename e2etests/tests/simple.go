@@ -58,10 +58,18 @@ var _ = ginkgo.Describe("FRR k8s", func() {
 
 	ginkgo.Context("Basic tests", func() {
 		ginkgo.It("establishes session with external frrs, IPV4", func() {
-			router := frrk8sv1beta1.Router{
+			frrs := config.ContainersForVRF(infra.FRRContainers, "")
+			defaultVRFRouter := frrk8sv1beta1.Router{
 				ASN:       infra.FRRK8sASN,
-				Neighbors: config.NeighborsForContainers(infra.FRRContainers),
+				Neighbors: config.NeighborsForContainers(frrs),
 			}
+			vrfFRRs := config.ContainersForVRF(infra.FRRContainers, infra.VRFName)
+			vrfRedRouter := frrk8sv1beta1.Router{
+				ASN:       infra.FRRK8sASNVRF,
+				Neighbors: config.NeighborsForContainers(vrfFRRs),
+				VRF:       infra.VRFName,
+			}
+
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -69,7 +77,10 @@ var _ = ginkgo.Describe("FRR k8s", func() {
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
 					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{router},
+						Routers: []frrk8sv1beta1.Router{
+							defaultVRFRouter,
+							vrfRedRouter,
+						},
 					},
 				},
 			}
