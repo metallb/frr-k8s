@@ -21,7 +21,7 @@ metadata:
   namespace: system
   labels:
     control-plane: frr-k8s
-    app.kubernetes.io/name: deployment
+    app.kubernetes.io/name: frr-k8s
     app.kubernetes.io/instance: frr-k8s
     app.kubernetes.io/component: frr-k8s
     app.kubernetes.io/created-by: frr-k8s
