@@ -1,6 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/metallb/frr-k8s:0.1.0
+IMG ?= quay.io/metallb/frr-k8s:dev
+NAMESPACE ?= "frr-k8s-system"
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.1
 
@@ -224,3 +226,10 @@ KIND_EXPORT_LOGS ?=/tmp/kind_logs
 .PHONY: kind-export-logs
 kind-export-logs:
 	$(LOCALBIN)/kind export logs --name ${KIND_CLUSTER_NAME} ${KIND_EXPORT_LOGS}
+
+.PHONY: generate-all-in-one
+generate-all-in-one: manifests kustomize ## Create manifests
+	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
+	cd config/frr-k8s && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
+
+	$(KUSTOMIZE) build config/default > config/all-in-one/frr-k8s.yaml

@@ -9,7 +9,7 @@ metadata:
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize
-  name: frr-k8s-metrics-service
+  name: metrics-service
   namespace: system
 spec:
   ports:
