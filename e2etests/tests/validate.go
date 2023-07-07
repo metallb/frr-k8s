@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/metallb/frrk8stests/pkg/routes"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.universe.tf/e2etest/pkg/frr"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -38,4 +40,28 @@ func ValidateFRRPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFami
 		}
 		return nil
 	}, 4*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+}
+
+func ValidatePrefixesForNeighbor(neigh *frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	Eventually(func() error {
+		for _, prefix := range prefixes {
+			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+}
+
+func ValidateNeighborNoPrefixes(neigh *frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	Eventually(func() error {
+		for _, prefix := range prefixes {
+			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}, 5*time.Second, time.Second).Should(HaveOccurred())
 }
