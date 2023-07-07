@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/metallb/frrk8stests/pkg/routes"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"go.universe.tf/e2etest/pkg/frr"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
@@ -38,4 +40,32 @@ func ValidateFRRPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFami
 		}
 		return nil
 	}, 4*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+}
+
+func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	ginkgo.By(fmt.Sprintf("checking prefixes %v for %s", prefixes, neigh.Name))
+	Eventually(func() error {
+		for _, prefix := range prefixes {
+			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			framework.ExpectNoError(err)
+			if !found {
+				fmt.Errorf("Neigh %s does not have prefix %s", neigh.Name, prefix)
+			}
+		}
+		return nil
+	}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+}
+
+func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	ginkgo.By(fmt.Sprintf("checking prefixes %v not announced to %s", prefixes, neigh.Name))
+	Eventually(func() error {
+		for _, prefix := range prefixes {
+			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			framework.ExpectNoError(err)
+			if found {
+				fmt.Errorf("Neigh %s has prefix %s", neigh.Name, prefix)
+			}
+		}
+		return nil
+	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
 }
