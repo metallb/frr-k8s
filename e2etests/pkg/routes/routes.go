@@ -11,8 +11,23 @@ import (
 	"go.universe.tf/e2etest/pkg/frr"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
+	"go.universe.tf/metallb/e2etest/pkg/executor"
 	v1 "k8s.io/api/core/v1"
+	"k8s.io/kubernetes/test/e2e/framework"
 )
+
+// PodHasPrefixFromContainer tells if the given frr-k8s pod has recevied a route for
+// the given prefix from the given container.
+func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, prefix string) bool {
+	_, cidr, _ := net.ParseCIDR(prefix)
+	ipFamily := ipfamily.ForCIDR(cidr)
+	nextHop := frr.Ipv4
+	if ipFamily == ipfamily.IPv6 {
+		nextHop = frr.Ipv6
+	}
+	vrf := frr.RouterConfig.VRF
+	return hasPrefix(pod, ipFamily, cidr, nextHop, vrf)
+}
 
 // CheckNeighborHasPrefix tells if the given frr container has a route toward the given prefix
 // via the set of node passed to this function.
@@ -66,4 +81,29 @@ func routeForCIDR(cidr *net.IPNet, routesV4 map[string]frr.Route, routesV6 map[s
 		}
 	}
 	return frr.Route{}, RouteNotFoundError(fmt.Sprintf("route %s not found", cidr))
+}
+
+func hasPrefix(pod *v1.Pod, pairingFamily ipfamily.Family, prefix *net.IPNet, nextHop, vrf string) bool {
+	found := false
+	podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
+	routes, frrRoutesV6, err := frr.RoutesForVRF(vrf, podExec)
+	framework.ExpectNoError(err)
+
+	if pairingFamily == ipfamily.IPv6 {
+		routes = frrRoutesV6
+	}
+
+out:
+	for _, route := range routes {
+		if !cidrsAreEqual(route.Destination, prefix) {
+			continue
+		}
+		for _, nh := range route.NextHops {
+			if nh.String() == nextHop {
+				found = true
+				break out
+			}
+		}
+	}
+	return found
 }
