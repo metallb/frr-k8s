@@ -4,10 +4,12 @@ package controller
 
 import (
 	"fmt"
+	"sort"
 
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 func apiToFRR(fromK8s v1beta1.FRRConfiguration) (*frr.Config, error) {
@@ -75,17 +77,16 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*fr
 		EBGPMultiHop:   n.EBGPMultiHop,
 	}
 
+	advs := map[string]*frr.AdvertisementConfig{}
 	if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
 		for _, p := range ipv4Prefixes {
-			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv4})
+			advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv4}
 			res.HasV4Advertisements = true
 		}
 		for _, p := range ipv6Prefixes {
-			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv6})
+			advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv6}
 			res.HasV6Advertisements = true
 		}
-
-		return res, nil
 	}
 
 	for _, p := range n.ToAdvertise.Allowed.Prefixes {
@@ -96,12 +97,52 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*fr
 		case ipfamily.IPv6:
 			res.HasV6Advertisements = true
 		}
-		res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: family})
+
+		// TODO: check that the prefix matches the passed IPv4/IPv6 prefixes
+		advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: family}
 	}
+
+	prefixToCommunities := map[string]sets.Set[string]{}
+	for _, pfxs := range n.ToAdvertise.PrefixesWithCommunity {
+		// TODO: add community format verification
+		for _, p := range pfxs.Prefixes {
+			_, ok := advs[p]
+			if !ok {
+				return nil, fmt.Errorf("prefix %s with community %s not in allowed list for neighbor %s", p, pfxs.Community, n.Address)
+			}
+			_, ok = prefixToCommunities[p]
+			if !ok {
+				prefixToCommunities[p] = sets.New(pfxs.Community)
+				continue
+			}
+
+			prefixToCommunities[p].Insert(pfxs.Community)
+		}
+	}
+
+	for p, c := range prefixToCommunities {
+		adv := advs[p] // we don't check if the adv exists as it's done in the previous loop
+		adv.Communities = sets.List(c)
+	}
+
+	res.Advertisements = sortMap(advs)
 
 	return res, nil
 }
 
 func neighborName(ASN uint32, peerAddr string) string {
 	return fmt.Sprintf("%d@%s", ASN, peerAddr)
+}
+
+func sortMap[T any](toSort map[string]T) []T {
+	keys := make([]string, 0)
+	for k := range toSort {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	res := make([]T, 0)
+	for _, k := range keys {
+		res = append(res, toSort[k])
+	}
+	return res
 }
