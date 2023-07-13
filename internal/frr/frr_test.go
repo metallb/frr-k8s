@@ -110,14 +110,16 @@ func TestSingleSession(t *testing.T) {
 						ASN:      65001,
 						Addr:     "192.168.1.2",
 						Port:     4567,
-						Advertisements: []*AdvertisementConfig{
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.169.1.0/24",
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.170.1.0/22",
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
 							},
 						},
 					},
@@ -149,22 +151,25 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						ASN:      65001,
 						Addr:     "192.168.1.2",
 						Port:     4567,
-						Advertisements: []*AdvertisementConfig{
-							{
-								IPFamily:    ipfamily.IPv4,
-								Prefix:      "192.169.1.0/24",
-								Communities: []string{"10:169", "10:170"},
-							},
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.169.1.0/22",
-								Communities:      []string{"10:170"},
-								LargeCommunities: []string{"123:456:7890"},
-							},
-							{
-								IPFamily:    ipfamily.IPv4,
-								Prefix:      "192.170.1.0/22",
-								Communities: []string{"10:170"},
+
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily:    ipfamily.IPv4,
+									Prefix:      "192.169.1.0/24",
+									Communities: []string{"10:169", "10:170"},
+								},
+								{
+									IPFamily:         ipfamily.IPv4,
+									Prefix:           "192.169.1.0/22",
+									Communities:      []string{"10:170"},
+									LargeCommunities: []string{"123:456:7890"},
+								},
+								{
+									IPFamily:    ipfamily.IPv4,
+									Prefix:      "192.170.1.0/22",
+									Communities: []string{"10:170"},
+								},
 							},
 						},
 					},
@@ -179,10 +184,164 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.3",
-						Advertisements: []*AdvertisementConfig{
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.169.1.0/24",
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestTwoSessionsAcceptAll(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.2",
+						Port:     4567,
+						Incoming: AllowedIn{
+							All: true,
+						},
+					}, {
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.3",
+						Port:     4567,
+						Incoming: AllowedIn{
+							All: true,
+						},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestTwoSessionsAcceptSomeV4(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.2",
+						Port:     4567,
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.1.0/24",
+								},
+							},
+						},
+					}, {
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.3",
+						Port:     4567,
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.2",
+						Port:     4567,
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e800::/64",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.1.0/24",
+								},
+							},
+						},
+					}, {
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.3",
+						Port:     4567,
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e799::/64",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
 							},
 						},
 					},
