@@ -10,10 +10,10 @@ import (
 )
 
 // NeighborsForContainers returns a list of Neighbors for the given FRR containers.
-func NeighborsForContainers(frrs []*frrcontainer.FRR, modify ...func(frr.Neighbor)) []frrk8sv1beta1.Neighbor {
+func NeighborsForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, modify ...func(frr.Neighbor)) []frrk8sv1beta1.Neighbor {
 	res := make([]frrk8sv1beta1.Neighbor, 0)
 	for _, f := range frrs {
-		addresses := f.AddressesForFamily(ipfamily.IPv4)
+		addresses := f.AddressesForFamily(ipFam)
 		ebgpMultihop := false
 		if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
 			ebgpMultihop = true
