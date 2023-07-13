@@ -224,6 +224,64 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 				},
 			}),
+			ginkgo.Entry("IPV4 - Advertise with communities", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
+				modifyNeighbors: func(nn []frrk8sv1beta1.Neighbor) {
+					for i := range nn {
+						nn[i].ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						nn[i].ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.1.0/24"},
+							},
+						}
+					}
+				},
+				validate: func(frrs []*frrcontainer.FRR, nodes []v1.Node) {
+					for _, f := range frrs {
+						ginkgo.By(fmt.Sprintf("checking prefixes on %s", f.Name))
+						ValidatePrefixesForNeighbor(f, nodes, "192.168.0.0/24", "192.168.1.0/24")
+						ValidateNeighborCommunityPrefixes(f, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(f, "10:101", []string{"192.168.1.0"}, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV6 - Advertise with communities", params{
+				ipFamily: ipfamily.IPv6,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+				modifyNeighbors: func(nn []frrk8sv1beta1.Neighbor) {
+					for i := range nn {
+						nn[i].ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						nn[i].ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"fc00:f853:ccd:e800::/64"},
+							},
+						}
+					}
+				},
+				validate: func(frrs []*frrcontainer.FRR, nodes []v1.Node) {
+					for _, f := range frrs {
+						ginkgo.By(fmt.Sprintf("checking prefixes on %s", f.Name))
+						ValidatePrefixesForNeighbor(f, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
+						ValidateNeighborCommunityPrefixes(f, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborCommunityPrefixes(f, "10:101", []string{"fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+					}
+				},
+			}),
 		)
 	})
 })
