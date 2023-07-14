@@ -189,7 +189,7 @@ kind-cluster: kind
 
 .PHONY: load-on-kind
 load-on-kind: kind-cluster ## Load the docker image into the kind cluster.
-	kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
+	$(LOCALBIN)/kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
 
 .PHONY: lint
 lint:
