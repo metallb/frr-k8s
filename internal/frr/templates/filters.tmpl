@@ -20,8 +20,7 @@ route-map {{.neighbor.ID}}-out permit {{counter .neighbor.ID}}
      deny all the others.*/ -}}
 {{- define "neighborfilters" -}}
 
-route-map {{.neighbor.ID}}-in deny 20
-{{- range $a := .neighbor.Advertisements }}
+{{- range $a := .neighbor.Outgoing.Prefixes }}
 {{/* Advertisements for which we must enable set the local pref */}}
 {{- if not (eq $a.LocalPref 0)}}
 {{template "localpreffilter" dict "advertisement" $a "neighbor" $.neighbor}}
@@ -42,10 +41,32 @@ route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
 
 {{/* If the neighbor does not have an advertisement, we need to add a prefix to deny
 for when we have a prefix but a given peer is not selected for any prefixes */}}
-{{- if not .neighbor.HasV4Advertisements}}
+{{- if not .neighbor.Outgoing.HasV4 }}
 ip prefix-list {{allowedPrefixList $.neighbor }} deny any
 {{- end }}
-{{- if not .neighbor.HasV6Advertisements}}
+{{- if not .neighbor.Outgoing.HasV6 }}
 ipv6 prefix-list {{allowedPrefixList $.neighbor}} deny any
 {{- end -}}
+
+{{/* filtering incoming prefixes */}}
+{{ range $i := .neighbor.Incoming.Prefixes }}
+{{frrIPFamily $i.IPFamily}} prefix-list {{allowedIncomingList $.neighbor}} permit {{$i.Prefix}}
+{{- end }}
+
+{{ if not .neighbor.Incoming.HasV4 }}
+ip prefix-list {{allowedIncomingList $.neighbor }} deny any
+{{- end }}
+{{ if not .neighbor.Incoming.HasV6 }}
+ipv6 prefix-list {{allowedIncomingList $.neighbor}} deny any
+{{- end -}}
+
+{{ if .neighbor.Incoming.All }}
+route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
+{{ else }}
+route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
+  match ip address prefix-list {{allowedIncomingList $.neighbor}}
+route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{allowedIncomingList $.neighbor}}
+{{- end }}
+
 {{- end -}}

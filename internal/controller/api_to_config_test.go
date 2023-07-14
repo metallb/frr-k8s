@@ -51,12 +51,17 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.1",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:       ipfamily.IPv4,
-								Name:           "65002@192.0.2.2",
-								ASN:            65002,
-								Addr:           "192.0.2.2",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv4,
+								Name:     "65002@192.0.2.2",
+								ASN:      65002,
+								Addr:     "192.0.2.2",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						VRF:          "",
@@ -117,20 +122,30 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.5",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:       ipfamily.IPv4,
-								Name:           "65011@192.0.2.6",
-								ASN:            65011,
-								Addr:           "192.0.2.6",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv4,
+								Name:     "65011@192.0.2.6",
+								ASN:      65011,
+								Addr:     "192.0.2.6",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 							{
-								IPFamily:       ipfamily.IPv4,
-								Name:           "65012@192.0.2.7",
-								ASN:            65012,
-								Addr:           "192.0.2.7",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						VRF:          "",
@@ -142,12 +157,17 @@ func TestConversion(t *testing.T) {
 						RouterID: "2001:db8::3",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:       ipfamily.IPv6,
-								Name:           "65014@2001:db8::4",
-								ASN:            65014,
-								Addr:           "2001:db8::4",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv6,
+								Name:     "65014@2001:db8::4",
+								ASN:      65014,
+								Addr:     "2001:db8::4",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						VRF:          "vrf2",
@@ -190,12 +210,17 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.10",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:       ipfamily.IPv4,
-								Name:           "65021@192.0.2.11",
-								ASN:            65021,
-								Addr:           "192.0.2.11",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv4,
+								Name:     "65021@192.0.2.11",
+								ASN:      65021,
+								Addr:     "192.0.2.11",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -247,12 +272,17 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.15",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:       ipfamily.IPv4,
-								Name:           "65031@192.0.2.16",
-								ASN:            65031,
-								Addr:           "192.0.2.16",
-								Port:           179,
-								Advertisements: []*frr.AdvertisementConfig{},
+								IPFamily: ipfamily.IPv4,
+								Name:     "65031@192.0.2.16",
+								ASN:      65031,
+								Addr:     "192.0.2.16",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						VRF:          "vrf1",
@@ -305,13 +335,18 @@ func TestConversion(t *testing.T) {
 								ASN:      65041,
 								Addr:     "192.0.2.21",
 								Port:     179,
-								Advertisements: []*frr.AdvertisementConfig{
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.2.0/24",
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
 									},
+									HasV4: true,
 								},
-								HasV4Advertisements: true,
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -373,17 +408,22 @@ func TestConversion(t *testing.T) {
 								ASN:      65041,
 								Addr:     "192.0.2.21",
 								Port:     179,
-								Advertisements: []*frr.AdvertisementConfig{
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.2.0/24",
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.4.0/24",
+										},
 									},
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.4.0/24",
-									},
+									HasV4: true,
 								},
-								HasV4Advertisements: true,
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -391,30 +431,152 @@ func TestConversion(t *testing.T) {
 								ASN:      65041,
 								Addr:     "192.0.2.22",
 								Port:     179,
-								Advertisements: []*frr.AdvertisementConfig{
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.2.0/24",
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.3.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.4.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db8::/64",
+										},
 									},
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.3.0/24",
-									},
-									{
-										IPFamily: ipfamily.IPv4,
-										Prefix:   "192.0.4.0/24",
-									},
-									{
-										IPFamily: ipfamily.IPv6,
-										Prefix:   "2001:db8::/64",
-									},
+									HasV4: true,
+									HasV6: true,
 								},
-								HasV4Advertisements: true,
-								HasV6Advertisements: true,
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
 						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Neighbor with ToReceiveAll",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65040,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      65041,
+								Addr:     "192.0.2.21",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									All:      true,
+									Prefixes: []frr.IncomingFilter{},
+								},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		}, {
+			name: "Neighbor with ToReceive some ips only",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65040,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      65041,
+								Addr:     "192.0.2.21",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									Prefixes: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									Prefixes: []frr.IncomingFilter{
+										{IPFamily: "ipv4", Prefix: "192.0.2.0/24"},
+										{IPFamily: "ipv4", Prefix: "192.0.3.0/24"},
+										{IPFamily: "ipv4", Prefix: "192.0.4.0/24"},
+										{IPFamily: "ipv6", Prefix: "2001:db8::/64"},
+									},
+									HasV4: true,
+									HasV6: true,
+								},
+							},
+						},
 					},
 				},
 			},

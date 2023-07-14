@@ -70,36 +70,63 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*fr
 		Addr: n.Address,
 		Port: n.Port,
 		// Password:       n.Password, TODO password as secret
-		Advertisements: make([]*frr.AdvertisementConfig, 0),
-		IPFamily:       neighborFamily,
-		EBGPMultiHop:   n.EBGPMultiHop,
+		IPFamily:     neighborFamily,
+		EBGPMultiHop: n.EBGPMultiHop,
 	}
 
-	if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
+	res.Outgoing = toAdvertiseToFRR(n.ToAdvertise, ipv4Prefixes, ipv6Prefixes)
+	res.Incoming = toReceiveToFRR(n.ToReceive)
+	return res, nil
+}
+
+func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) frr.AllowedOut {
+	res := frr.AllowedOut{
+		Prefixes: make([]frr.OutgoingFilter, 0),
+	}
+
+	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
 		for _, p := range ipv4Prefixes {
-			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv4})
-			res.HasV4Advertisements = true
+			res.Prefixes = append(res.Prefixes, frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv4})
+			res.HasV4 = true
 		}
 		for _, p := range ipv6Prefixes {
-			res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv6})
-			res.HasV6Advertisements = true
+			res.Prefixes = append(res.Prefixes, frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv6})
+			res.HasV6 = true
 		}
-
-		return res, nil
+		return res
 	}
 
-	for _, p := range n.ToAdvertise.Allowed.Prefixes {
+	for _, p := range toAdvertise.Allowed.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {
 		case ipfamily.IPv4:
-			res.HasV4Advertisements = true
+			res.HasV4 = true
 		case ipfamily.IPv6:
-			res.HasV6Advertisements = true
+			res.HasV6 = true
 		}
-		res.Advertisements = append(res.Advertisements, &frr.AdvertisementConfig{Prefix: p, IPFamily: family})
+		res.Prefixes = append(res.Prefixes, frr.OutgoingFilter{Prefix: p, IPFamily: family})
 	}
+	return res
+}
 
-	return res, nil
+func toReceiveToFRR(toReceive v1beta1.Receive) frr.AllowedIn {
+	res := frr.AllowedIn{
+		Prefixes: make([]frr.IncomingFilter, 0),
+	}
+	if toReceive.Allowed.Mode == v1beta1.AllowAll {
+		res.All = true
+		return res
+	}
+	for _, p := range toReceive.Allowed.Prefixes {
+		family := ipfamily.ForCIDRString(p)
+		res.Prefixes = append(res.Prefixes, frr.IncomingFilter{Prefix: p, IPFamily: family})
+		if family == ipfamily.IPv4 {
+			res.HasV4 = true
+			continue
+		}
+		res.HasV6 = true
+	}
+	return res
 }
 
 func neighborName(ASN uint32, peerAddr string) string {
