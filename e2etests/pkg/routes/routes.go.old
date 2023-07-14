@@ -4,7 +4,6 @@ package routes
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net"
 
@@ -16,8 +15,6 @@ import (
 	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-// PodHasPrefixFromContainer tells if the given frr-k8s pod has recevied a route for
-// the given prefix from the given container.
 func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, prefix string) bool {
 	_, cidr, _ := net.ParseCIDR(prefix)
 	ipFamily := ipfamily.ForCIDR(cidr)
@@ -31,32 +28,28 @@ func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, prefix string)
 
 // CheckNeighborHasPrefix tells if the given frr container has a route toward the given prefix
 // via the set of node passed to this function.
-func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, prefix string, nodes []v1.Node) (bool, error) {
+func CheckNeighborHasPrefix(neighbor *frrcontainer.FRR, prefix string, nodes []v1.Node) error {
 	routesV4, routesV6, err := frr.Routes(neighbor)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	_, cidr, err := net.ParseCIDR(prefix)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	route, err := routeForCIDR(cidr, routesV4, routesV6)
-	var notFound RouteNotFoundError
-	if errors.As(err, &notFound) {
-		return false, nil
-	}
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	cidrFamily := ipfamily.ForCIDR(cidr)
 	err = frr.RoutesMatchNodes(nodes, route, cidrFamily, neighbor.RouterConfig.VRF)
 	if err != nil {
-		return false, nil
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func cidrsAreEqual(a, b *net.IPNet) bool {
