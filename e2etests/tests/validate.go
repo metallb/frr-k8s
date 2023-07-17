@@ -49,7 +49,7 @@ func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefix
 			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
 			framework.ExpectNoError(err)
 			if !found {
-				fmt.Errorf("Neigh %s does not have prefix %s", neigh.Name, prefix)
+				return fmt.Errorf("Neigh %s does not have prefix %s", neigh.Name, prefix)
 			}
 		}
 		return nil
@@ -63,7 +63,7 @@ func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixe
 			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
 			framework.ExpectNoError(err)
 			if found {
-				fmt.Errorf("Neigh %s has prefix %s", neigh.Name, prefix)
+				return fmt.Errorf("Neigh %s has prefix %s", neigh.Name, prefix)
 			}
 		}
 		return nil
