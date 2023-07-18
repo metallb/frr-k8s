@@ -100,6 +100,11 @@ router bgp 65000
     neighbor 192.168.1.2 route-map 192.168.1.2-in in
     neighbor 192.168.1.2 route-map 192.168.1.2-out out
   exit-address-family
+  address-family ipv4 unicast
+    network 192.169.1.0/24
+    network 192.170.1.0/22
+  exit-address-family
+
 router bgp 65000 vrf red
   no bgp ebgp-requires-policy
   no bgp network import-check
