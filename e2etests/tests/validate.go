@@ -69,3 +69,31 @@ func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixe
 		return nil
 	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
 }
+
+func ValidateNeighborCommunityPrefixes(neigh frrcontainer.FRR, community string, prefixes []string, ipfam ipfamily.Family) {
+	Eventually(func() error {
+		routes, err := frr.RoutesForCommunity(neigh, community, ipfam)
+		if err != nil {
+			return err
+		}
+
+		communityPrefixes := map[string]struct{}{}
+		for p := range routes {
+			communityPrefixes[p] = struct{}{}
+		}
+
+		for _, prefix := range prefixes {
+			_, ok := communityPrefixes[prefix]
+			if !ok {
+				return fmt.Errorf("prefix %s not found in neighbor %s community %s unmatched routes %s", prefix, neigh.Name, community, communityPrefixes)
+			}
+			delete(communityPrefixes, prefix)
+		}
+
+		if len(communityPrefixes) != 0 {
+			return fmt.Errorf("routes %s for community %s were not matched for neighbor %s", communityPrefixes, community, neigh.Name)
+		}
+
+		return nil
+	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
+}

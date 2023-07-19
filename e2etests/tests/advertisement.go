@@ -284,6 +284,222 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 				},
 			}),
+			ginkgo.Entry("IPV4 - Advertise with communities, AllowedMode all", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.1.0/24"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.1.0"}, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - Advertise with multiple communities, AllowedMode restricted", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24"}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.0.0", "192.168.1.0"}, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - large community", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "large:123:456:7890",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"192.168.0.0"}, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV6 - Advertise with communities, AllowedMode all", params{
+				ipFamily: ipfamily.IPv6,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV6 {
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"fc00:f853:ccd:e800::/64"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV6 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV6 - Advertise with multiple communities, AllowedMode restricted", params{
+				ipFamily: ipfamily.IPv6,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV6 {
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV6[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"}
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV6 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e799::", "fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV6 - large community", params{
+				ipFamily: ipfamily.IPv6,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV6 {
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "large:123:456:7890",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV6 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
+						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+					}
+				},
+			}),
+			ginkgo.Entry("DUALSTACK - Advertise with communities, AllowedMode all", params{
+				ipFamily: ipfamily.DualStack,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.2.0/24", "192.169.2.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.2.0/24"},
+							},
+							{
+								Community: "large:123:456:7890",
+								Prefixes:  []string{"192.168.2.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.2.0/24", "192.169.2.0/24"},
+							},
+						}
+					}
+					for i := range ppV6 {
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+							{
+								Community: "large:123:456:7890",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.2.0/24", "192.169.2.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.2.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"192.168.2.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.2.0", "192.169.2.0"}, ipfamily.IPv4)
+					}
+					for _, p := range ppV6 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e799::", "fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+					}
+				},
+			}),
 		)
 	})
 })
