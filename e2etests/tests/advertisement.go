@@ -312,7 +312,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 				},
 			}),
-			ginkgo.Entry("IPV4 - Advertise with multiple communities, AllowedMode restricted", params{
+			ginkgo.Entry("IPV4 - Advertise with communities, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv4,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -320,7 +320,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
 						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
-						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24"}
+						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
 						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
 							{
 								Community: "10:100",
@@ -335,13 +335,153 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
 					for _, p := range ppV4 {
-						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24")
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24")
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.0.0", "192.168.1.0"}, ipfamily.IPv4)
 					}
 				},
 			}),
-			ginkgo.Entry("IPV4 - large community", params{
+			ginkgo.Entry("IPV4 - Advertise with localPref, AllowedMode all", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.0.0/24"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"192.168.1.0/24"},
+								LocalPref: 150,
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24")
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 150, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - Advertise with localPref, AllowedMode restricted", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"192.168.2.0/24"},
+								LocalPref: 150,
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24")
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.2.0", 150, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - Advertise with communities and localPref, AllowedMode all", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.1.0/24"},
+							},
+						}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.0.0/24"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"192.168.1.0/24"},
+								LocalPref: 150,
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.1.0"}, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 150, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - Advertise with multiple communities and localPref, AllowedMode restricted", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+							{
+								Community: "10:100",
+								Prefixes:  []string{"192.168.0.0/24"},
+							},
+							{
+								Community: "10:101",
+								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
+							},
+						}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"192.168.2.0/24"},
+								LocalPref: 150,
+							},
+						}
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24")
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.0.0", "192.168.1.0"}, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 100, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.2.0", 150, ipfamily.IPv4)
+					}
+				},
+			}),
+			ginkgo.Entry("IPV4 - large community and localPref", params{
 				ipFamily: ipfamily.IPv4,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -355,16 +495,23 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"192.168.0.0/24"},
 							},
 						}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.0.0/24"},
+								LocalPref: 100,
+							},
+						}
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
 					for _, p := range ppV4 {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24")
 						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"192.168.0.0"}, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
 					}
 				},
 			}),
-			ginkgo.Entry("IPV6 - Advertise with communities, AllowedMode all", params{
+			ginkgo.Entry("IPV6 - Advertise with communities and localPref, AllowedMode all", params{
 				ipFamily: ipfamily.IPv6,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -382,6 +529,16 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e800::/64"},
 							},
 						}
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e800::/64"},
+								LocalPref: 150,
+							},
+						}
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -389,10 +546,12 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e800::", 150, ipfamily.IPv6)
 					}
 				},
 			}),
-			ginkgo.Entry("IPV6 - Advertise with multiple communities, AllowedMode restricted", params{
+			ginkgo.Entry("IPV6 - Advertise with multiple communities and localPref, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv6,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -411,6 +570,16 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 							},
 						}
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+								LocalPref: 100,
+							},
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e801::/64"},
+								LocalPref: 150,
+							},
+						}
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -418,10 +587,13 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64")
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e799::", "fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e800::", 100, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e801::", 150, ipfamily.IPv6)
 					}
 				},
 			}),
-			ginkgo.Entry("IPV6 - large community", params{
+			ginkgo.Entry("IPV6 - large community and localPref", params{
 				ipFamily: ipfamily.IPv6,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -435,16 +607,23 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
 							},
 						}
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+								LocalPref: 100,
+							},
+						}
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
 					for _, p := range ppV6 {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
 					}
 				},
 			}),
-			ginkgo.Entry("DUALSTACK - Advertise with communities, AllowedMode all", params{
+			ginkgo.Entry("DUALSTACK - Advertise with communities and localPref, AllowedMode all", params{
 				ipFamily: ipfamily.DualStack,
 				vrf:      "",
 				myAsn:    infra.FRRK8sASN,
@@ -466,6 +645,12 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"192.168.2.0/24", "192.169.2.0/24"},
 							},
 						}
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"192.168.2.0/24"},
+								LocalPref: 100,
+							},
+						}
 					}
 					for i := range ppV6 {
 						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
@@ -483,6 +668,12 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 							},
 						}
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+							{
+								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
+								LocalPref: 100,
+							},
+						}
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -491,12 +682,14 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"192.168.2.0"}, ipfamily.IPv4)
 						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"192.168.2.0"}, ipfamily.IPv4)
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.2.0", "192.169.2.0"}, ipfamily.IPv4)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.2.0", 100, ipfamily.IPv4)
 					}
 					for _, p := range ppV6 {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:100", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
 						ValidateNeighborCommunityPrefixes(p.FRR, "large:123:456:7890", []string{"fc00:f853:ccd:e799::"}, ipfamily.IPv6)
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"fc00:f853:ccd:e799::", "fc00:f853:ccd:e800::"}, ipfamily.IPv6)
+						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
 					}
 				},
 			}),
