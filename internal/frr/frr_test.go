@@ -151,12 +151,20 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						Port:     4567,
 						Advertisements: []*AdvertisementConfig{
 							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.169.1.0/24",
+								IPFamily:    ipfamily.IPv4,
+								Prefix:      "192.169.1.0/24",
+								Communities: []string{"10:169", "10:170"},
 							},
 							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.170.1.0/22",
+								IPFamily:         ipfamily.IPv4,
+								Prefix:           "192.169.1.0/22",
+								Communities:      []string{"10:170"},
+								LargeCommunities: []string{"123:456:7890"},
+							},
+							{
+								IPFamily:    ipfamily.IPv4,
+								Prefix:      "192.170.1.0/22",
+								Communities: []string{"10:170"},
 							},
 						},
 					},
