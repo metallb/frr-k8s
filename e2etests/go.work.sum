@@ -263,8 +263,8 @@ github.com/mdlayher/ethernet v0.0.0-20220221185849-529eae5b6118/go.mod h1:ZFUnHI
 github.com/mdlayher/ndp v0.0.0-20200602162440-17ab9e3e5567/go.mod h1:32w/5dDZWVSEOxyniAgKK4d7dHTuO6TCxWmUznQe3f8=
 github.com/mdlayher/packet v1.0.0/go.mod h1:eE7/ctqDhoiRhQ44ko5JZU2zxB88g+JH/6jmnjzPjOU=
 github.com/mdlayher/socket v0.2.1/go.mod h1:QLlNPkFR88mRUNQIzRBMfXxwKal8H7u1h3bL1CV+f0E=
-github.com/metallb/metallb/e2etest v0.0.0-20230704151713-ca4eed32d1f6 h1:PlT2uIiyi0jsbXax1wapWg0MjGoODcx5BODqdoXP40A=
-github.com/metallb/metallb/e2etest v0.0.0-20230704151713-ca4eed32d1f6/go.mod h1:pvpDmNSSuGzhAF32B9Rsf8cl+9XiAMq0fRMaWbJsWAo=
+github.com/metallb/metallb/e2etest v0.0.0-20230719075116-22ffd63a2942 h1:KHKjIaQSPXxqSRMf7KwRGSigM5OdrmGsTZUjBCCYEmI=
+github.com/metallb/metallb/e2etest v0.0.0-20230719075116-22ffd63a2942/go.mod h1:pvpDmNSSuGzhAF32B9Rsf8cl+9XiAMq0fRMaWbJsWAo=
 github.com/miekg/dns v1.1.43/go.mod h1:+evo5L0630/F6ca/Z9+GAqzhjGyn8/c+TBaOyfEl0V4=
 github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989/go.mod h1:2eu9pRWp8mo84xCg6KswZ+USQHjwgRhNp06sozOdsTY=
 github.com/mistifyio/go-zfs v2.1.2-0.20190413222219-f784269be439+incompatible/go.mod h1:8AuVvqP/mXw1px98n46wfvcGfQ4ci2FwoAjKYxuo3Z4=
