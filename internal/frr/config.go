@@ -86,10 +86,11 @@ func (n *NeighborConfig) ID() string {
 }
 
 type AdvertisementConfig struct {
-	IPFamily    ipfamily.Family
-	Prefix      string
-	Communities []string
-	LocalPref   uint32
+	IPFamily         ipfamily.Family
+	Prefix           string
+	Communities      []string
+	LargeCommunities []string
+	LocalPref        uint32
 }
 
 // templateConfig uses the template library to template
@@ -118,6 +119,9 @@ func templateConfig(data interface{}) (string, error) {
 			},
 			"communityPrefixList": func(neighbor *NeighborConfig, community string) string {
 				return fmt.Sprintf("%s-%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
+			},
+			"largeCommunityPrefixList": func(neighbor *NeighborConfig, community string) string {
+				return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
 			},
 			"allowedPrefixList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-pl-%s", neighbor.ID(), neighbor.IPFamily)
