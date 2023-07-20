@@ -54,7 +54,7 @@ func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 	for _, n := range r.Neighbors {
 		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
 		res.Neighbors = append(res.Neighbors, frrNeigh)
 	}
@@ -73,90 +73,175 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*fr
 		Addr: n.Address,
 		Port: n.Port,
 		// Password:       n.Password, TODO password as secret
-		Advertisements: make([]*frr.AdvertisementConfig, 0),
-		IPFamily:       neighborFamily,
-		EBGPMultiHop:   n.EBGPMultiHop,
+		IPFamily:     neighborFamily,
+		EBGPMultiHop: n.EBGPMultiHop,
 	}
 
-	advs := map[string]*frr.AdvertisementConfig{}
-	if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
+	res.Outgoing, err = toAdvertiseToFRR(n.ToAdvertise, ipv4Prefixes, ipv6Prefixes)
+	if err != nil {
+		return nil, err
+	}
+	res.Incoming = toReceiveToFRR(n.ToReceive)
+	return res, nil
+}
+
+func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (frr.AllowedOut, error) {
+	advsV4, advsV6 := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
+	communities, err := communityPrefixesToMap(toAdvertise.PrefixesWithCommunity)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
+	err = setCommunitiesToAdvertisements(advsV4, communities, ipfamily.IPv4)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
+	err = setCommunitiesToAdvertisements(advsV6, communities, ipfamily.IPv6)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
+	res := frr.AllowedOut{
+		PrefixesV4: sortMap(advsV4),
+		PrefixesV6: sortMap(advsV6),
+	}
+	return res, nil
+}
+
+// prefixesToMap returns two maps of prefix->OutgoingFIlter (ie family, advertisement, communities), one for each family.
+func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter) {
+	resV4 := map[string]*frr.OutgoingFilter{}
+	resV6 := map[string]*frr.OutgoingFilter{}
+	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
 		for _, p := range ipv4Prefixes {
-			advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv4}
-			res.HasV4Advertisements = true
+			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv4}
 		}
 		for _, p := range ipv6Prefixes {
-			advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: ipfamily.IPv6}
-			res.HasV6Advertisements = true
+			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv6}
 		}
+		return resV4, resV6
 	}
-
-	for _, p := range n.ToAdvertise.Allowed.Prefixes {
+	// TODO: add a validation somewhere that checks that the prefixes are present in the
+	// global per router list.
+	for _, p := range toAdvertise.Allowed.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {
 		case ipfamily.IPv4:
-			res.HasV4Advertisements = true
+			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		case ipfamily.IPv6:
-			res.HasV6Advertisements = true
-		}
-
-		// TODO: check that the prefix matches the passed IPv4/IPv6 prefixes
-		advs[p] = &frr.AdvertisementConfig{Prefix: p, IPFamily: family}
-	}
-
-	communitiesForPrefix := map[string]sets.Set[string]{}
-	largeCommunitiesForPrefix := map[string]sets.Set[string]{}
-	for _, pfxs := range n.ToAdvertise.PrefixesWithCommunity {
-		c, err := community.New(pfxs.Community)
-		if err != nil {
-			return nil, fmt.Errorf("community %s invalid for neighbor %s, err: %w", pfxs.Community, n.Address, err)
-		}
-
-		prefixesMap := communitiesForPrefix
-		if community.IsLarge(c) {
-			prefixesMap = largeCommunitiesForPrefix
-		}
-
-		for _, p := range pfxs.Prefixes {
-			_, ok := advs[p]
-			if !ok {
-				return nil, fmt.Errorf("prefix %s with community %s not in allowed list for neighbor %s", p, pfxs.Community, n.Address)
-			}
-			_, ok = prefixesMap[p]
-			if !ok {
-				prefixesMap[p] = sets.New(c.String())
-				continue
-			}
-
-			prefixesMap[p].Insert(c.String())
+			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		}
 	}
+	return resV4, resV6
+}
 
+// setCommunitiesToAdvertisements takes the given communityPrefixes and fills the relevant fields to the advertisements contained in the advs map.
+func setCommunitiesToAdvertisements(advs map[string]*frr.OutgoingFilter, communities communityPrefixes, ipFamily ipfamily.Family) error {
+	communitiesForPrefix := communities.communitiesForPrefixV4
+	largeCommunitiesForPrefix := communities.largeCommunitiesForPrefixV4
+	if ipFamily == ipfamily.IPv6 {
+		communitiesForPrefix = communities.communitiesForPrefixV6
+		largeCommunitiesForPrefix = communities.largeCommunitiesForPrefixV6
+	}
 	for p, c := range communitiesForPrefix {
 		adv, ok := advs[p]
-		if !ok { // shouldn't happen as we check in previous loop, just in case
-			return nil, fmt.Errorf("unexpected err - no community prefix matching %s", p)
+		if !ok {
+			return fmt.Errorf("community associated to non existing prefix %s", p)
 		}
 		adv.Communities = sets.List(c)
 	}
 
 	for p, c := range largeCommunitiesForPrefix {
 		adv, ok := advs[p]
-		if !ok { // shouldn't happen as we check in previous loop, just in case
-			return nil, fmt.Errorf("unexpected err - no community prefix matching %s", p)
+		if !ok {
+			return fmt.Errorf("large community associated to non existing prefix %s", p)
 		}
 		adv.LargeCommunities = sets.List(c)
 	}
+	return nil
+}
 
-	res.Advertisements = sortMap(advs)
-
-	return res, nil
+func toReceiveToFRR(toReceive v1beta1.Receive) frr.AllowedIn {
+	res := frr.AllowedIn{
+		PrefixesV4: make([]frr.IncomingFilter, 0),
+		PrefixesV6: make([]frr.IncomingFilter, 0),
+	}
+	if toReceive.Allowed.Mode == v1beta1.AllowAll {
+		res.All = true
+		return res
+	}
+	for _, p := range toReceive.Allowed.Prefixes {
+		family := ipfamily.ForCIDRString(p)
+		if family == ipfamily.IPv4 {
+			res.PrefixesV4 = append(res.PrefixesV4, frr.IncomingFilter{Prefix: p, IPFamily: family})
+			continue
+		}
+		res.PrefixesV6 = append(res.PrefixesV6, frr.IncomingFilter{Prefix: p, IPFamily: family})
+	}
+	sort.Slice(res.PrefixesV4, func(i, j int) bool {
+		return res.PrefixesV4[i].Prefix < res.PrefixesV4[j].Prefix
+	})
+	sort.Slice(res.PrefixesV6, func(i, j int) bool {
+		return res.PrefixesV6[i].Prefix < res.PrefixesV6[j].Prefix
+	})
+	return res
 }
 
 func neighborName(ASN uint32, peerAddr string) string {
 	return fmt.Sprintf("%d@%s", ASN, peerAddr)
 }
 
-func sortMap[T any](toSort map[string]T) []T {
+type communityPrefixes struct {
+	communitiesForPrefixV4      map[string]sets.Set[string]
+	largeCommunitiesForPrefixV4 map[string]sets.Set[string]
+	communitiesForPrefixV6      map[string]sets.Set[string]
+	largeCommunitiesForPrefixV6 map[string]sets.Set[string]
+}
+
+func (c *communityPrefixes) mapFor(family ipfamily.Family, isLarge bool) map[string]sets.Set[string] {
+	switch family {
+	case ipfamily.IPv4:
+		if isLarge {
+			return c.largeCommunitiesForPrefixV4
+		}
+		return c.communitiesForPrefixV4
+	case ipfamily.IPv6:
+		if isLarge {
+			return c.largeCommunitiesForPrefixV6
+		}
+		return c.communitiesForPrefixV6
+	}
+	return nil
+}
+
+func communityPrefixesToMap(withCommunity []v1beta1.CommunityPrefixes) (communityPrefixes, error) {
+	res := communityPrefixes{
+		communitiesForPrefixV4:      map[string]sets.Set[string]{},
+		largeCommunitiesForPrefixV4: map[string]sets.Set[string]{},
+		communitiesForPrefixV6:      map[string]sets.Set[string]{},
+		largeCommunitiesForPrefixV6: map[string]sets.Set[string]{},
+	}
+
+	for _, pfxs := range withCommunity {
+		c, err := community.New(pfxs.Community)
+		if err != nil {
+			return communityPrefixes{}, fmt.Errorf("invalid community %s, err: %w", pfxs.Community, err)
+		}
+		isLarge := community.IsLarge(c)
+		for _, p := range pfxs.Prefixes {
+			family := ipfamily.ForCIDRString(p)
+			communityMap := res.mapFor(family, isLarge)
+			_, ok := communityMap[p]
+			if !ok {
+				communityMap[p] = sets.New(c.String())
+				continue
+			}
+
+			communityMap[p].Insert(c.String())
+		}
+	}
+	return res, nil
+}
+
+func sortMap[T any](toSort map[string]*T) []T {
 	keys := make([]string, 0)
 	for k := range toSort {
 		keys = append(keys, k)
@@ -164,7 +249,7 @@ func sortMap[T any](toSort map[string]T) []T {
 	sort.Strings(keys)
 	res := make([]T, 0)
 	for _, k := range keys {
-		res = append(res, toSort[k])
+		res = append(res, *toSort[k])
 	}
 	return res
 }

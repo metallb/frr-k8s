@@ -61,21 +61,20 @@ type BFDProfile struct {
 }
 
 type NeighborConfig struct {
-	IPFamily            ipfamily.Family
-	Name                string
-	ASN                 uint32
-	SrcAddr             string
-	Addr                string
-	Port                uint16
-	HoldTime            uint64
-	KeepaliveTime       uint64
-	Password            string
-	Advertisements      []*AdvertisementConfig
-	BFDProfile          string
-	EBGPMultiHop        bool
-	VRFName             string
-	HasV4Advertisements bool
-	HasV6Advertisements bool
+	IPFamily      ipfamily.Family
+	Name          string
+	ASN           uint32
+	SrcAddr       string
+	Addr          string
+	Port          uint16
+	HoldTime      uint64
+	KeepaliveTime uint64
+	Password      string
+	BFDProfile    string
+	EBGPMultiHop  bool
+	VRFName       string
+	Incoming      AllowedIn
+	Outgoing      AllowedOut
 }
 
 func (n *NeighborConfig) ID() string {
@@ -85,7 +84,31 @@ func (n *NeighborConfig) ID() string {
 	return fmt.Sprintf("%s-%s", n.Addr, n.VRFName)
 }
 
-type AdvertisementConfig struct {
+type AllowedIn struct {
+	All        bool
+	PrefixesV4 []IncomingFilter
+	PrefixesV6 []IncomingFilter
+}
+
+func (a *AllowedIn) AllPrefixes() []IncomingFilter {
+	return append(a.PrefixesV4, a.PrefixesV6...)
+}
+
+type AllowedOut struct {
+	PrefixesV4 []OutgoingFilter
+	PrefixesV6 []OutgoingFilter
+}
+
+func (a *AllowedOut) AllPrefixes() []OutgoingFilter {
+	return append(a.PrefixesV4, a.PrefixesV6...)
+}
+
+type IncomingFilter struct {
+	IPFamily ipfamily.Family
+	Prefix   string
+}
+
+type OutgoingFilter struct {
 	IPFamily         ipfamily.Family
 	Prefix           string
 	Communities      []string
@@ -125,6 +148,9 @@ func templateConfig(data interface{}) (string, error) {
 			},
 			"allowedPrefixList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-pl-%s", neighbor.ID(), neighbor.IPFamily)
+			},
+			"allowedIncomingList": func(neighbor *NeighborConfig) string {
+				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
 			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN, asn uint32, eBGPMultiHop bool) bool {
 				// return true only for IPv6 eBGP sessions
