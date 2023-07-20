@@ -42,7 +42,9 @@ spec:
       containers:
       - command:
         - /frr-k8s
-        args: ["--node-name", "$(NODE_NAME)"]
+        args:
+        - "--node-name=$(NODE_NAME)"
+        - "--log-level=info"
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: frr-k8s
