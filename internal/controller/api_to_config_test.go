@@ -482,7 +482,7 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
-			name: "Two Neighbor with ToAdvertise, one advertise all, both with communities",
+			name: "Two Neighbor with ToAdvertise, one advertise all, both with communities and localPref",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
 					Spec: v1beta1.FRRConfigurationSpec{
@@ -498,7 +498,7 @@ func TestConversion(t *testing.T) {
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedPrefixes{
-													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
+													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
 												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
@@ -521,6 +521,16 @@ func TestConversion(t *testing.T) {
 													{
 														Prefixes:  []string{"192.0.4.0/24"},
 														Community: "10:104",
+													},
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														Prefixes:  []string{"192.0.2.0/24", "192.0.6.0/24"},
+														LocalPref: 100,
+													},
+													{
+														Prefixes:  []string{"192.0.4.0/24"},
+														LocalPref: 104,
 													},
 												},
 											},
@@ -576,12 +586,19 @@ func TestConversion(t *testing.T) {
 											Prefix:           "192.0.2.0/24",
 											Communities:      []string{"10:100", "10:102"},
 											LargeCommunities: []string{"123:456:7890"},
+											LocalPref:        100,
 										},
 										{
 											IPFamily:         ipfamily.IPv4,
 											Prefix:           "192.0.4.0/24",
 											Communities:      []string{"10:100", "10:104"},
 											LargeCommunities: []string{"123:456:7890", "123:456:7892"},
+											LocalPref:        104,
+										},
+										{
+											IPFamily:  ipfamily.IPv4,
+											Prefix:    "192.0.6.0/24",
+											LocalPref: 100,
 										},
 									},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -677,6 +694,92 @@ func TestConversion(t *testing.T) {
 			},
 			expected: nil,
 			err:      fmt.Errorf("prefix %s with community %s not in allowed list for neighbor %s", "192.0.10.10/32", "10:100", "192.0.2.21"),
+		},
+		{
+			name: "One neighbor, trying to set localPref on an unallowed prefix",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
+														LocalPref: 100,
+													},
+													{
+														Prefixes:  []string{"192.0.10.10/32"}, // not allowed
+														LocalPref: 101,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+			err:      fmt.Errorf("localPref associated to non existing prefix %s", "192.0.10.10/32"),
+		},
+		{
+			name: "One neighbor, trying to set multiple localPrefs for a prefix",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
+														LocalPref: 100,
+													},
+													{
+														Prefixes:  []string{"192.0.4.0/24"},
+														LocalPref: 104,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+			err:      fmt.Errorf("multiple local prefs specified for prefix %s", "192.0.4.0/24"),
 		},
 		{
 			name: "Neighbor with ToReceiveAll",

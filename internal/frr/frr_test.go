@@ -159,12 +159,14 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 									IPFamily:    ipfamily.IPv4,
 									Prefix:      "192.169.1.0/24",
 									Communities: []string{"10:169", "10:170"},
+									LocalPref:   100,
 								},
 								{
 									IPFamily:         ipfamily.IPv4,
 									Prefix:           "192.169.1.0/22",
 									Communities:      []string{"10:170"},
 									LargeCommunities: []string{"123:456:7890"},
+									LocalPref:        150,
 								},
 								{
 									IPFamily:    ipfamily.IPv4,

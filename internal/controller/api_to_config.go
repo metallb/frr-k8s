@@ -99,6 +99,18 @@ func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes 
 	if err != nil {
 		return frr.AllowedOut{}, err
 	}
+	localPrefs, err := localPrefPrefixesToMap(toAdvertise.PrefixesWithLocalPref)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
+	err = setLocalPrefToAdvertisements(advsV4, localPrefs, ipfamily.IPv4)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
+	err = setLocalPrefToAdvertisements(advsV6, localPrefs, ipfamily.IPv6)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
 	res := frr.AllowedOut{
 		PrefixesV4: sortMap(advsV4),
 		PrefixesV6: sortMap(advsV6),
@@ -156,6 +168,24 @@ func setCommunitiesToAdvertisements(advs map[string]*frr.OutgoingFilter, communi
 		}
 		adv.LargeCommunities = sets.List(c)
 	}
+	return nil
+}
+
+// setLocalPrefToAdvertisements takes the given localPrefPrefixes and fills the relevant fields to the advertisements contained in the advs map.
+func setLocalPrefToAdvertisements(advs map[string]*frr.OutgoingFilter, localPrefs localPrefPrefixes, ipFamily ipfamily.Family) error {
+	localPrefsForPrefix := localPrefs.localPrefForPrefixV4
+	if ipFamily == ipfamily.IPv6 {
+		localPrefsForPrefix = localPrefs.localPrefForPrefixV6
+	}
+
+	for p, lp := range localPrefsForPrefix {
+		adv, ok := advs[p]
+		if !ok {
+			return fmt.Errorf("localPref associated to non existing prefix %s", p)
+		}
+		adv.LocalPref = lp
+	}
+
 	return nil
 }
 
@@ -238,6 +268,37 @@ func communityPrefixesToMap(withCommunity []v1beta1.CommunityPrefixes) (communit
 			communityMap[p].Insert(c.String())
 		}
 	}
+	return res, nil
+}
+
+type localPrefPrefixes struct {
+	localPrefForPrefixV4 map[string]uint32
+	localPrefForPrefixV6 map[string]uint32
+}
+
+func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPrefPrefixes, error) {
+	res := localPrefPrefixes{
+		localPrefForPrefixV4: map[string]uint32{},
+		localPrefForPrefixV6: map[string]uint32{},
+	}
+
+	for _, pfxs := range withLocalPref {
+		for _, p := range pfxs.Prefixes {
+			family := ipfamily.ForCIDRString(p)
+			lpMap := res.localPrefForPrefixV4
+			if family == ipfamily.IPv6 {
+				lpMap = res.localPrefForPrefixV6
+			}
+
+			_, ok := lpMap[p]
+			if ok {
+				return localPrefPrefixes{}, fmt.Errorf("multiple local prefs specified for prefix %s", p)
+			}
+
+			lpMap[p] = pfxs.LocalPref
+		}
+	}
+
 	return res, nil
 }
 
