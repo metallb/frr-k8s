@@ -124,6 +124,7 @@ func TestSingleSession(t *testing.T) {
 						},
 					},
 				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
 	}
@@ -174,11 +175,11 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						},
 					},
 				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 			{
-				MyASN:        65000,
-				VRF:          "red",
-				IPV4Prefixes: []string{"192.169.1.0/24"},
+				MyASN: 65000,
+				VRF:   "red",
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
@@ -194,6 +195,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						},
 					},
 				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
 			},
 		},
 	}
@@ -349,6 +351,246 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 			},
 		},
 	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithEBGPMultihop(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.IPv4,
+						ASN:          65001,
+						Addr:         "192.168.1.2",
+						Port:         4567,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.IPv6,
+						ASN:          65001,
+						Addr:         "2001:db8::1",
+						Port:         4567,
+						EBGPMultiHop: false, // Single hop
+						Outgoing: AllowedOut{
+							PrefixesV6: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "2001:db8:abcd::/48",
+								},
+							},
+						},
+					},
+				},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.2",
+						Port:     4567,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+							},
+						},
+					},
+					{
+						IPFamily:     ipfamily.IPv6,
+						ASN:          65002,
+						Addr:         "2001:db8::1",
+						Port:         4568,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV6: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "2001:db8:abcd::/48",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestMultipleRoutersMultipleNeighs(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.IPv4,
+						ASN:          65001,
+						Addr:         "192.168.1.2",
+						Port:         4567,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+							},
+						},
+					},
+					{
+						IPFamily:     ipfamily.IPv6,
+						ASN:          65002,
+						Addr:         "2001:db8::1",
+						Port:         4568,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV6: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "2001:db8:abcd::/48",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+			{
+				MyASN: 65000,
+				VRF:   "red",
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.170.1.2",
+						Port:     4567,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.171.1.0/24",
+								},
+							},
+						},
+					},
+					{
+						IPFamily:     ipfamily.IPv6,
+						ASN:          65002,
+						Addr:         "2001:db9::1",
+						Port:         4568,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV6: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "2001:db9:abcd::/48",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.171.1.0/24"},
+				IPV6Prefixes: []string{"2001:db9:abcd::/48"},
+			},
+		},
+	}
+
 	err := frr.ApplyConfig(&config)
 	if err != nil {
 		t.Fatalf("Failed to apply config: %s", err)
