@@ -3,6 +3,7 @@ module github.com/metallb/frrk8s
 go 1.19
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/go-kit/log v0.2.1
 	github.com/google/go-cmp v0.5.9
 	github.com/onsi/ginkgo/v2 v2.6.0
@@ -25,7 +26,6 @@ require (
 	github.com/cenkalti/backoff/v4 v4.1.3 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
-	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/docker/cli v20.10.17+incompatible // indirect
 	github.com/docker/docker v20.10.7+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect

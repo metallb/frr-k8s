@@ -54,31 +54,42 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	if len(configs.Items) == 0 {
-		empty := frrk8sv1beta1.FRRConfiguration{}
-		config, err := apiToFRR(empty)
-		if err != nil {
-			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
-			return ctrl.Result{}, nil
-		}
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", dumpK8sConfigs(configs))
 
-		if err := r.FRRHandler.ApplyConfig(config); err != nil {
-			level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
-		}
-		return ctrl.Result{}, nil
+	if len(configs.Items) == 0 {
+		err := r.applyEmptyConfig(req)
+		return ctrl.Result{}, err
 	}
+
 	config, err := apiToFRR(configs.Items[0])
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
 	}
 
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", dumpFRRConfig(config))
+
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
-		return ctrl.Result{}, nil
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
+	empty := frrk8sv1beta1.FRRConfiguration{}
+	config, err := apiToFRR(empty)
+	if err != nil {
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
+		panic("failed to translate empty config")
+	}
+
+	if err := r.FRRHandler.ApplyConfig(config); err != nil {
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
+		return err
+	}
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

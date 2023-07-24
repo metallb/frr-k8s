@@ -2,6 +2,7 @@
 # Image URL to use all building/pushing image targets
 IMG ?= quay.io/metallb/frr-k8s:dev
 NAMESPACE ?= "frr-k8s-system"
+LOGLEVEL ?= "info"
 
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.26.1
@@ -128,7 +129,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: kubectl manifests kustomize kind load-on-kind ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build config/default | sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
 

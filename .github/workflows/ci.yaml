@@ -126,7 +126,7 @@ jobs:
 
       - name: Deploy on kind
         run: |
-          IP_FAMILY="${{ matrix.ip-family }}" IMG=quay.io/metallb/frrk8s:dev-amd64 make deploy
+          LOGLEVEL=debug IP_FAMILY="${{ matrix.ip-family }}" IMG=quay.io/metallb/frrk8s:dev-amd64 make deploy
           mkdir -p /tmp/kind_logs/
 
       - name: E2E
