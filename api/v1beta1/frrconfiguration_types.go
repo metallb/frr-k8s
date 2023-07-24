@@ -148,7 +148,7 @@ type LocalPrefPrefixes struct {
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:Format="cidr"
 	Prefixes  []string `json:"prefixes,omitempty"`
-	LocalPref int      `json:"localPref,omitempty"`
+	LocalPref uint32   `json:"localPref,omitempty"`
 }
 
 type CommunityPrefixes struct {

@@ -245,6 +245,7 @@ spec:
                                     items:
                                       properties:
                                         localPref:
+                                          format: int32
                                           type: integer
                                         prefixes:
                                           description: Prefixes is the list of prefixes

@@ -4,6 +4,7 @@ package tests
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/metallb/frrk8stests/pkg/routes"
@@ -124,6 +125,26 @@ func ValidateNodesDoNotHaveRoutes(pods []*v1.Pod, neigh frrcontainer.FRR, prefix
 		}
 		return nil
 	})
+}
+
+func ValidateNeighborLocalPrefForPrefix(neigh frrcontainer.FRR, prefix string, expectedLocalPref uint32, ipfam ipfamily.Family) {
+	if !strings.Contains(neigh.Name, "ibgp") {
+		return // localPref is valid only for iBGP connections
+	}
+
+	ginkgo.By(fmt.Sprintf("Checking localPref for prefix %s on neighbor %s", prefix, neigh.Name))
+	Eventually(func() error {
+		localPrefix, err := frr.LocalPrefForPrefix(neigh, prefix, ipfam)
+		if err != nil {
+			return err
+		}
+
+		if localPrefix != expectedLocalPref {
+			return fmt.Errorf("local pref %d for prefix %s on neighbor %s does not equal %d", localPrefix, prefix, neigh.Name, expectedLocalPref)
+		}
+
+		return nil
+	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
 }
 
 // shouldPassConsistently checks for the failure to happen
