@@ -51,7 +51,7 @@ func (u *Updater) Update(configs ...frrk8sv1beta1.FRRConfiguration) error {
 }
 
 func (u *Updater) Clean() error {
-	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{})
+	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{}, client.InNamespace("default"))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
