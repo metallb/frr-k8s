@@ -64,6 +64,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 			toAdvertiseV6 []string
 			modifyPeers   func([]config.Peer, []config.Peer)
 			validate      func([]config.Peer, []config.Peer, []*v1.Pod)
+			splitCfg      func(frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error)
 		}
 
 		ginkgo.DescribeTable("Works with external frrs", func(p params) {
@@ -113,6 +114,31 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 
 			ginkgo.By("validating")
 			p.validate(peersV4, peersV6, pods)
+
+			if p.splitCfg == nil {
+				return
+			}
+
+			ginkgo.By("Cleaning before retesting with the config splitted")
+			err = updater.Clean()
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRNotPeeredWithNodes(nodes, c, p.ipFamily)
+			}
+
+			cfgs, err := p.splitCfg(config)
+			framework.ExpectNoError(err)
+
+			err = updater.Update(cfgs...)
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
+			}
+
+			ginkgo.By("validating with splitted config")
+			p.validate(peersV4, peersV6, pods)
 		},
 			ginkgo.Entry("IPV4 - receive ips from all", params{
 				ipFamily:      ipfamily.IPv4,
@@ -129,6 +155,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - receive ips from some, all mode", params{
 				ipFamily:      ipfamily.IPv4,
@@ -144,6 +171,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - receive ips from some, explicit mode", params{
 				ipFamily:      ipfamily.IPv4,
@@ -160,6 +188,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - receive ips from all", params{
 				ipFamily:      ipfamily.IPv6,
@@ -179,6 +208,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - receive ips from some, explicit mode", params{
 				ipFamily:      ipfamily.IPv6,
@@ -195,6 +225,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - VRF - receive ips from some, all mode", params{
 				ipFamily:      ipfamily.IPv4,
@@ -210,6 +241,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - VRF - receive ips from some, explicit mode", params{
 				ipFamily:      ipfamily.IPv4,
@@ -226,6 +258,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - VRF - receive ips from all", params{
 				ipFamily:      ipfamily.IPv6,
@@ -245,6 +278,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("DUALSTACK - receive ips from all", params{
 				ipFamily:      ipfamily.DualStack,
@@ -269,6 +303,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("DUALSTACK - receive ips from some, explicit mode", params{
 				ipFamily:      ipfamily.DualStack,
@@ -292,6 +327,111 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 						ValidateNodesDoNotHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}...)
 					}
 				},
+				splitCfg: splitByNeigh,
+			}),
+		)
+
+		ginkgo.DescribeTable("Multiple configs", func(p params) {
+			frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
+			peersV4, peersV6 := config.PeersForContainers(frrs, p.ipFamily)
+			p.modifyPeers(peersV4, peersV6)
+			neighbors := config.NeighborsFromPeers(peersV4, peersV6)
+
+			config := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       p.myAsn,
+								VRF:       p.vrf,
+								Neighbors: neighbors,
+							},
+						},
+					},
+				},
+			}
+
+			ginkgo.By("pairing with nodes")
+			for _, c := range frrs {
+				err := container.PairWithNodes(cs, c, p.ipFamily, func(frr *container.FRR) {
+					frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
+					frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
+				})
+				framework.ExpectNoError(err)
+			}
+
+			cfgs, err := p.splitCfg(config)
+			framework.ExpectNoError(err)
+
+			err = updater.Update(cfgs...)
+			framework.ExpectNoError(err)
+
+			nodes, err := k8s.Nodes(cs)
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
+			}
+
+			pods, err := k8s.FRRK8sPods(cs)
+			framework.ExpectNoError(err)
+
+			ginkgo.By("validating")
+			p.validate(peersV4, peersV6, pods)
+		},
+			ginkgo.Entry("IPV4 - AllowMode=All should override explicit", params{
+				ipFamily:      ipfamily.IPv4,
+				vrf:           "",
+				myAsn:         infra.FRRK8sASN,
+				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []string{"192.168.2.0/24"}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
+					for _, p := range ppV4 {
+						ValidateNodesHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"}...)
+					}
+				},
+				splitCfg: duplicateNeighsWithReceiveAll,
+			}),
+			ginkgo.Entry("IPV6 - AllowMode=All should override explicit", params{
+				ipFamily:      ipfamily.IPv6,
+				vrf:           "",
+				myAsn:         infra.FRRK8sASN,
+				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64"}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
+					for _, p := range ppV6 {
+						ValidateNodesHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"}...)
+					}
+				},
+				splitCfg: duplicateNeighsWithReceiveAll,
+			}),
+			ginkgo.Entry("DUALSTACK - AllowMode=All should override explicit", params{
+				ipFamily:      ipfamily.DualStack,
+				vrf:           "",
+				myAsn:         infra.FRRK8sASN,
+				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []string{"192.168.2.0/24"}
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64"}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
+					for _, p := range ppV4 {
+						ValidateNodesHaveRoutes(pods, p.FRR, []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"}...)
+					}
+					for _, p := range ppV6 {
+						ValidateNodesHaveRoutes(pods, p.FRR, []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"}...)
+					}
+				},
+				splitCfg: duplicateNeighsWithReceiveAll,
 			}),
 		)
 	})

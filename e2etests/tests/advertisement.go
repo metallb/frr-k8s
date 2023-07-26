@@ -63,6 +63,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			prefixes    []string
 			modifyPeers func([]config.Peer, []config.Peer)
 			validate    func([]config.Peer, []config.Peer, []v1.Node)
+			splitCfg    func(frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error)
 		}
 
 		ginkgo.DescribeTable("Works with external frrs", func(p params) {
@@ -95,6 +96,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				err := container.PairWithNodes(cs, c, p.ipFamily)
 				framework.ExpectNoError(err)
 			}
+
 			err := updater.Update(config)
 			framework.ExpectNoError(err)
 
@@ -106,6 +108,31 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			}
 
 			ginkgo.By("validating")
+			p.validate(peersV4, peersV6, nodes)
+
+			if p.splitCfg == nil {
+				return
+			}
+
+			ginkgo.By("Cleaning before retesting with the config splitted")
+			err = updater.Clean()
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRNotPeeredWithNodes(nodes, c, p.ipFamily)
+			}
+
+			cfgs, err := p.splitCfg(config)
+			framework.ExpectNoError(err)
+
+			err = updater.Update(cfgs...)
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
+			}
+
+			ginkgo.By("validating with splitted config")
 			p.validate(peersV4, peersV6, nodes)
 		},
 			ginkgo.Entry("IPV4 - Advertise with mode allowall", params{
@@ -123,6 +150,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.2.0/24", "192.169.2.0/24")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - Advertise a subset of ips", params{
 				ipFamily: ipfamily.IPv4,
@@ -142,6 +170,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.2.0/24", "192.169.2.0/24")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - Advertise with mode allowall", params{
 				ipFamily: ipfamily.IPv6,
@@ -158,6 +187,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - Advertise a subset of ips", params{
 				ipFamily: ipfamily.IPv6,
@@ -177,6 +207,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - VRF - Advertise with mode allowall", params{
 				ipFamily: ipfamily.IPv4,
@@ -193,6 +224,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.2.0/24", "192.169.2.0/24")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - VRF - Advertise a subset of ips", params{
 				ipFamily: ipfamily.IPv4,
@@ -212,6 +244,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.2.0/24", "192.169.2.0/24")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV6 - Advertise a subset of ips", params{
 				ipFamily: ipfamily.IPv6,
@@ -231,6 +264,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("DUALSTACK - Advertise with mode allowall", params{
 				ipFamily: ipfamily.DualStack,
@@ -253,6 +287,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidatePrefixesForNeighbor(p.FRR, nodes, "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("DUALSTACK - Advertise a subset of ips", params{
 				ipFamily: ipfamily.DualStack,
@@ -283,6 +318,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborNoPrefixes(p.FRR, nodes, "fc00:f853:ccd:e799::/64")
 					}
 				},
+				splitCfg: splitByNeigh,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with communities, AllowedMode all", params{
 				ipFamily: ipfamily.IPv4,
@@ -311,6 +347,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.1.0"}, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByCommunities,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with communities, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv4,
@@ -340,6 +377,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborCommunityPrefixes(p.FRR, "10:101", []string{"192.168.0.0", "192.168.1.0"}, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByCommunities,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with localPref, AllowedMode all", params{
 				ipFamily: ipfamily.IPv4,
@@ -368,6 +406,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 150, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByLocalPref,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with localPref, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv4,
@@ -398,6 +437,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.2.0", 150, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByLocalPref,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with communities and localPref, AllowedMode all", params{
 				ipFamily: ipfamily.IPv4,
@@ -438,6 +478,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.1.0", 150, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("IPV4 - Advertise with multiple communities and localPref, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv4,
@@ -480,6 +521,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.2.0", 150, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("IPV4 - large community and localPref", params{
 				ipFamily: ipfamily.IPv4,
@@ -510,6 +552,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "192.168.0.0", 100, ipfamily.IPv4)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("IPV6 - Advertise with communities and localPref, AllowedMode all", params{
 				ipFamily: ipfamily.IPv6,
@@ -550,6 +593,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e800::", 150, ipfamily.IPv6)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("IPV6 - Advertise with multiple communities and localPref, AllowedMode restricted", params{
 				ipFamily: ipfamily.IPv6,
@@ -592,6 +636,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e801::", 150, ipfamily.IPv6)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("IPV6 - large community and localPref", params{
 				ipFamily: ipfamily.IPv6,
@@ -622,6 +667,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 			ginkgo.Entry("DUALSTACK - Advertise with communities and localPref, AllowedMode all", params{
 				ipFamily: ipfamily.DualStack,
@@ -692,6 +738,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						ValidateNeighborLocalPrefForPrefix(p.FRR, "fc00:f853:ccd:e799::", 100, ipfamily.IPv6)
 					}
 				},
+				splitCfg: splitByLocalPrefAndCommunities,
 			}),
 		)
 	})
