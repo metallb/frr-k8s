@@ -902,11 +902,418 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "Multiple FRRConfigurations - Single Router and neighbor, one config for advertise the other for receiving",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+													{
+														Community: "10:100",
+														Prefixes:  []string{"192.0.2.10/32"},
+													},
+													{
+														Community: "10:101",
+														Prefixes:  []string{"192.0.2.10/32", "192.0.2.11/32"},
+													},
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														LocalPref: 200,
+														Prefixes:  []string{"192.0.2.10/32"},
+													},
+												},
+											},
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedPrefixes{
+													Mode:     v1beta1.AllowRestricted,
+													Prefixes: []string{"192.0.100.0/24", "192.0.101.0/24"},
+												},
+											},
+										},
+									},
+									VRF: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.2.10/32",
+											Communities: []string{"10:100", "10:101"},
+											LocalPref:   200,
+										},
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.2.11/32",
+											Communities: []string{"10:101"},
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.100.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.101.0/24",
+										},
+									},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+						IPV6Prefixes: []string{},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Multiple FRRConfigurations - Multiple Routers and Neighbors",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+													{
+														Community: "10:100",
+														Prefixes:  []string{"192.0.2.10/32"},
+													},
+													{
+														Community: "10:101",
+														Prefixes:  []string{"192.0.2.10/32", "192.0.2.11/32"},
+													},
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														LocalPref: 200,
+														Prefixes:  []string{"192.0.2.10/32"},
+													},
+												},
+											},
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+								},
+								{
+									ASN: 65013,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65017,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.2.5/32"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+										{
+											ASN:     65014,
+											Address: "2001:db8::4",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									VRF:      "vrf2",
+									Prefixes: []string{"192.0.2.5/32", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65011,
+											Address: "192.0.2.6",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.3.1/32", "192.0.3.2/32"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"192.0.3.20/32", "192.0.3.21/32"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+													{
+														Community: "10:100",
+														Prefixes:  []string{"192.0.3.20/32"},
+													},
+													{
+														Community: "10:101",
+														Prefixes:  []string{"192.0.3.21/32"},
+													},
+												},
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														LocalPref: 200,
+														Prefixes:  []string{"192.0.3.21/32"},
+													},
+												},
+											},
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.3.1/32", "192.0.3.2/32", "192.0.3.20/32", "192.0.3.21/32"},
+								},
+								{
+									ASN: 65013,
+									ID:  "2001:db8::3",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65014,
+											Address: "2001:db8::4",
+											Port:    179,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedPrefixes{
+													Prefixes: []string{"2001:db9::/96"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+									},
+									VRF:      "vrf2",
+									Prefixes: []string{"2001:db9::/96"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65011@192.0.2.6",
+								ASN:      65011,
+								Addr:     "192.0.2.6",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.3.1/32",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.3.2/32",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.2.10/32",
+											Communities: []string{"10:100", "10:101"},
+											LocalPref:   200,
+										},
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.2.11/32",
+											Communities: []string{"10:101"},
+										},
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.3.20/32",
+											Communities: []string{"10:100"},
+										},
+										{
+											IPFamily:    ipfamily.IPv4,
+											Prefix:      "192.0.3.21/32",
+											Communities: []string{"10:101"},
+											LocalPref:   200,
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32", "192.0.3.1/32", "192.0.3.2/32", "192.0.3.20/32", "192.0.3.21/32"},
+						IPV6Prefixes: []string{},
+					},
+					{
+						MyASN:    65013,
+						RouterID: "2001:db8::3",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65017@192.0.2.7",
+								ASN:      65017,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.5/32",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+							{
+								IPFamily: ipfamily.IPv6,
+								Name:     "65014@2001:db8::4",
+								ASN:      65014,
+								Addr:     "2001:db8::4",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: "ipv4",
+											Prefix:   "192.0.2.5/32",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db8::/64",
+										},
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db9::/96",
+										},
+									},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "vrf2",
+						IPV4Prefixes: []string{"192.0.2.5/32"},
+						IPV6Prefixes: []string{"2001:db8::/64", "2001:db9::/96"},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			frr, err := apiToFRR(test.fromK8s[0]) // TODO: pass the array when we start supporting merge
+			frr, err := apiToFRR(test.fromK8s)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}
