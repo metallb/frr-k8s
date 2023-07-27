@@ -13,22 +13,41 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func apiToFRR(fromK8s v1beta1.FRRConfiguration) (*frr.Config, error) {
+func apiToFRR(fromK8s []v1beta1.FRRConfiguration) (*frr.Config, error) {
 	res := &frr.Config{
 		Routers: make([]*frr.RouterConfig, 0),
 		//BFDProfiles: sm.bfdProfiles,
 		//ExtraConfig: sm.extraConfig,
 	}
 
-	for _, r := range fromK8s.Spec.BGP.Routers {
-		frrRouter, err := routerToFRRConfig(r)
-		if err != nil {
-			return nil, err
+	routersForVRF := map[string]*frr.RouterConfig{}
+	for _, cfg := range fromK8s {
+		for _, r := range cfg.Spec.BGP.Routers {
+			routerCfg, err := routerToFRRConfig(r)
+			if err != nil {
+				return nil, err
+			}
+
+			curr, ok := routersForVRF[r.VRF]
+			if !ok {
+				routersForVRF[r.VRF] = routerCfg
+				continue
+			}
+
+			curr, err = mergeRouterConfigs(curr, routerCfg)
+			if err != nil {
+				return nil, err
+			}
+
+			routersForVRF[r.VRF] = curr
 		}
-		res.Routers = append(res.Routers, frrRouter)
 	}
+
+	res.Routers = sortMapPtr(routersForVRF)
+
 	return res, nil
 }
+
 func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 	res := &frr.RouterConfig{
 		MyASN:        r.ASN,
@@ -311,6 +330,19 @@ func sortMap[T any](toSort map[string]*T) []T {
 	res := make([]T, 0)
 	for _, k := range keys {
 		res = append(res, *toSort[k])
+	}
+	return res
+}
+
+func sortMapPtr[T any](toSort map[string]*T) []*T {
+	keys := make([]string, 0)
+	for k := range toSort {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	res := make([]*T, 0)
+	for _, k := range keys {
+		res = append(res, toSort[k])
 	}
 	return res
 }
