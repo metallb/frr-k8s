@@ -25,7 +25,14 @@ import (
 type FRRConfigurationSpec struct {
 	// +optional
 	BGP BGPConfig `json:"bgp,omitempty"`
-	// TODO node selector
+
+	// Limits the nodes that will attempt to apply this config.
+	// When specified, the configuration will be considered only on nodes
+	// whose labels match the specified selectors.
+	// When it is not specified all nodes will attempt to apply this config.
+	// +optional
+	NodeSelector metav1.LabelSelector `json:"nodeSelector,omitempty"`
+
 	// TODO raw config
 }
 
