@@ -18,10 +18,19 @@ package controller
 
 import (
 	"context"
+	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -35,11 +44,13 @@ type FRRConfigurationReconciler struct {
 	Scheme     *runtime.Scheme
 	FRRHandler frr.ConfigHandler
 	Logger     log.Logger
+	NodeName   string
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations/finalizers,verbs=update
+// +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
@@ -58,7 +69,18 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	config, err := apiToFRR(configs.Items)
+	thisNode := &corev1.Node{}
+	err = r.Client.Get(ctx, types.NamespacedName{Name: r.NodeName}, thisNode)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	cfgs, err := configsForNode(configs.Items, thisNode.Labels)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	config, err := apiToFRR(cfgs)
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
@@ -89,9 +111,67 @@ func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
 	return nil
 }
 
+// configsForNode filters the given FRRConfigurations such that only the ones matching the given labels are returned.
+// This also validates that the configuration objects have a valid nodeSelector.
+func configsForNode(cfgs []frrk8sv1beta1.FRRConfiguration, nodeLabels map[string]string) ([]frrk8sv1beta1.FRRConfiguration, error) {
+	valid := []frrk8sv1beta1.FRRConfiguration{}
+	for _, cfg := range cfgs {
+		cfg := cfg
+		selector, err := metav1.LabelSelectorAsSelector(&cfg.Spec.NodeSelector)
+		if err != nil {
+			return nil, fmt.Errorf("could not parse nodeSelector for FRRConfiguration %s/%s, err: %w", cfg.Namespace, cfg.Name, err)
+		}
+
+		if !selector.Matches(labels.Set(nodeLabels)) {
+			continue
+		}
+
+		valid = append(valid, cfg)
+	}
+
+	return valid, nil
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	p := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return filterNodeEvent(e, r.NodeName)
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.FRRConfiguration{}).
+		Watches(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{}).
+		WithEventFilter(p).
 		Complete(r)
+}
+
+func filterNodeEvent(e event.UpdateEvent, thisNode string) bool {
+	newNodeObj, ok := e.ObjectNew.(*corev1.Node)
+	if !ok {
+		return true
+	}
+
+	oldNodeObj, ok := e.ObjectOld.(*corev1.Node)
+	if !ok {
+		return true
+	}
+
+	// Node updates do not change its name, we have this just in case
+	if oldNodeObj.Name != newNodeObj.Name {
+		return true
+	}
+
+	// Ignoring event if it's not for our node
+	if newNodeObj.Name != thisNode {
+		return false
+	}
+
+	// Ignoring event if it didn't change the node's labels
+	if labels.Equals(labels.Set(oldNodeObj.Labels), labels.Set(newNodeObj.Labels)) {
+		return false
+	}
+
+	return true
 }

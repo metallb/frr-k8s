@@ -57,7 +57,7 @@ func main() {
 		metricsAddr string
 		probeAddr   string
 		logLevel    string
-		nodeName    string // TODO not using this now, but we'll need it when we implement the node selector
+		nodeName    string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -94,6 +94,7 @@ func main() {
 		Scheme:     mgr.GetScheme(),
 		FRRHandler: frr.NewFRR(ctx, logger, logging.Level(logLevel)),
 		Logger:     logger,
+		NodeName:   nodeName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
 		os.Exit(1)
