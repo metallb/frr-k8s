@@ -26,6 +26,9 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,6 +54,8 @@ var (
 	ctx       context.Context
 	cancel    context.CancelFunc
 )
+
+const testNodeName = "testnode"
 
 type fakeFRR struct {
 	lastConfig *frr.Config
@@ -107,6 +112,7 @@ var _ = BeforeSuite(func() {
 		Scheme:     k8sManager.GetScheme(),
 		FRRHandler: &localFRR,
 		Logger:     log.NewNopLogger(),
+		NodeName:   testNodeName,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -117,6 +123,15 @@ var _ = BeforeSuite(func() {
 		err = k8sManager.Start(ctx)
 		Expect(err).ToNot(HaveOccurred(), "failed to run manager")
 	}()
+
+	node := &corev1.Node{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:   testNodeName,
+			Labels: map[string]string{"test": "e2e"},
+		},
+	}
+	err = k8sClient.Create(ctx, node)
+	Expect(err).ToNot(HaveOccurred())
 
 })
 
@@ -131,9 +146,7 @@ var _ = Describe("Frrk8s controller", func() {
 	Context("when a FRRConfiguration is created", func() {
 		AfterEach(func() {
 			toDel := &frrk8sv1beta1.FRRConfiguration{}
-			toDel.Name = "test"
-			toDel.Namespace = "default"
-			err := k8sClient.Delete(context.Background(), toDel)
+			err := k8sClient.DeleteAllOf(context.Background(), toDel, client.InNamespace("default"))
 			if apierrors.IsNotFound(err) {
 				return
 			}
@@ -263,6 +276,268 @@ var _ = Describe("Frrk8s controller", func() {
 			}).Should(Equal(
 				&frr.Config{
 					Routers: []*frr.RouterConfig{},
+				},
+			))
+		})
+
+		It("should respect the nodeSelector of configurations and react to their create/update/delete events", func() {
+			configWithoutSelector := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "no-selector",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(42),
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), configWithoutSelector)
+			Expect(err).ToNot(HaveOccurred())
+
+			configWithMatchingSelector := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "with-matching-selector",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(52),
+								VRF: "red",
+							},
+						},
+					},
+					NodeSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"test": "e2e"},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), configWithMatchingSelector)
+			Expect(err).ToNot(HaveOccurred())
+
+			configWithNonMatchingSelectorAtFirst := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "with-non-matching-selector-at-first",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(62),
+								VRF: "blue",
+							},
+						},
+					},
+					NodeSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"some": "label"},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), configWithNonMatchingSelectorAtFirst)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying the matching config is handled and the non-matching is ignored")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+						{
+							MyASN:        uint32(52),
+							VRF:          "red",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
+				},
+			))
+
+			By("Updating the non-matching config to match our node")
+			configWithNonMatchingSelectorAtFirst.Spec.NodeSelector = metav1.LabelSelector{
+				MatchLabels: map[string]string{"test": "e2e"},
+			}
+			err = k8sClient.Update(context.Background(), configWithNonMatchingSelectorAtFirst)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying all of the configs are handled")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+						{
+							MyASN:        uint32(62),
+							VRF:          "blue",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+						{
+							MyASN:        uint32(52),
+							VRF:          "red",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
+				},
+			))
+
+			By("Deleting a matching config")
+			err = k8sClient.Delete(context.Background(), configWithMatchingSelector)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying it does not handle the deleted config anymore")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+						{
+							MyASN:        uint32(62),
+							VRF:          "blue",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
+				},
+			))
+		})
+
+		It("should respect the nodeSelector of configurations when node create/update/delete events happen", func() {
+			configWithoutSelector := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "no-selector",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(42),
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), configWithoutSelector)
+			Expect(err).ToNot(HaveOccurred())
+
+			configWithSelector := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "with-selector",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(52),
+								VRF: "red",
+							},
+						},
+					},
+					NodeSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{"color": "red"},
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), configWithSelector)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying the the non-matching config is ignored")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
+				},
+			))
+
+			By("Updating the node labels to match the config with the selector")
+			node := &corev1.Node{}
+			err = k8sClient.Get(ctx, types.NamespacedName{Name: testNodeName}, node)
+			Expect(err).ToNot(HaveOccurred())
+
+			node.Labels["color"] = "red"
+			err = k8sClient.Update(context.Background(), node)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying all of the configs are handled")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+						{
+							MyASN:        uint32(52),
+							VRF:          "red",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
+				},
+			))
+
+			By("Updating the node labels to not match the config with the selector")
+			node.Labels = map[string]string{}
+			err = k8sClient.Update(context.Background(), node)
+			Expect(err).ToNot(HaveOccurred())
+
+			By("Verifying the the non-matching config is ignored")
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        uint32(42),
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+						},
+					},
 				},
 			))
 		})

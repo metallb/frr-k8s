@@ -6,6 +6,14 @@ metadata:
   name: daemon-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - frrk8s.metallb.io
   resources:
   - frrconfigurations
