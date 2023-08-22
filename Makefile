@@ -125,13 +125,31 @@ install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specif
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
-.PHONY: deploy
-deploy: kubectl manifests kustomize kind load-on-kind ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+.PHONY: deploy-cluster
+deploy-cluster: kubectl manifests kustomize kind load-on-kind ## Deploy a cluster for the controller.
+
+KUSTOMIZE_LAYER ?= default
+.PHONY: deploy-controller
+deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
-	$(KUSTOMIZE) build config/default | sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
+
+.PHONY: deploy
+deploy: deploy-cluster deploy-controller ## Deploy cluster and controller.
+
+.PHONY: deploy-with-prometheus
+deploy-with-prometheus: KUSTOMIZE_LAYER=prometheus
+deploy-with-prometheus: deploy-cluster deploy-prometheus deploy-controller
+
+.PHONY: deploy-prometheus
+deploy-prometheus: kubectl
+	$(KUBECTL) apply --server-side -f hack/prometheus/manifests/setup
+	until $(KUBECTL) get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
+	$(KUBECTL) apply -f hack/prometheus/manifests/
+	$(KUBECTL) -n monitoring wait --for=condition=Ready --all pods --timeout 300s
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
