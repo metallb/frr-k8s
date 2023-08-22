@@ -1,2 +1,6 @@
+namespace: frr-k8s-system
+
 resources:
+- ../default
 - monitor.yaml
+- rbac.yaml

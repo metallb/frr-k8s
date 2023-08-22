@@ -33,14 +33,14 @@ spec:
               - "ALL"
         image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
         args:
-        - "--secure-listen-address=0.0.0.0:8443"
+        - "--secure-listen-address=0.0.0.0:9140"
         - "--upstream=http://127.0.0.1:8080/"
         - "--logtostderr=true"
         - "--v=0"
         ports:
-        - containerPort: 8443
+        - containerPort: 9140
           protocol: TCP
-          name: https
+          name: metricshttps
         resources:
           limits:
             cpu: 500m
@@ -48,6 +48,34 @@ spec:
           requests:
             cpu: 5m
             memory: 64Mi
+      - name: kube-rbac-proxy-frr
+        args:
+        - --secure-listen-address=0.0.0.0:9141
+        - --upstream=http://$(FRRK8S_HOST):7473/
+        - --logtostderr=true
+        - --v=0
+        env:
+        - name: FRRK8S_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
+        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
+        ports:
+        - containerPort: 9141
+          name: frrmetricshttps
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 5m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
       - name: frr-k8s
         args:
         - "--health-probe-bind-address=:8081"

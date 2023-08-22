@@ -220,3 +220,4 @@ generate-all-in-one: manifests kustomize ## Create manifests
 	cd config/frr-k8s && $(KUSTOMIZE) edit set namespace $(NAMESPACE)
 
 	$(KUSTOMIZE) build config/default > config/all-in-one/frr-k8s.yaml
+	$(KUSTOMIZE) build config/prometheus > config/all-in-one/frr-k8s-prometheus.yaml

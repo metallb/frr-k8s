@@ -379,6 +379,23 @@ metadata:
   namespace: frr-k8s-system
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: prometheus-k8s
+  namespace: frr-k8s-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   creationTimestamp: null
@@ -460,6 +477,20 @@ rules:
   - subjectaccessreviews
   verbs:
   - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: prometheus-k8s
+  namespace: frr-k8s-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: prometheus-k8s
+subjects:
+- kind: ServiceAccount
+  name: prometheus-k8s
+  namespace: monitoring
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -886,3 +917,34 @@ spec:
         name: reloader
       - emptyDir: {}
         name: metrics
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s-metrics-monitor
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: servicemonitor
+    app.kubernetes.io/part-of: frr-k8s
+    control-plane: frr-k8s
+  name: frr-k8s-metrics-monitor
+  namespace: frr-k8s-system
+spec:
+  endpoints:
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    path: /metrics
+    port: metricshttps
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  - bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+    path: /metrics
+    port: frrmetricshttps
+    scheme: https
+    tlsConfig:
+      insecureSkipVerify: true
+  selector:
+    matchLabels:
+      control-plane: frr-k8s
