@@ -120,6 +120,7 @@ GINKGO_VERSION ?= v2.11.0
 KIND_VERSION ?= v0.19.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
+HELM_DOCS_VERSION ?= v1.10.0
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
@@ -258,3 +259,7 @@ generate-all-in-one: manifests kustomize ## Create manifests
 
 	$(KUSTOMIZE) build config/default > config/all-in-one/frr-k8s.yaml
 	$(KUSTOMIZE) build config/prometheus > config/all-in-one/frr-k8s-prometheus.yaml
+
+.PHONY: helm-docs
+helm-docs:
+	docker run --rm -v $(git rev-parse --show-toplevel):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
