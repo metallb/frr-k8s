@@ -38,6 +38,7 @@ import (
 
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
+	"github.com/metallb/frrk8s/internal/ipfamily"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	//+kubebuilder:scaffold:imports
@@ -55,7 +56,10 @@ var (
 	cancel    context.CancelFunc
 )
 
-const testNodeName = "testnode"
+const (
+	testNodeName  = "testnode"
+	testNamespace = "testnamespace"
+)
 
 type fakeFRR struct {
 	lastConfig *frr.Config
@@ -113,6 +117,7 @@ var _ = BeforeSuite(func() {
 		FRRHandler: &localFRR,
 		Logger:     log.NewNopLogger(),
 		NodeName:   testNodeName,
+		Namespace:  testNamespace,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -131,6 +136,13 @@ var _ = BeforeSuite(func() {
 		},
 	}
 	err = k8sClient.Create(ctx, node)
+	Expect(err).ToNot(HaveOccurred())
+	namespace := &corev1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: testNamespace,
+		},
+	}
+	err = k8sClient.Create(ctx, namespace)
 	Expect(err).ToNot(HaveOccurred())
 
 })
@@ -540,6 +552,115 @@ var _ = Describe("Frrk8s controller", func() {
 					},
 				},
 			))
+		})
+
+		It("should handle the secrets as passwords to FRR", func() {
+			frrConfig := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(42),
+								Neighbors: []frrk8sv1beta1.Neighbor{
+									{
+										ASN:     65012,
+										Address: "192.0.2.7",
+										PasswordSecret: corev1.SecretReference{
+											Name:      "secret1",
+											Namespace: testNamespace,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+
+			secret := corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "secret1",
+					Namespace: testNamespace,
+				},
+				Type: corev1.SecretTypeBasicAuth,
+				Data: map[string][]byte{
+					"password": []byte("password2"),
+				},
+			}
+
+			err = k8sClient.Create(context.Background(), &secret)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() frr.Config {
+				return *localFRR.lastConfig
+			}).Should(Equal(
+				frr.Config{
+					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Password: "password2",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+					}},
+				},
+			))
+
+			// To ensure we collect secret events
+			By("changing the password and updating the secret")
+			secret.Data["password"] = []byte("password3")
+			err = k8sClient.Update(context.Background(), &secret)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() frr.Config {
+				return *localFRR.lastConfig
+			}).Should(Equal(
+				frr.Config{
+					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Password: "password3",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+					}},
+				},
+			))
+
 		})
 	})
 })

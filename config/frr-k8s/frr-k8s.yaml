@@ -45,6 +45,7 @@ spec:
         args:
         - "--node-name=$(NODE_NAME)"
         - "--log-level=info"
+        - "--namespace=$(NAMESPACE)"
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: frr-k8s
@@ -87,6 +88,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
       - name: frr
         securityContext:
           capabilities:
