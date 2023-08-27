@@ -122,22 +122,22 @@ spec:
         livenessProbe:
           httpGet:
             path: /livez
-            port: 7473
+            port: 7573
           periodSeconds: 5
           failureThreshold: 3
         startupProbe:
           httpGet:
             path: /livez
-            port: 7473
+            port: 7573
           failureThreshold: 30
           periodSeconds: 5
       - name: frr-metrics
         image: quay.io/frrouting/frr:8.4.2
         command: ["/etc/frr_metrics/frr-metrics"]
         args:
-          - --metrics-port=7473
+          - --metrics-port=7573
         ports:
-          - containerPort: 7473
+          - containerPort: 7573
             name: monitoring
         volumeMounts:
           - name: frr-sockets

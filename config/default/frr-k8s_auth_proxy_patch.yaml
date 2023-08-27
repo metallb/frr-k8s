@@ -34,9 +34,14 @@ spec:
         image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
         args:
         - "--secure-listen-address=0.0.0.0:9140"
-        - "--upstream=http://127.0.0.1:8080/"
+        - "--upstream=http://$(FRRK8S_HOST):7572/"
         - "--logtostderr=true"
         - "--v=0"
+        env:
+        - name: FRRK8S_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
         ports:
         - containerPort: 9140
           protocol: TCP
@@ -51,7 +56,7 @@ spec:
       - name: kube-rbac-proxy-frr
         args:
         - --secure-listen-address=0.0.0.0:9141
-        - --upstream=http://$(FRRK8S_HOST):7473/
+        - --upstream=http://$(FRRK8S_HOST):7573/
         - --logtostderr=true
         - --v=0
         env:
@@ -79,7 +84,10 @@ spec:
       - name: frr-k8s
         args:
         - "--health-probe-bind-address=:8081"
-        - "--metrics-bind-address=127.0.0.1:8080"
+        - "--metrics-bind-address=:7572"
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--log-level=info"
+        ports:
+        - containerPort: 7572
+          name: monitoring

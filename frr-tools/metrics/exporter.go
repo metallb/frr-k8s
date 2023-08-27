@@ -23,7 +23,7 @@ import (
 )
 
 var (
-	metricsPort = flag.Uint("metrics-port", 7473, "Port to listen on for web interface.")
+	metricsPort = flag.Uint("metrics-port", 7573, "Port to listen on for web interface.")
 	metricsPath = flag.String("metrics-path", "/metrics", "Path under which to expose metrics.")
 )
 

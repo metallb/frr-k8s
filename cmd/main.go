@@ -65,7 +65,7 @@ func main() {
 		namespace   string
 	)
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
+	flag.StringVar(&metricsAddr, "metrics-bind-address", ":7572", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
 	flag.StringVar(&nodeName, "node-name", "", "The node this daemon is running on.")
