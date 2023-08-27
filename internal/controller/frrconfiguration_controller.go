@@ -59,6 +59,7 @@ type FRRConfigurationReconciler struct {
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
 	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.NamespacedName.String())
+	updates.Inc()
 
 	configs := frrk8sv1beta1.FRRConfigurationList{}
 	err := r.Client.List(ctx, &configs)
@@ -70,6 +71,10 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	if len(configs.Items) == 0 {
 		err := r.applyEmptyConfig(req)
+		if err != nil {
+			updateErrors.Inc()
+			configStale.Set(1)
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -81,6 +86,8 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	cfgs, err := configsForNode(configs.Items, thisNode.Labels)
 	if err != nil {
+		updateErrors.Inc()
+		configStale.Set(1)
 		return ctrl.Result{}, err
 	}
 
@@ -96,6 +103,8 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 	if err != nil {
+		updateErrors.Inc()
+		configStale.Set(1)
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
 	}
@@ -103,9 +112,14 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", dumpFRRConfig(config))
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
+		updateErrors.Inc()
+		configStale.Set(1)
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, err
 	}
+
+	configLoaded.Set(1)
+	configStale.Set(0)
 
 	return ctrl.Result{}, nil
 }
