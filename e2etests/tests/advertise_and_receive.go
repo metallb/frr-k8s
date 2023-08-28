@@ -70,9 +70,9 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 
 		ginkgo.DescribeTable("Works with external frrs", func(p params) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
-			peersV4, peersV6 := config.PeersForContainers(frrs, p.ipFamily)
-			p.modifyPeers(peersV4, peersV6)
-			neighbors := config.NeighborsFromPeers(peersV4, peersV6)
+			peersConfig := config.PeersForContainers(frrs, p.ipFamily)
+			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -101,7 +101,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 				})
 				framework.ExpectNoError(err)
 			}
-			err := updater.Update(config)
+			err := updater.Update(peersConfig.Secrets, config)
 			framework.ExpectNoError(err)
 
 			nodes, err := k8s.Nodes(cs)
@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 			framework.ExpectNoError(err)
 
 			ginkgo.By("validating")
-			p.validate(peersV4, peersV6, pods, nodes)
+			p.validate(peersConfig.PeersV4, peersConfig.PeersV6, pods, nodes)
 
 			if p.splitCfg == nil {
 				return
@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 			cfgs, err := p.splitCfg(config)
 			framework.ExpectNoError(err)
 
-			err = updater.Update(cfgs...)
+			err = updater.Update(peersConfig.Secrets, cfgs...)
 			framework.ExpectNoError(err)
 
 			for _, c := range frrs {
@@ -140,7 +140,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 			}
 
 			ginkgo.By("validating with splitted config")
-			p.validate(peersV4, peersV6, pods, nodes)
+			p.validate(peersConfig.PeersV4, peersConfig.PeersV6, pods, nodes)
 		},
 			ginkgo.Entry("IPV4 - One config for advertising, the other for receiving", params{
 				ipFamily:      ipfamily.IPv4,

@@ -86,9 +86,9 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 	ginkgo.DescribeTable("expose prometheus metrics", func(p params) {
 		frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
-		peersV4, peersV6 := config.PeersForContainers(frrs, p.ipFamily)
-		p.modifyPeers(peersV4, peersV6)
-		neighbors := config.NeighborsFromPeers(peersV4, peersV6)
+		peersConfig := config.PeersForContainers(frrs, p.ipFamily)
+		p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
 		config := frrk8sv1beta1.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
@@ -115,7 +115,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 			framework.ExpectNoError(err)
 		}
 
-		err := updater.Update(config)
+		err := updater.Update(peersConfig.Secrets, config)
 		framework.ExpectNoError(err)
 
 		nodes, err := k8s.Nodes(cs)
