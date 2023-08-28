@@ -19,6 +19,7 @@ type Neighbor struct {
 	LocalAS        string
 	RemoteAS       string
 	PrefixSent     int
+	PrefixReceived int
 	Port           int
 	RemoteRouterID string
 	MsgStats       MessageStats
@@ -43,7 +44,8 @@ type FRRNeighbor struct {
 	MsgStats          MessageStats `json:"messageStats"`
 	VRFName           string       `json:"vrf"`
 	AddressFamilyInfo map[string]struct {
-		SentPrefixCounter int `json:"sentPrefixCounter"`
+		SentPrefixCounter     int `json:"sentPrefixCounter"`
+		AcceptedPrefixCounter int `json:"acceptedPrefixCounter"`
 	} `json:"addressFamilyInfo"`
 }
 
@@ -124,8 +126,10 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 			connected = false
 		}
 		prefixSent := 0
+		prefixReceived := 0
 		for _, s := range n.AddressFamilyInfo {
 			prefixSent += s.SentPrefixCounter
+			prefixReceived += s.AcceptedPrefixCounter
 		}
 		return &Neighbor{
 			IP:             ip,
@@ -133,6 +137,7 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
 			PrefixSent:     prefixSent,
+			PrefixReceived: prefixReceived,
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,
@@ -161,8 +166,10 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 			connected = false
 		}
 		prefixSent := 0
+		prefixReceived := 0
 		for _, s := range n.AddressFamilyInfo {
 			prefixSent += s.SentPrefixCounter
+			prefixReceived += s.AcceptedPrefixCounter
 		}
 		res = append(res, &Neighbor{
 			IP:             ip,
@@ -170,6 +177,7 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
 			PrefixSent:     prefixSent,
+			PrefixReceived: prefixReceived,
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,

@@ -76,13 +76,13 @@ func TestNeighbour(t *testing.T) {
         "ipv4Unicast":{
           "routerAlwaysNextHop":true,
           "commAttriSentToNbr":"extendedAndStandard",
-          "acceptedPrefixCounter":0,
+          "acceptedPrefixCounter":%d,
           "sentPrefixCounter":%d
         },
         "ipv6Unicast":{
           "routerAlwaysNextHop":true,
           "commAttriSentToNbr":"extendedAndStandard",
-          "acceptedPrefixCounter":0,
+          "acceptedPrefixCounter":%d,
           "sentPrefixCounter":%d
         }
       },
@@ -100,15 +100,17 @@ func TestNeighbour(t *testing.T) {
   }`
 
 	tests := []struct {
-		name           string
-		neighborIP     string
-		remoteAS       string
-		localAS        string
-		status         string
-		ipv4PrefixSent int
-		ipv6PrefixSent int
-		port           int
-		expectedError  string
+		name               string
+		neighborIP         string
+		remoteAS           string
+		localAS            string
+		status             string
+		ipv4PrefixSent     int
+		ipv6PrefixSent     int
+		ipv4PrefixReceived int
+		ipv6PrefixReceived int
+		port               int
+		expectedError      string
 	}{
 		{
 			"ipv4, connected",
@@ -116,6 +118,8 @@ func TestNeighbour(t *testing.T) {
 			"64512",
 			"64512",
 			"Established",
+			1,
+			0,
 			1,
 			0,
 			179,
@@ -129,6 +133,8 @@ func TestNeighbour(t *testing.T) {
 			"Active",
 			0,
 			0,
+			0,
+			0,
 			180,
 			"",
 		},
@@ -140,6 +146,8 @@ func TestNeighbour(t *testing.T) {
 			"Established",
 			2,
 			1,
+			2,
+			1,
 			181,
 			"",
 		},
@@ -147,7 +155,7 @@ func TestNeighbour(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n, err := ParseNeighbour(fmt.Sprintf(sample, tt.neighborIP, tt.remoteAS, tt.localAS, tt.status, tt.ipv4PrefixSent, tt.ipv6PrefixSent, tt.port))
+			n, err := ParseNeighbour(fmt.Sprintf(sample, tt.neighborIP, tt.remoteAS, tt.localAS, tt.status, tt.ipv4PrefixReceived, tt.ipv4PrefixSent, tt.ipv6PrefixSent, tt.ipv6PrefixReceived, tt.port))
 			if err != nil {
 				t.Fatal("Failed to parse ", err)
 			}
@@ -168,6 +176,9 @@ func TestNeighbour(t *testing.T) {
 			}
 			if tt.ipv4PrefixSent+tt.ipv6PrefixSent != n.PrefixSent {
 				t.Fatal("Expected prefix sent", tt.ipv4PrefixSent+tt.ipv6PrefixSent, "got", n.PrefixSent)
+			}
+			if tt.ipv4PrefixReceived+tt.ipv6PrefixReceived != n.PrefixReceived {
+				t.Fatal("Expected prefix received", tt.ipv4PrefixReceived+tt.ipv6PrefixReceived, "got", n.PrefixReceived)
 			}
 			if tt.port != n.Port {
 				t.Fatal("Expected port", tt.port, "got", n.Port)
