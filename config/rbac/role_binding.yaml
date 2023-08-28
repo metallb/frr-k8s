@@ -29,11 +29,11 @@ metadata:
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize
   name: daemon-rolebinding
+  namespace: system
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: daemon-role
-  namespace: system
 subjects:
 - kind: ServiceAccount
   name: daemon
