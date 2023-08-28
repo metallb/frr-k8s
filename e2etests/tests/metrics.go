@@ -76,12 +76,14 @@ var _ = ginkgo.Describe("Metrics", func() {
 	})
 
 	type params struct {
-		vrf         string
-		ipFamily    ipfamily.Family
-		myAsn       uint32
-		prefixes    []string
-		modifyPeers func([]config.Peer, []config.Peer)
-		validate    func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family)
+		vrf           string
+		ipFamily      ipfamily.Family
+		myAsn         uint32
+		toAdvertiseV4 []string // V4 prefixes that the nodes receive from the containers
+		toAdvertiseV6 []string // V6 prefixes that the nodes receive from the containers
+		prefixes      []string // all prefixes that the nodes advertise to the containers
+		modifyPeers   func([]config.Peer, []config.Peer)
+		validate      func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family)
 	}
 
 	ginkgo.DescribeTable("expose prometheus metrics", func(p params) {
@@ -111,7 +113,10 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 		ginkgo.By("pairing with nodes")
 		for _, c := range frrs {
-			err := frrcontainer.PairWithNodes(cs, c, p.ipFamily)
+			err := frrcontainer.PairWithNodes(cs, c, p.ipFamily, func(frr *frrcontainer.FRR) {
+				frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
+				frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
+			})
 			framework.ExpectNoError(err)
 		}
 
@@ -131,51 +136,85 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ginkgo.By("validating")
 		p.validate(pods, frrs, promPod, p.ipFamily)
 	},
-		ginkgo.Entry("IPV4 - advertisement", params{
-			ipFamily: ipfamily.IPv4,
-			vrf:      "",
-			myAsn:    infra.FRRK8sASN,
-			prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
+		ginkgo.Entry("IPV4 - advertise and receive", params{
+			ipFamily:      ipfamily.IPv4,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
 			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 				for i := range ppV4 {
 					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
 				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
-		ginkgo.Entry("IPV6 - advertisement", params{
-			ipFamily: ipfamily.IPv6,
-			vrf:      "",
-			myAsn:    infra.FRRK8sASN,
-			prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+		ginkgo.Entry("IPV4 - VRF - advertise and receive", params{
+			ipFamily:      ipfamily.IPv4,
+			vrf:           infra.VRFName,
+			myAsn:         infra.FRRK8sASNVRF,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
+			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
+				for i := range ppV4 {
+					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+				}
+			},
+			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
+				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
+				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
+				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
+			},
+		}),
+		ginkgo.Entry("IPV6 - advertise and receive", params{
+			ipFamily:      ipfamily.IPv6,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV6: []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64", "fc00:f853:ccd:e901::/64"},
+			prefixes:      []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 			modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV6 {
 					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
 				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
-		ginkgo.Entry("IPV4 - VRF - advertisement", params{
-			ipFamily: ipfamily.IPv4,
-			vrf:      infra.VRFName,
-			myAsn:    infra.FRRK8sASNVRF,
-			prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
-			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
+		ginkgo.Entry("DUALSTACK - advertise and receive", params{
+			ipFamily:      ipfamily.DualStack,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			toAdvertiseV6: []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64", "fc00:f853:ccd:e901::/64"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+			modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV4 {
 					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+				}
+
+				for i := range ppV6 {
+					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
 				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
@@ -414,6 +453,40 @@ func ValidatePodAnnounceMetrics(frrPods []*corev1.Pod, frrContainers []*frrconta
 					return err
 				}
 				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bgp_announced_prefixes_total{%s} == %d`, selector.labelsForQueryBGP, pfxsAmount), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bgp_updates_total", selector.labelsBGP, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bgp_updates_total{%s} >= 1`, selector.labelsForQueryBGP), metrics.There)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodReceiveMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, pfxsAmount int, ipfam ipfamily.Family) {
+	selectors := labelsForPeers(frrContainers, ipfam)
+
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+			for _, selector := range selectors {
+				err = metrics.ValidateGaugeValue(pfxsAmount, "frrk8s_bgp_received_prefixes_total", selector.labelsBGP, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bgp_received_prefixes_total{%s} == %d`, selector.labelsForQueryBGP, pfxsAmount), metrics.There)
 				if err != nil {
 					return err
 				}
