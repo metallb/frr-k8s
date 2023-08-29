@@ -10,7 +10,7 @@ import (
 
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
-	_ "github.com/metallb/frrk8stests/tests"
+	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	"k8s.io/client-go/tools/clientcmd"
@@ -100,6 +100,7 @@ var _ = ginkgo.BeforeSuite(func() {
 		infra.FRRContainers = append(infra.FRRContainers, vrfFRRContainers...)
 	}
 
+	tests.PrometheusNamespace = prometheusNamespace
 })
 
 var _ = ginkgo.AfterSuite(func() {

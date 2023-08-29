@@ -13,9 +13,11 @@ metadata:
   namespace: system
 spec:
   ports:
-  - name: https
-    port: 8443
-    protocol: TCP
-    targetPort: https
+  - name: metricshttps
+    port: 9140
+    targetPort: metricshttps
+  - name: frrmetricshttps
+    port: 9141
+    targetPort: frrmetricshttps
   selector:
     control-plane: frr-k8s

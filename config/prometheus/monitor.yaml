@@ -16,7 +16,13 @@ metadata:
 spec:
   endpoints:
     - path: /metrics
-      port: https
+      port: metricshttps
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
+    - path: /metrics
+      port: frrmetricshttps
       scheme: https
       bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
       tlsConfig:
