@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"bytes"
 	"fmt"
 	"sort"
 
@@ -23,15 +24,25 @@ func (s SecretNotFoundError) Error() string {
 	return fmt.Sprintf("secret %s not found for neighbor %s", s.Name, s.Neighbor)
 }
 
+type namedRawConfig struct {
+	v1beta1.RawConfig
+	configName string
+}
+
 func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secret) (*frr.Config, error) {
 	res := &frr.Config{
 		Routers: make([]*frr.RouterConfig, 0),
 		//BFDProfiles: sm.bfdProfiles,
-		//ExtraConfig: sm.extraConfig,
 	}
 
+	rawConfigs := make([]namedRawConfig, 0)
 	routersForVRF := map[string]*frr.RouterConfig{}
 	for _, cfg := range fromK8s {
+		if cfg.Spec.Raw.Config != nil && len(cfg.Spec.Raw.Config) > 0 {
+			raw := namedRawConfig{RawConfig: cfg.Spec.Raw, configName: cfg.Name}
+			rawConfigs = append(rawConfigs, raw)
+		}
+
 		for _, r := range cfg.Spec.BGP.Routers {
 			routerCfg, err := routerToFRRConfig(r, secrets)
 			if err != nil {
@@ -54,6 +65,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secr
 	}
 
 	res.Routers = sortMapPtr(routersForVRF)
+	res.ExtraConfig = joinRawConfigs(rawConfigs)
 
 	return res, nil
 }
@@ -377,4 +389,19 @@ func sortMapPtr[T any](toSort map[string]*T) []*T {
 		res = append(res, toSort[k])
 	}
 	return res
+}
+
+func joinRawConfigs(raw []namedRawConfig) string {
+	sort.Slice(raw, func(i, j int) bool {
+		if raw[i].Priority == raw[j].Priority {
+			return raw[i].configName < raw[j].configName
+		}
+		return raw[i].Priority < raw[j].Priority
+	})
+	res := bytes.Buffer{}
+	for _, r := range raw {
+		res.Write(r.Config)
+		res.WriteString("\n")
+	}
+	return res.String()
 }

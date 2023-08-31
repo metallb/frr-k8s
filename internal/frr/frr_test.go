@@ -600,3 +600,50 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 
 	testCheckConfigFile(t)
 }
+
+func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.IPv4,
+						ASN:          65001,
+						Addr:         "192.168.1.2",
+						Port:         4567,
+						EBGPMultiHop: true,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+		ExtraConfig: "# foo\n# baar",
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
