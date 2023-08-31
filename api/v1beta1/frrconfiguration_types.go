@@ -26,19 +26,30 @@ type FRRConfigurationSpec struct {
 	// +optional
 	BGP BGPConfig `json:"bgp,omitempty"`
 
+	// +optional
+	Raw RawConfig `json:"raw,omitempty"`
 	// Limits the nodes that will attempt to apply this config.
 	// When specified, the configuration will be considered only on nodes
 	// whose labels match the specified selectors.
 	// When it is not specified all nodes will attempt to apply this config.
 	// +optional
 	NodeSelector metav1.LabelSelector `json:"nodeSelector,omitempty"`
+}
 
-	// TODO raw config
+type RawConfig struct {
+	// Sets the order with this configuration is appended to the
+	// bottom of the rendered configuration. A higher value means the
+	// raw config is appended later in the configuration file.
+	Priority int `json:"priority,omitempty"`
+
+	// A raw FRR configuration to be appended to the configuration
+	// rendered via the k8s api.
+	Config []byte `json:"rawConfig,omitempty"`
 }
 
 type BGPConfig struct {
 	// The list of routers we want FRR to configure (one per VRF).
-	// +kubebuilder:validation:MinItems=1
+	// +optional
 	Routers []Router `json:"routers"`
 	// The list of bfd profiles to be used when configuring the neighbors.
 	// +optional

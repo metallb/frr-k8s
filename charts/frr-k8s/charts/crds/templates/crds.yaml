@@ -287,10 +287,7 @@ spec:
                       required:
                       - asn
                       type: object
-                    minItems: 1
                     type: array
-                required:
-                - routers
                 type: object
               nodeSelector:
                 description: Limits the nodes that will attempt to apply this config.
@@ -340,6 +337,18 @@ spec:
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
+              raw:
+                properties:
+                  priority:
+                    description: Sets the order with this configuration is appended
+                      to the bottom of the rendered configuration
+                    type: integer
+                  rawConfig:
+                    description: A raw FRR configuration to be appended to the configuration
+                      rendered via the k8s api.
+                    format: byte
+                    type: string
+                type: object
             type: object
           status:
             description: FRRConfigurationStatus defines the observed state of FRRConfiguration.
