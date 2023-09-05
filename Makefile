@@ -1,6 +1,8 @@
 
 # Image URL to use all building/pushing image targets
-IMG ?= quay.io/metallb/frr-k8s:dev
+IMG_TAG ?= dev
+IMG_BASE ?= quay.io/metallb/frr-k8s
+IMG ?= ${IMG_BASE}:${IMG_TAG}
 NAMESPACE ?= "frr-k8s-system"
 LOGLEVEL ?= "info"
 
@@ -106,6 +108,7 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 GINKGO ?= $(LOCALBIN)/ginkgo
 ENVTEST ?= $(LOCALBIN)/setup-envtest
+HELM ?= $(LOCALBIN)/helm
 KUBECONFIG_PATH ?= $(LOCALBIN)/kubeconfig
 export KUBECONFIG=$(KUBECONFIG_PATH)
 
@@ -116,6 +119,8 @@ KUBECTL_VERSION ?= v1.27.0
 GINKGO_VERSION ?= v2.11.0
 KIND_VERSION ?= v0.19.0
 KIND_CLUSTER_NAME ?= frr-k8s
+HELM_VERSION ?= v3.12.3
+HELM_DOCS_VERSION ?= v1.10.0
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
@@ -124,18 +129,6 @@ install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specif
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
 	$(KUSTOMIZE) build config/crd | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
-
-.PHONY: deploy-cluster
-deploy-cluster: kubectl manifests kustomize kind load-on-kind ## Deploy a cluster for the controller.
-
-KUSTOMIZE_LAYER ?= default
-.PHONY: deploy-controller
-deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
-	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
-	sleep 2s # wait for daemonset to be created
-	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
 
 .PHONY: deploy
 deploy: deploy-cluster deploy-controller ## Deploy cluster and controller.
@@ -150,6 +143,27 @@ deploy-prometheus: kubectl
 	until $(KUBECTL) get servicemonitors --all-namespaces ; do date; sleep 1; echo ""; done
 	$(KUBECTL) apply -f hack/prometheus/manifests/
 	$(KUBECTL) -n monitoring wait --for=condition=Ready --all pods --timeout 300s
+
+.PHONY: deploy-cluster
+deploy-cluster: kubectl manifests kustomize kind load-on-kind ## Deploy a cluster for the controller.
+
+KUSTOMIZE_LAYER ?= default
+.PHONY: deploy-controller
+deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster specified in $KUBECONFIG.
+	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUBECTL) -n frr-k8s-system delete ds frr-k8s-daemon || true
+	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
+	sleep 2s # wait for daemonset to be created
+	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
+
+.PHONY: deploy-helm
+deploy-helm: helm deploy-cluster deploy-prometheus
+	$(KUBECTL) create ns ${NAMESPACE} || true
+	$(KUBECTL) label ns ${NAMESPACE} pod-security.kubernetes.io/enforce=privileged
+	$(HELM) install frrk8s charts/frr-k8s/ --set frrk8s.image.tag=${IMG_TAG} --set frrk8s.logLevel=debug --set prometheus.rbacPrometheus=true \
+	--set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring --namespace ${NAMESPACE}
+	sleep 2s # wait for daemonset to be created
+	$(KUBECTL) -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
 
 .PHONY: undeploy
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with ignore-not-found=true to ignore resource not found errors during deletion.
@@ -183,6 +197,12 @@ kind: $(KIND) ## Download kind locally if necessary. If wrong version is install
 $(KIND): $(LOCALBIN)
 	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(KIND_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@$(KIND_VERSION)
+
+.PHONY: helm
+helm: $(HELM) ## Download helm locally if necessary. If wrong version is installed, it will be overwritten.
+$(HELM): $(LOCALBIN)
+	test -s $(LOCALBIN)/helm && $(LOCALBIN)/helm version | grep -q $(HELM_VERSION) || \
+	USE_SUDO=false HELM_INSTALL_DIR=$(LOCALBIN) DESIRED_VERSION=$(HELM_VERSION) bash <(curl -s https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
@@ -239,3 +259,7 @@ generate-all-in-one: manifests kustomize ## Create manifests
 
 	$(KUSTOMIZE) build config/default > config/all-in-one/frr-k8s.yaml
 	$(KUSTOMIZE) build config/prometheus > config/all-in-one/frr-k8s-prometheus.yaml
+
+.PHONY: helm-docs
+helm-docs:
+	docker run --rm -v $(git rev-parse --show-toplevel):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
