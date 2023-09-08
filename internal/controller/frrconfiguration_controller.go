@@ -18,13 +18,16 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -45,6 +48,7 @@ type FRRConfigurationReconciler struct {
 	FRRHandler frr.ConfigHandler
 	Logger     log.Logger
 	NodeName   string
+	Namespace  string
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -80,7 +84,17 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	config, err := apiToFRR(cfgs)
+	secrets, err := r.getSecrets(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	config, err := apiToFRR(cfgs, secrets)
+	secretNotFound := SecretNotFoundError{}
+	if errors.As(err, &secretNotFound) { // This might be a receiving order issue so we need to return the error and retry
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "secret not found", err)
+		return ctrl.Result{}, err
+	}
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, nil
@@ -98,7 +112,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
 	empty := []frrk8sv1beta1.FRRConfiguration{}
-	config, err := apiToFRR(empty)
+	config, err := apiToFRR(empty, map[string]corev1.Secret{})
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
 		panic("failed to translate empty config")
@@ -143,8 +157,26 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.FRRConfiguration{}).
 		Watches(&source.Kind{Type: &corev1.Node{}}, &handler.EnqueueRequestForObject{}).
+		Watches(&source.Kind{Type: &corev1.Secret{}}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
+}
+
+func (r *FRRConfigurationReconciler) getSecrets(ctx context.Context) (map[string]corev1.Secret, error) {
+	var secrets corev1.SecretList
+	err := r.List(ctx, &secrets, client.InNamespace(r.Namespace))
+	if k8serrors.IsNotFound(err) {
+		return map[string]corev1.Secret{}, nil
+	}
+	if err != nil {
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "error", "failed to get secrets", "error", err)
+		return nil, err
+	}
+	secretsMap := make(map[string]corev1.Secret)
+	for _, secret := range secrets.Items {
+		secretsMap[secret.Name] = secret
+	}
+	return secretsMap, nil
 }
 
 func filterNodeEvent(e event.UpdateEvent, thisNode string) bool {

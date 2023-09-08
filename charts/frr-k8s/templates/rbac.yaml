@@ -17,7 +17,7 @@ rules:
   verbs: ["create"]
 - apiGroups: ["authorization.k8s.io"]
   resources: ["subjectaccessreviews"]
-  verbs: ["create"]  
+  verbs: ["create"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
@@ -32,4 +32,28 @@ subjects:
 - kind: ServiceAccount
   name: {{ include "frrk8s.serviceAccountName" . }}
   namespace: {{ .Release.Namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "frrk8s.fullname" . }}-controller
+  labels: {{- include "frrk8s.labels" . | nindent 4 }}
+rules:
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "frrk8s.fullname" . }}-controller
+  namespace: {{ .Release.Namespace }}
+  labels: {{- include "frrk8s.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "frrk8s.fullname" . }}-controller
+subjects:
+- kind: ServiceAccount
+  name: {{ include "frrk8s.serviceAccountName" . }}
 {{ end -}}

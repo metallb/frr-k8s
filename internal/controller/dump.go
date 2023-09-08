@@ -11,7 +11,6 @@ import (
 )
 
 func dumpK8sConfigs(c frrk8sv1beta1.FRRConfigurationList) string {
-	// TODO hide secrets when we have them
 	res := ""
 	for _, cfg := range c.Items {
 		res = res + "\n" + dumpResource(cfg)
@@ -20,8 +19,21 @@ func dumpK8sConfigs(c frrk8sv1beta1.FRRConfigurationList) string {
 }
 
 func dumpFRRConfig(c *frr.Config) string {
-	// TODO hide secrets when we have them
-	return dumpResource(*c)
+	toDump := *c
+	noPasswordRouters := make([]*frr.RouterConfig, 0, len(c.Routers))
+	for _, r := range toDump.Routers {
+		noPasswordNeighbors := make([]*frr.NeighborConfig, 0, len(r.Neighbors))
+		for _, n := range r.Neighbors {
+			n1 := *n
+			n1.Password = "<retracted>"
+			noPasswordNeighbors = append(noPasswordNeighbors, &n1)
+		}
+		r1 := *r
+		r1.Neighbors = noPasswordNeighbors
+		noPasswordRouters = append(noPasswordRouters, &r1)
+	}
+	toDump.Routers = noPasswordRouters
+	return dumpResource(toDump)
 }
 
 func dumpResource(i interface{}) string {

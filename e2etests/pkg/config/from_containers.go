@@ -6,9 +6,11 @@ import (
 	"net"
 
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"go.universe.tf/e2etest/pkg/frr"
+	"github.com/metallb/frrk8stests/pkg/k8s"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type Peer struct {
@@ -17,10 +19,20 @@ type Peer struct {
 	FRR   frrcontainer.FRR
 }
 
+type PeersConfig struct {
+	PeersV4 []Peer
+	PeersV6 []Peer
+	Secrets []corev1.Secret
+}
+
 // PeersForContainers returns two lists of Peers, one for v4 addresses and one for v6 addresses.
-func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, modify ...func(frr.Neighbor)) ([]Peer, []Peer) {
-	resV4 := make([]Peer, 0)
-	resV6 := make([]Peer, 0)
+func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersConfig {
+	res := PeersConfig{
+		PeersV4: make([]Peer, 0),
+		PeersV6: make([]Peer, 0),
+		Secrets: make([]corev1.Secret, 0),
+	}
+
 	for _, f := range frrs {
 		addresses := f.AddressesForFamily(ipFam)
 		ebgpMultihop := false
@@ -40,14 +52,32 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, modify 
 				FRR: *f,
 			}
 
+			if f.RouterConfig.Password != "" {
+				s := corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      f.Name,
+						Namespace: k8s.FRRK8sNamespace,
+					},
+					Type: corev1.SecretTypeBasicAuth,
+					Data: map[string][]byte{
+						"password": []byte(f.RouterConfig.Password),
+					},
+				}
+				peer.Neigh.PasswordSecret = corev1.SecretReference{
+					Name:      f.Name,
+					Namespace: k8s.FRRK8sNamespace,
+				}
+				res.Secrets = append(res.Secrets, s)
+			}
+
 			if ipfamily.ForAddress(net.ParseIP(address)) == ipfamily.IPv4 {
-				resV4 = append(resV4, peer)
+				res.PeersV4 = append(res.PeersV4, peer)
 				continue
 			}
-			resV6 = append(resV6, peer)
+			res.PeersV6 = append(res.PeersV6, peer)
 		}
 	}
-	return resV4, resV6
+	return res
 }
 
 func NeighborsFromPeers(peers []Peer, peers1 []Peer) []frrk8sv1beta1.Neighbor {

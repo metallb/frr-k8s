@@ -3,6 +3,7 @@
 package controller
 
 import (
+	"errors"
 	"fmt"
 	"testing"
 
@@ -10,12 +11,14 @@ import (
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
+	v1 "k8s.io/api/core/v1"
 )
 
 func TestConversion(t *testing.T) {
 	tests := []struct {
 		name     string
 		fromK8s  []v1beta1.FRRConfiguration
+		secrets  map[string]v1.Secret
 		expected *frr.Config
 		err      error
 	}{
@@ -45,6 +48,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -118,6 +122,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -212,6 +217,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -246,6 +252,7 @@ func TestConversion(t *testing.T) {
 			fromK8s: []v1beta1.FRRConfiguration{
 				{},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{},
 			},
@@ -276,6 +283,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -336,6 +344,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -410,6 +419,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -567,6 +577,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -692,6 +703,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets:  map[string]v1.Secret{},
 			expected: nil,
 			err:      fmt.Errorf("prefix %s with community %s not in allowed list for neighbor %s", "192.0.10.10/32", "10:100", "192.0.2.21"),
 		},
@@ -735,6 +747,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets:  map[string]v1.Secret{},
 			expected: nil,
 			err:      fmt.Errorf("localPref associated to non existing prefix %s", "192.0.10.10/32"),
 		},
@@ -778,6 +791,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets:  map[string]v1.Secret{},
 			expected: nil,
 			err:      fmt.Errorf("multiple local prefs specified for prefix %s", "192.0.4.0/24"),
 		},
@@ -809,6 +823,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -866,6 +881,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -975,6 +991,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -1174,6 +1191,7 @@ func TestConversion(t *testing.T) {
 					},
 				},
 			},
+			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
 				Routers: []*frr.RouterConfig{
 					{
@@ -1309,11 +1327,184 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "Multiple Routers and Neighbors with passwords",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											PasswordSecret: v1.SecretReference{
+												Name:      "secret1",
+												Namespace: "frr-k8s-system",
+											},
+										},
+									},
+									VRF: "",
+								},
+								{
+									ASN: 65013,
+									ID:  "2001:db8::3",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65017,
+											Address: "192.0.2.7",
+											Port:    179,
+										},
+										{
+											ASN:     65014,
+											Address: "2001:db8::4",
+											Port:    179,
+											PasswordSecret: v1.SecretReference{
+												Name:      "secret2",
+												Namespace: "frr-k8s-system",
+											},
+										},
+									},
+									VRF: "vrf2",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{
+				"secret1": {
+					Type: v1.SecretTypeBasicAuth,
+					Data: map[string][]byte{
+						"password": []byte("password1"),
+					},
+				},
+				"secret2": {
+					Type: v1.SecretTypeBasicAuth,
+					Data: map[string][]byte{
+						"password": []byte("password2"),
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Password: "password1",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+					{
+						MyASN:    65013,
+						RouterID: "2001:db8::3",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65017@192.0.2.7",
+								ASN:      65017,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+							{
+								IPFamily: ipfamily.IPv6,
+								Name:     "65014@2001:db8::4",
+								ASN:      65014,
+								Addr:     "2001:db8::4",
+								Port:     179,
+								Password: "password2",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "vrf2",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Non existing secret ref",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											PasswordSecret: v1.SecretReference{
+												Name:      "secret1",
+												Namespace: "frr-k8s-system",
+											},
+										},
+									},
+									VRF: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{
+				"secret2": {
+					Type: v1.SecretTypeBasicAuth,
+					Data: map[string][]byte{
+						"password": []byte("password2"),
+					},
+				},
+			},
+			expected: nil,
+			err:      errors.New("failed to process neighbor 65012@192.0.2.7 for router 65010-: secret ref not found for neighbor 65012@192.0.2.7"),
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			frr, err := apiToFRR(test.fromK8s)
+			frr, err := apiToFRR(test.fromK8s, test.secrets)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}

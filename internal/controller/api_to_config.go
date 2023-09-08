@@ -10,10 +10,20 @@ import (
 	"github.com/metallb/frrk8s/internal/community"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-func apiToFRR(fromK8s []v1beta1.FRRConfiguration) (*frr.Config, error) {
+type SecretNotFoundError struct {
+	Name     string
+	Neighbor string
+}
+
+func (s SecretNotFoundError) Error() string {
+	return fmt.Sprintf("secret %s not found for neighbor %s", s.Name, s.Neighbor)
+}
+
+func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secret) (*frr.Config, error) {
 	res := &frr.Config{
 		Routers: make([]*frr.RouterConfig, 0),
 		//BFDProfiles: sm.bfdProfiles,
@@ -23,7 +33,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration) (*frr.Config, error) {
 	routersForVRF := map[string]*frr.RouterConfig{}
 	for _, cfg := range fromK8s {
 		for _, r := range cfg.Spec.BGP.Routers {
-			routerCfg, err := routerToFRRConfig(r)
+			routerCfg, err := routerToFRRConfig(r, secrets)
 			if err != nil {
 				return nil, err
 			}
@@ -48,7 +58,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration) (*frr.Config, error) {
 	return res, nil
 }
 
-func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
+func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret) (*frr.RouterConfig, error) {
 	res := &frr.RouterConfig{
 		MyASN:        r.ASN,
 		RouterID:     r.ID,
@@ -71,7 +81,7 @@ func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 	}
 
 	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes)
+		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, secrets)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
@@ -81,27 +91,49 @@ func routerToFRRConfig(r v1beta1.Router) (*frr.RouterConfig, error) {
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, passwordSecrets map[string]corev1.Secret) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
 	}
 	res := &frr.NeighborConfig{
-		Name: neighborName(n.ASN, n.Address),
-		ASN:  n.ASN,
-		Addr: n.Address,
-		Port: n.Port,
-		// Password:       n.Password, TODO password as secret
+		Name:         neighborName(n.ASN, n.Address),
+		ASN:          n.ASN,
+		Addr:         n.Address,
+		Port:         n.Port,
 		IPFamily:     neighborFamily,
 		EBGPMultiHop: n.EBGPMultiHop,
 	}
 
+	res.Password, err = passwordForNeighbor(n, passwordSecrets)
+	if err != nil {
+		return nil, err
+	}
 	res.Outgoing, err = toAdvertiseToFRR(n.ToAdvertise, ipv4Prefixes, ipv6Prefixes)
 	if err != nil {
 		return nil, err
 	}
 	res.Incoming = toReceiveToFRR(n.ToReceive)
 	return res, nil
+}
+
+func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
+	if n.PasswordSecret.Name == "" {
+		return "", nil
+	}
+	secret, ok := passwordSecrets[n.PasswordSecret.Name]
+	if !ok {
+		return "", SecretNotFoundError{Name: n.PasswordSecret.Name, Neighbor: neighborName(n.ASN, n.Address)}
+	}
+	if secret.Type != corev1.SecretTypeBasicAuth {
+		return "", fmt.Errorf("secret type mismatch on %q/%q, type %q is expected ", secret.Namespace,
+			secret.Name, corev1.SecretTypeBasicAuth)
+	}
+	srcPass, ok := secret.Data["password"]
+	if !ok {
+		return "", fmt.Errorf("password field not specified in the secret %q/%q", secret.Namespace, secret.Name)
+	}
+	return string(srcPass), nil
 }
 
 func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (frr.AllowedOut, error) {

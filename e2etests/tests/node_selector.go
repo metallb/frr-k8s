@@ -68,9 +68,9 @@ var _ = ginkgo.Describe("Node Selector", func() {
 
 		ginkgo.DescribeTable("global and single config", func(p params) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
-			peersV4, peersV6 := config.PeersForContainers(frrs, p.ipFamily)
-			p.modifyPeers(peersV4, peersV6)
-			neighbors := config.NeighborsFromPeers(peersV4, peersV6)
+			peersConfig := config.PeersForContainers(frrs, p.ipFamily)
+			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
 			nodes, err := k8s.Nodes(cs)
 			framework.ExpectNoError(err)
@@ -106,7 +106,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 			}
 
-			err = updater.Update(configWithSelector)
+			err = updater.Update(peersConfig.Secrets, configWithSelector)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("validating the containers paired only with the node matching the config")
@@ -116,9 +116,9 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			ginkgo.By("validating only the node matching the config advertises the prefixes")
-			peers := peersV4
+			peers := peersConfig.PeersV4
 			if p.ipFamily == ipfamily.IPv6 {
-				peers = peersV6
+				peers = peersConfig.PeersV6
 			}
 			for _, peer := range peers {
 				ValidatePrefixesForNeighbor(peer.FRR, nodes[:1], p.prefixes...)
@@ -144,7 +144,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 					},
 				},
 			}
-			err = updater.Update(globalConfig)
+			err = updater.Update(peersConfig.Secrets, globalConfig)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("validating the containers are now paired with all nodes")
@@ -201,8 +201,8 @@ var _ = ginkgo.Describe("Node Selector", func() {
 
 		ginkgo.DescribeTable("global and single config", func(p params) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
-			peersV4, peersV6 := config.PeersForContainers(frrs, p.ipFamily)
-			peersV4ForFirst, peersV6ForFirst := peersV4, peersV6
+			peersConfig := config.PeersForContainers(frrs, p.ipFamily)
+			peersV4ForFirst, peersV6ForFirst := peersConfig.PeersV4, peersConfig.PeersV6
 			p.modifyPeers(peersV4ForFirst, peersV6ForFirst)
 			neighbors := config.NeighborsFromPeers(peersV4ForFirst, peersV6ForFirst)
 
@@ -261,7 +261,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 			}
 
-			err = updater.Update(cfg)
+			err = updater.Update(peersConfig.Secrets, cfg)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("validating the containers paired only with the node matching the config")
@@ -271,9 +271,9 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			ginkgo.By("validating only the node matching the config receives the prefixes")
-			peers := peersV4
+			peers := peersConfig.PeersV4
 			if p.ipFamily == ipfamily.IPv6 {
-				peers = peersV6
+				peers = peersConfig.PeersV6
 			}
 
 			pfxsToValidate := p.v4Prefixes
@@ -289,8 +289,8 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			ginkgo.By("creating the global config")
-			p.globalModifyPeers(peersV4, peersV6)
-			neighbors = config.NeighborsFromPeers(peersV4, peersV6)
+			p.globalModifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+			neighbors = config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 			globalConfig := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testreceive-selector-global",
@@ -309,7 +309,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 					},
 				},
 			}
-			err = updater.Update(globalConfig)
+			err = updater.Update(peersConfig.Secrets, globalConfig)
 			framework.ExpectNoError(err)
 
 			ginkgo.By("validating the containers are now paired with all nodes")
