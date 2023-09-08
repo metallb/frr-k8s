@@ -5,6 +5,7 @@ package controller
 import (
 	"bytes"
 	"fmt"
+	"reflect"
 	"sort"
 
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
@@ -31,20 +32,42 @@ type namedRawConfig struct {
 
 func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secret) (*frr.Config, error) {
 	res := &frr.Config{
-		Routers: make([]*frr.RouterConfig, 0),
-		//BFDProfiles: sm.bfdProfiles,
+		Routers:     make([]*frr.RouterConfig, 0),
+		BFDProfiles: make([]frr.BFDProfile, 0),
 	}
 
 	rawConfigs := make([]namedRawConfig, 0)
 	routersForVRF := map[string]*frr.RouterConfig{}
+	bfdProfilesAllConfigs := map[string]*frr.BFDProfile{}
 	for _, cfg := range fromK8s {
+		bfdProfiles := map[string]*frr.BFDProfile{}
 		if cfg.Spec.Raw.Config != "" {
 			raw := namedRawConfig{RawConfig: cfg.Spec.Raw, configName: cfg.Name}
 			rawConfigs = append(rawConfigs, raw)
 		}
 
+		for _, b := range cfg.Spec.BGP.BFDProfiles {
+			frrBFDProfile := bfdProfileToFRR(b)
+			// Handling profiles local to the current config
+			if _, found := bfdProfiles[frrBFDProfile.Name]; found {
+				return nil, fmt.Errorf("duplicate bfd profile name %s in config %s", frrBFDProfile.Name, cfg.Name)
+			}
+			bfdProfiles[frrBFDProfile.Name] = frrBFDProfile
+
+			// Checking that profiles named after the same name in different configs carry the same
+			// values
+			old, found := bfdProfilesAllConfigs[frrBFDProfile.Name]
+			if found && !reflect.DeepEqual(old, frrBFDProfile) {
+				return nil, fmt.Errorf("duplicate bfd profile name %s with different values for config %s", frrBFDProfile.Name, cfg.Name)
+			}
+
+			if !found {
+				bfdProfilesAllConfigs[frrBFDProfile.Name] = frrBFDProfile
+			}
+		}
+
 		for _, r := range cfg.Spec.BGP.Routers {
-			routerCfg, err := routerToFRRConfig(r, secrets)
+			routerCfg, err := routerToFRRConfig(r, secrets, bfdProfiles)
 			if err != nil {
 				return nil, err
 			}
@@ -66,11 +89,12 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secr
 
 	res.Routers = sortMapPtr(routersForVRF)
 	res.ExtraConfig = joinRawConfigs(rawConfigs)
+	res.BFDProfiles = sortMap(bfdProfilesAllConfigs)
 
 	return res, nil
 }
 
-func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret) (*frr.RouterConfig, error) {
+func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.RouterConfig, error) {
 	res := &frr.RouterConfig{
 		MyASN:        r.ASN,
 		RouterID:     r.ID,
@@ -93,7 +117,7 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret) (*frr
 	}
 
 	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, secrets)
+		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, secrets, bfdProfiles)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
@@ -103,10 +127,13 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret) (*frr
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, passwordSecrets map[string]corev1.Secret) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
+	}
+	if _, ok := bfdProfiles[n.BFDProfile]; n.BFDProfile != "" && !ok {
+		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n.ASN, n.Address), n.BFDProfile)
 	}
 	res := &frr.NeighborConfig{
 		Name:         neighborName(n.ASN, n.Address),
@@ -115,6 +142,7 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, pass
 		Port:         n.Port,
 		IPFamily:     neighborFamily,
 		EBGPMultiHop: n.EBGPMultiHop,
+		BFDProfile:   n.BFDProfile,
 	}
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
@@ -363,6 +391,26 @@ func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPre
 	}
 
 	return res, nil
+}
+
+func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {
+	return &frr.BFDProfile{
+		Name:             bfdProfile.Name,
+		ReceiveInterval:  pointerForValue(bfdProfile.ReceiveInterval),
+		TransmitInterval: pointerForValue(bfdProfile.TransmitInterval),
+		DetectMultiplier: pointerForValue(bfdProfile.DetectMultiplier),
+		EchoInterval:     pointerForValue(bfdProfile.EchoInterval),
+		EchoMode:         bfdProfile.EchoMode,
+		PassiveMode:      bfdProfile.PassiveMode,
+		MinimumTTL:       pointerForValue(bfdProfile.MinimumTTL),
+	}
+}
+
+func pointerForValue(value uint32) *uint32 {
+	if value != 0 {
+		return &value
+	}
+	return nil
 }
 
 func sortMap[T any](toSort map[string]*T) []T {
