@@ -28,9 +28,9 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
 | frrk8s.frr.image.tag | string | `"8.4.2"` |  |
-| frrk8s.frr.metricsPort | int | `7473` |  |
+| frrk8s.frr.metricsPort | int | `7573` |  |
 | frrk8s.frr.resources | object | `{}` |  |
-| frrk8s.frr.secureMetricsPort | int | `9121` |  |
+| frrk8s.frr.secureMetricsPort | int | `9141` |  |
 | frrk8s.frrMetrics.resources | object | `{}` |  |
 | frrk8s.healthPort | int | `8081` |  |
 | frrk8s.image.pullPolicy | string | `nil` |  |
@@ -67,7 +67,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.updateStrategy.type | string | `"RollingUpdate"` |  |
 | fullnameOverride | string | `""` |  |
 | nameOverride | string | `""` |  |
-| prometheus.metricsPort | int | `7472` |  |
+| prometheus.metricsPort | int | `7572` |  |
 | prometheus.metricsTLSSecret | string | `""` |  |
 | prometheus.namespace | string | `""` |  |
 | prometheus.rbacPrometheus | bool | `false` |  |
@@ -75,7 +75,7 @@ Kubernetes: `>= 1.19.0-0`
 | prometheus.rbacProxy.repository | string | `"gcr.io/kubebuilder/kube-rbac-proxy"` |  |
 | prometheus.rbacProxy.tag | string | `"v0.12.0"` |  |
 | prometheus.scrapeAnnotations | bool | `false` |  |
-| prometheus.secureMetricsPort | int | `9120` |  |
+| prometheus.secureMetricsPort | int | `9140` |  |
 | prometheus.serviceAccount | string | `""` |  |
 | prometheus.serviceMonitor.additionalLabels | object | `{}` |  |
 | prometheus.serviceMonitor.annotations | object | `{}` |  |

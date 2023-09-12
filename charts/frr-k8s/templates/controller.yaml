@@ -188,7 +188,7 @@ spec:
         args:
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
-        - "--metrics-bind-address=127.0.0.1:{{ .Values.prometheus.metricsPort }}"
+        - "--metrics-bind-address=:{{ .Values.prometheus.metricsPort }}"
         {{- with .Values.frrk8s.logLevel }}
         - --log-level={{ . }}
         {{- end }}
@@ -207,6 +207,8 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         ports:
+          - containerPort: {{ .Values.prometheus.metricsPort }}
+            name: monitoring
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
@@ -340,12 +342,17 @@ spec:
         args:
           - --logtostderr
           - --secure-listen-address=:{{ .Values.prometheus.secureMetricsPort }}
-          - --upstream=http://127.0.0.1:{{ .Values.prometheus.metricsPort }}/
+          - --upstream=http://$(FRRK8S_HOST):{{ .Values.prometheus.metricsPort }}/
           - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
         {{- if .Values.prometheus.metricsTLSSecret }}
           - --tls-private-key-file=/etc/metrics/tls.key
           - --tls-cert-file=/etc/metrics/tls.crt
         {{- end }}
+        env:
+        - name: FRRK8S_HOST
+          valueFrom:
+            fieldRef:
+              fieldPath: status.hostIP
         ports:
           - containerPort: {{ .Values.prometheus.secureMetricsPort }}
             name: metricshttps

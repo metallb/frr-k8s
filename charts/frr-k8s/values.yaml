@@ -20,12 +20,12 @@ prometheus:
   # can be left at false.
   scrapeAnnotations: false
 
-  # port both controller and frr-k8s will listen on for metrics
-  metricsPort: 7472
+  # port frr-k8s will listen on for metrics
+  metricsPort: 7572
 
-  # if set, enables rbac proxy on the controller and frr-k8s to expose
+  # if set, enables rbac proxy on frr-k8s to expose
   # the metrics via tls.
-  secureMetricsPort: 9120
+  secureMetricsPort: 9140
 
   # the name of the secret to be mounted in the frr-k8s pod
   # to expose the metrics securely. If not present, a self signed
@@ -179,9 +179,9 @@ frrk8s:
       repository: quay.io/frrouting/frr
       tag: 8.4.2
       pullPolicy:
-    metricsPort: 7473
+    metricsPort: 7573
     resources: {}
-    secureMetricsPort: 9121
+    secureMetricsPort: 9141
   reloader:
     resources: {}
   frrMetrics:
