@@ -21,6 +21,7 @@ import (
 const (
 	kindNetwork         = "kind"
 	vrfNetwork          = "vrf-net"
+	DefaultVRFName      = ""
 	VRFName             = "red"
 	defaultRoutingTable = ""
 	FRRK8sASN           = 64512
