@@ -59,12 +59,14 @@ spec:
           httpGet:
             path: /healthz
             port: 8081
+            host: 127.0.0.1
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
             path: /readyz
             port: 8081
+            host: 127.0.0.1
           initialDelaySeconds: 5
           periodSeconds: 10
         # TODO(user): Configure the resources accordingly based on the project requirements.
@@ -123,12 +125,14 @@ spec:
           httpGet:
             path: /livez
             port: 7573
+            host: 127.0.0.1
           periodSeconds: 5
           failureThreshold: 3
         startupProbe:
           httpGet:
             path: /livez
             port: 7573
+            host: 127.0.0.1
           failureThreshold: 30
           periodSeconds: 5
       - name: frr-metrics
@@ -136,6 +140,7 @@ spec:
         command: ["/etc/frr_metrics/frr-metrics"]
         args:
           - --metrics-port=7573
+          - --metrics-bind-address=127.0.0.1
         ports:
           - containerPort: 7573
             name: monitoring

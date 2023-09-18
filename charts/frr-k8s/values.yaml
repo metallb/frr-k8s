@@ -20,6 +20,9 @@ prometheus:
   # can be left at false.
   scrapeAnnotations: false
 
+  # bind addr frr-k8s will use for metrics
+  metricsBindAddress: 127.0.0.1
+
   # port frr-k8s will listen on for metrics
   metricsPort: 7572
 
@@ -179,6 +182,7 @@ frrk8s:
       repository: quay.io/frrouting/frr
       tag: 8.4.2
       pullPolicy:
+    metricsBindAddress: 127.0.0.1
     metricsPort: 7573
     resources: {}
     secureMetricsPort: 9141

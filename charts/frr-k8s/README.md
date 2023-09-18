@@ -28,6 +28,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
 | frrk8s.frr.image.tag | string | `"8.4.2"` |  |
+| frrk8s.frr.metricsBindAddress | string | `"127.0.0.1"` |  |
 | frrk8s.frr.metricsPort | int | `7573` |  |
 | frrk8s.frr.resources | object | `{}` |  |
 | frrk8s.frr.secureMetricsPort | int | `9141` |  |
@@ -67,6 +68,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.updateStrategy.type | string | `"RollingUpdate"` |  |
 | fullnameOverride | string | `""` |  |
 | nameOverride | string | `""` |  |
+| prometheus.metricsBindAddress | string | `"127.0.0.1"` |  |
 | prometheus.metricsPort | int | `7572` |  |
 | prometheus.metricsTLSSecret | string | `""` |  |
 | prometheus.namespace | string | `""` |  |
