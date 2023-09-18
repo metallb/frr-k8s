@@ -76,12 +76,14 @@ var _ = ginkgo.Describe("Metrics", func() {
 	})
 
 	type params struct {
-		vrf         string
-		ipFamily    ipfamily.Family
-		myAsn       uint32
-		prefixes    []string
-		modifyPeers func([]config.Peer, []config.Peer)
-		validate    func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family)
+		vrf           string
+		ipFamily      ipfamily.Family
+		myAsn         uint32
+		toAdvertiseV4 []string // V4 prefixes that the nodes receive from the containers
+		toAdvertiseV6 []string // V6 prefixes that the nodes receive from the containers
+		prefixes      []string // all prefixes that the nodes advertise to the containers
+		modifyPeers   func([]config.Peer, []config.Peer)
+		validate      func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family)
 	}
 
 	ginkgo.DescribeTable("expose prometheus metrics", func(p params) {
@@ -111,7 +113,10 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 		ginkgo.By("pairing with nodes")
 		for _, c := range frrs {
-			err := frrcontainer.PairWithNodes(cs, c, p.ipFamily)
+			err := frrcontainer.PairWithNodes(cs, c, p.ipFamily, func(frr *frrcontainer.FRR) {
+				frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
+				frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
+			})
 			framework.ExpectNoError(err)
 		}
 
@@ -131,52 +136,129 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ginkgo.By("validating")
 		p.validate(pods, frrs, promPod, p.ipFamily)
 	},
-		ginkgo.Entry("IPV4 - advertisement", params{
-			ipFamily: ipfamily.IPv4,
-			vrf:      "",
-			myAsn:    infra.FRRK8sASN,
-			prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
+		ginkgo.Entry("IPV4 - advertise and receive", params{
+			ipFamily:      ipfamily.IPv4,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
 			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 				for i := range ppV4 {
 					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
+				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
-		ginkgo.Entry("IPV6 - advertisement", params{
-			ipFamily: ipfamily.IPv6,
-			vrf:      "",
-			myAsn:    infra.FRRK8sASN,
-			prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+		ginkgo.Entry("IPV4 - VRF - advertise and receive", params{
+			ipFamily:      ipfamily.IPv4,
+			vrf:           infra.VRFName,
+			myAsn:         infra.FRRK8sASNVRF,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
+			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
+				for i := range ppV4 {
+					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+				}
+			},
+			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
+				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
+				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
+				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
+			},
+		}),
+		ginkgo.Entry("IPV6 - advertise and receive", params{
+			ipFamily:      ipfamily.IPv6,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV6: []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64", "fc00:f853:ccd:e901::/64"},
+			prefixes:      []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 			modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV6 {
 					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
+				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
-		ginkgo.Entry("IPV4 - VRF - advertisement", params{
-			ipFamily: ipfamily.IPv4,
-			vrf:      infra.VRFName,
-			myAsn:    infra.FRRK8sASNVRF,
-			prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
-			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
+		ginkgo.Entry("DUALSTACK - advertise and receive", params{
+			ipFamily:      ipfamily.DualStack,
+			vrf:           "",
+			myAsn:         infra.FRRK8sASN,
+			toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
+			toAdvertiseV6: []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64", "fc00:f853:ccd:e901::/64"},
+			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
+			modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV4 {
 					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+				}
+
+				for i := range ppV6 {
+					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
 				ValidatePodBGPMetrics(frrPods, frrContainers, promPod, ipfam)
 				ValidatePodAnnounceMetrics(frrPods, frrContainers, promPod, 2, ipfam)
+				ValidatePodReceiveMetrics(frrPods, frrContainers, promPod, 3, ipfam)
+				ValidatePodK8SClientUpMetrics(frrPods, frrContainers, promPod, ipfam)
 			},
 		}),
 	)
+	ginkgo.It("IPV4 - exposes metrics for bad config", func() {
+		frrs := config.ContainersForVRF(infra.FRRContainers, "")
+		peersConfig := config.PeersForContainers(frrs, ipfamily.IPv4)
+		for i := range peersConfig.PeersV4 {
+			peersConfig.PeersV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+				{
+					LocalPref: 200,
+					Prefixes:  []string{"1.2.3.0/24"},
+				},
+			}
+		}
+		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+
+		config := frrk8sv1beta1.FRRConfiguration{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: frrk8sv1beta1.FRRConfigurationSpec{
+				BGP: frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN:       infra.FRRK8sASN,
+							Neighbors: neighbors,
+							Prefixes:  []string{"192.168.2.0/24", "192.169.2.0/24"},
+						},
+					},
+				},
+			},
+		}
+
+		err := updater.Update(peersConfig.Secrets, config)
+		framework.ExpectNoError(err)
+
+		pods, err := k8s.FRRK8sPods(cs)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("validating")
+		ValidatePodK8SClientErrorMetrics(pods, frrs, promPod, ipfamily.IPv4)
+	})
 })
 
 type peerPrometheus struct {
@@ -218,16 +300,26 @@ func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error)
 	allMetrics := make([]map[string]*dto.MetricFamily, 0)
 	for _, c := range target.Spec.Containers {
 		for _, p := range c.Ports {
-			if p.Name == "monitoring" {
+			if p.Name == "metricshttps" || p.Name == "frrmetricshttps" {
 				ports = append(ports, int(p.ContainerPort))
 			}
 		}
 	}
 
 	podExecutor := executor.ForPod(promPod.Namespace, promPod.Name, "prometheus")
+
+	// We add a token header to the requests, without it kube-rbac-proxy returns Unauthorized.
+	token, err := podExecutor.Exec("cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		return nil, err
+	}
+
 	for _, p := range ports {
-		metricsURL := path.Join(net.JoinHostPort(target.Status.PodIP, strconv.Itoa(p)), "metrics")
-		metrics, err := podExecutor.Exec("wget", "-qO-", metricsURL)
+		metricsPath := path.Join(net.JoinHostPort(target.Status.PodIP, strconv.Itoa(p)), "metrics")
+		metricsURL := fmt.Sprintf("https://%s", metricsPath)
+		metrics, err := podExecutor.Exec("wget",
+			"--no-check-certificate", "-qO-", metricsURL,
+			"--header", fmt.Sprintf("Authorization: Bearer %s", token))
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to scrape metrics for %s", target.Name)
 		}
@@ -384,6 +476,122 @@ func ValidatePodAnnounceMetrics(frrPods []*corev1.Pod, frrContainers []*frrconta
 					return err
 				}
 			}
+			return nil
+		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodReceiveMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, pfxsAmount int, ipfam ipfamily.Family) {
+	selectors := labelsForPeers(frrContainers, ipfam)
+
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+			for _, selector := range selectors {
+				err = metrics.ValidateGaugeValue(pfxsAmount, "frrk8s_bgp_received_prefixes_total", selector.labelsBGP, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bgp_received_prefixes_total{%s} == %d`, selector.labelsForQueryBGP, pfxsAmount), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bgp_updates_total", selector.labelsBGP, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bgp_updates_total{%s} >= 1`, selector.labelsForQueryBGP), metrics.There)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodK8SClientUpMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateGaugeValue(0, "frrk8s_k8s_client_config_stale_bool", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_config_stale_bool{pod="%s"} == 0`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_k8s_client_updates_total", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_updates_total{pod="%s"} > 0`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateGaugeValue(1, "frrk8s_k8s_client_config_loaded_bool", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_config_loaded_bool{pod="%s"} == 1`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
+			return nil
+		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodK8SClientErrorMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateGaugeValue(1, "frrk8s_k8s_client_config_stale_bool", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_config_stale_bool{pod="%s"} == 1`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_k8s_client_updates_total", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_updates_total{pod="%s"} > 0`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
+			err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_k8s_client_update_errors_total", map[string]string{}, podMetrics)
+			if err != nil {
+				return err
+			}
+			err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_k8s_client_update_errors_total{pod="%s"} > 0`, pod.Name), metrics.There)
+			if err != nil {
+				return err
+			}
+
 			return nil
 		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
 	}

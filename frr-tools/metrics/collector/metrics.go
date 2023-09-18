@@ -25,4 +25,9 @@ var (
 		Name: "announced_prefixes_total",
 		Help: "Number of prefixes currently being advertised on the BGP session",
 	}
+
+	ReceivedPrefixes = metric{
+		Name: "received_prefixes_total",
+		Help: "Number of prefixes currently being received on the BGP session",
+	}
 )

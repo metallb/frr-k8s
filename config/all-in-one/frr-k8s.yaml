@@ -705,7 +705,7 @@ spec:
       containers:
       - args:
         - --secure-listen-address=0.0.0.0:9140
-        - --upstream=http://127.0.0.1:8080/
+        - --upstream=http://127.0.0.1:7572/
         - --logtostderr=true
         - --v=0
         image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
@@ -728,14 +728,9 @@ spec:
             - ALL
       - args:
         - --secure-listen-address=0.0.0.0:9141
-        - --upstream=http://$(FRRK8S_HOST):7473/
+        - --upstream=http://127.0.0.1:7573/
         - --logtostderr=true
         - --v=0
-        env:
-        - name: FRRK8S_HOST
-          valueFrom:
-            fieldRef:
-              fieldPath: status.hostIP
         image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
         name: kube-rbac-proxy-frr
         ports:
@@ -755,8 +750,8 @@ spec:
             drop:
             - ALL
       - args:
-        - --health-probe-bind-address=:8081
-        - --metrics-bind-address=127.0.0.1:8080
+        - --health-probe-bind-address=127.0.0.1:8081
+        - --metrics-bind-address=127.0.0.1:7572
         - --node-name=$(NODE_NAME)
         - --namespace=$(NAMESPACE)
         - --log-level=info
@@ -779,13 +774,18 @@ spec:
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
+            host: 127.0.0.1
             path: /healthz
             port: 8081
           initialDelaySeconds: 15
           periodSeconds: 20
         name: frr-k8s
+        ports:
+        - containerPort: 7572
+          name: monitoring
         readinessProbe:
           httpGet:
+            host: 127.0.0.1
             path: /readyz
             port: 8081
           initialDelaySeconds: 5
@@ -824,8 +824,9 @@ spec:
         livenessProbe:
           failureThreshold: 3
           httpGet:
+            host: 127.0.0.1
             path: /livez
-            port: 7473
+            port: 7573
           periodSeconds: 5
         name: frr
         securityContext:
@@ -838,8 +839,9 @@ spec:
         startupProbe:
           failureThreshold: 30
           httpGet:
+            host: 127.0.0.1
             path: /livez
-            port: 7473
+            port: 7573
           periodSeconds: 5
         volumeMounts:
         - mountPath: /var/run/frr
@@ -847,13 +849,14 @@ spec:
         - mountPath: /etc/frr
           name: frr-conf
       - args:
-        - --metrics-port=7473
+        - --metrics-port=7573
+        - --metrics-bind-address=127.0.0.1
         command:
         - /etc/frr_metrics/frr-metrics
         image: quay.io/frrouting/frr:8.4.2
         name: frr-metrics
         ports:
-        - containerPort: 7473
+        - containerPort: 7573
           name: monitoring
         volumeMounts:
         - mountPath: /var/run/frr

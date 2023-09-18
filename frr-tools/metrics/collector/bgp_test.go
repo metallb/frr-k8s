@@ -31,6 +31,9 @@ var (
 	# HELP frrk8s_bgp_opens_sent Number of BGP open messages sent
 	# TYPE frrk8s_bgp_opens_sent counter
 	frrk8s_bgp_opens_sent{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .OpensSent }}
+	# HELP frrk8s_bgp_received_prefixes_total Number of prefixes currently being received on the BGP session
+	# TYPE frrk8s_bgp_received_prefixes_total gauge
+	frrk8s_bgp_received_prefixes_total{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .ReceivedPrefixes }}
 	# HELP frrk8s_bgp_route_refresh_sent Number of BGP route refresh messages sent
 	# TYPE frrk8s_bgp_route_refresh_sent counter
 	frrk8s_bgp_route_refresh_sent{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .RouteRefreshSent }}
@@ -57,6 +60,7 @@ var (
 		neighborIP           string
 		neighborVRF          string
 		announcedPrefixes    int
+		receivedPrefixes     int
 		sessionUp            int
 		updatesTotal         int
 		updatesTotalReceived int
@@ -75,6 +79,7 @@ var (
 			neighborIP:           "172.18.0.4:179",
 			neighborVRF:          "default",
 			announcedPrefixes:    3,
+			receivedPrefixes:     3,
 			sessionUp:            1,
 			updatesTotal:         3,
 			updatesTotalReceived: 3,
@@ -93,6 +98,7 @@ var (
 			neighborIP:           "172.18.0.4:180",
 			neighborVRF:          "default",
 			announcedPrefixes:    6,
+			receivedPrefixes:     6,
 			sessionUp:            1,
 			updatesTotal:         3,
 			updatesTotalReceived: 3,
@@ -199,7 +205,7 @@ var (
 			  "subGroupId":1,
 			  "packetQueueLength":0,
 			  "commAttriSentToNbr":"extendedAndStandard",
-			  "acceptedPrefixCounter":0,
+			  "acceptedPrefixCounter":3,
 			  "sentPrefixCounter":3
 			}
 		  },
@@ -335,7 +341,7 @@ var (
 			  "subGroupId":1,
 			  "packetQueueLength":0,
 			  "commAttriSentToNbr":"extendedAndStandard",
-			  "acceptedPrefixCounter":0,
+			  "acceptedPrefixCounter":3,
 			  "sentPrefixCounter":3
 			},
 			"ipv6Unicast":{
@@ -346,7 +352,7 @@ var (
 			  "commAttriSentToNbr":"extendedAndStandard",
 			  "outboundPathPolicyConfig":true,
 			  "outgoingUpdatePrefixFilterList":"only-host-prefixes",
-			  "acceptedPrefixCounter":13,
+			  "acceptedPrefixCounter":3,
 			  "sentPrefixCounter":3
 			}
 		  },
@@ -448,6 +454,7 @@ func TestCollect(t *testing.T) {
 				"NeighborIP":           tc.neighborIP,
 				"NeighborVRF":          tc.neighborVRF,
 				"AnnouncedPrefixes":    tc.announcedPrefixes,
+				"ReceivedPrefixes":     tc.receivedPrefixes,
 				"SessionUp":            tc.sessionUp,
 				"UpdatesTotal":         tc.updatesTotal,
 				"UpdatesTotalReceived": tc.updatesTotalReceived,

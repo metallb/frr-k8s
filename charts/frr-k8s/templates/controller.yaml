@@ -188,11 +188,11 @@ spec:
         args:
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
-        - "--metrics-bind-address=127.0.0.1:{{ .Values.prometheus.metricsPort }}"
+        - "--metrics-bind-address={{.Values.prometheus.metricsBindAddress}}:{{ .Values.prometheus.metricsPort }}"
         {{- with .Values.frrk8s.logLevel }}
         - --log-level={{ . }}
         {{- end }}
-        - --health-probe-bind-address=:{{ .Values.frrk8s.healthPort }}
+        - --health-probe-bind-address={{.Values.prometheus.metricsBindAddress}}:{{ .Values.frrk8s.healthPort }}
         env:
         - name: FRR_CONFIG_FILE
           value: /etc/frr_reloader/frr.conf
@@ -207,11 +207,14 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         ports:
+          - containerPort: {{ .Values.prometheus.metricsPort }}
+            name: monitoring
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
             path: /healthz
             port: {{ .Values.frrk8s.healthPort }}
+            host: {{ .Values.prometheus.metricsBindAddress }}
           initialDelaySeconds: {{ .Values.frrk8s.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.frrk8s.livenessProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.frrk8s.livenessProbe.timeoutSeconds }}
@@ -223,6 +226,7 @@ spec:
           httpGet:
             path: /healthz
             port: {{ .Values.frrk8s.healthPort }}
+            host: {{ .Values.prometheus.metricsBindAddress }}
           initialDelaySeconds: {{ .Values.frrk8s.readinessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.frrk8s.readinessProbe.periodSeconds }}
           timeoutSeconds: {{ .Values.frrk8s.readinessProbe.timeoutSeconds }}
@@ -287,6 +291,7 @@ spec:
           httpGet:
             path: /livez
             port: {{ .Values.frrk8s.frr.metricsPort }}
+            host: {{ .Values.frrk8s.frr.metricsBindAddress }}
           periodSeconds: {{ .Values.frrk8s.livenessProbe.periodSeconds }}
           failureThreshold: {{ .Values.frrk8s.livenessProbe.failureThreshold }}
         {{- end }}
@@ -295,6 +300,7 @@ spec:
           httpGet:
             path: /livez
             port: {{ .Values.frrk8s.frr.metricsPort }}
+            host: {{ .Values.frrk8s.frr.metricsBindAddress }}
           failureThreshold: {{ .Values.frrk8s.startupProbe.failureThreshold }}
           periodSeconds: {{ .Values.frrk8s.startupProbe.periodSeconds }}
         {{- end }}
@@ -320,6 +326,7 @@ spec:
         command: ["/etc/frr_metrics/frr-metrics"]
         args:
           - --metrics-port={{ .Values.frrk8s.frr.metricsPort }}
+          - --metrics-bind-address={{ .Values.frrk8s.frr.metricsBindAddress }}
         ports:
           - containerPort: {{ .Values.frrk8s.frr.metricsPort }}
             name: monitoring
@@ -340,7 +347,7 @@ spec:
         args:
           - --logtostderr
           - --secure-listen-address=:{{ .Values.prometheus.secureMetricsPort }}
-          - --upstream=http://127.0.0.1:{{ .Values.prometheus.metricsPort }}/
+          - --upstream=http://{{.Values.prometheus.metricsBindAddress}}:{{ .Values.prometheus.metricsPort }}/
           - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
         {{- if .Values.prometheus.metricsTLSSecret }}
           - --tls-private-key-file=/etc/metrics/tls.key
@@ -367,7 +374,7 @@ spec:
           - --logtostderr
           - --secure-listen-address=:{{ .Values.frrk8s.frr.secureMetricsPort }}
           - --tls-cipher-suites=TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_RSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA256,TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256
-          - --upstream=http://$(FRR_K8S_HOST):{{ .Values.frrk8s.frr.metricsPort }}/
+          - --upstream=http://{{ .Values.frrk8s.frr.metricsBindAddress }}:{{ .Values.frrk8s.frr.metricsPort }}/
         {{- if .Values.prometheus.metricsTLSSecret }}
           - --tls-private-key-file=/etc/metrics/tls.key
           - --tls-cert-file=/etc/metrics/tls.crt
@@ -375,11 +382,6 @@ spec:
         ports:
           - containerPort: {{ .Values.frrk8s.frr.secureMetricsPort }}
             name: metricshttps
-        env:
-          - name: FRR_K8S_HOST
-            valueFrom:
-              fieldRef:
-                fieldPath: status.hostIP
         resources:
           requests:
             cpu: 10m

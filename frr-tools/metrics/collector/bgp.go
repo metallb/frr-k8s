@@ -30,6 +30,13 @@ var (
 		nil,
 	)
 
+	receivedPrefixesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, Subsystem, ReceivedPrefixes.Name),
+		ReceivedPrefixes.Help,
+		labels,
+		nil,
+	)
+
 	opensSentDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, Subsystem, "opens_sent"),
 		"Number of BGP open messages sent",
@@ -119,6 +126,7 @@ func mocknewBGP(l log.Logger) *bgp {
 func (c *bgp) Describe(ch chan<- *prometheus.Desc) {
 	ch <- sessionUpDesc
 	ch <- prefixesDesc
+	ch <- receivedPrefixesDesc
 	ch <- opensSentDesc
 	ch <- opensReceivedDesc
 	ch <- notificationsSentDesc
@@ -152,6 +160,7 @@ func updateNeighborsMetrics(ch chan<- prometheus.Metric, neighbors map[string][]
 
 			ch <- prometheus.MustNewConstMetric(sessionUpDesc, prometheus.GaugeValue, float64(sessionUp), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(prefixesDesc, prometheus.GaugeValue, float64(n.PrefixSent), peerLabel, vrf)
+			ch <- prometheus.MustNewConstMetric(receivedPrefixesDesc, prometheus.GaugeValue, float64(n.PrefixReceived), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(opensSentDesc, prometheus.CounterValue, float64(n.MsgStats.OpensSent), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(opensReceivedDesc, prometheus.CounterValue, float64(n.MsgStats.OpensReceived), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(notificationsSentDesc, prometheus.CounterValue, float64(n.MsgStats.NotificationsSent), peerLabel, vrf)

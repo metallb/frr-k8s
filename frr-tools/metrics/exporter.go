@@ -23,8 +23,9 @@ import (
 )
 
 var (
-	metricsPort = flag.Uint("metrics-port", 7473, "Port to listen on for web interface.")
-	metricsPath = flag.String("metrics-path", "/metrics", "Path under which to expose metrics.")
+	metricsPort        = flag.Uint("metrics-port", 7573, "Port to listen on for web interface.")
+	metricsBindAddress = flag.String("metrics-bind-address", "127.0.0.1", "The address the metric endpoint binds to")
+	metricsPath        = flag.String("metrics-path", "/metrics", "Path under which to expose metrics.")
 )
 
 func metricsHandler(logger log.Logger) http.Handler {
@@ -66,7 +67,7 @@ func main() {
 	level.Info(logger).Log("msg", "Starting exporter", "metricsPath", metricsPath, "port", metricsPort)
 
 	srv := &http.Server{
-		Addr:        fmt.Sprintf(":%d", *metricsPort),
+		Addr:        fmt.Sprintf("%s:%d", *metricsBindAddress, *metricsPort),
 		ReadTimeout: 3 * time.Second,
 		Handler:     mux,
 	}
