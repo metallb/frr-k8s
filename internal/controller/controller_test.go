@@ -660,7 +660,82 @@ var _ = Describe("Frrk8s controller", func() {
 					}},
 				},
 			))
+		})
 
+		It("should handle the raw FRR configuration", func() {
+			frrConfig := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(42),
+							},
+						},
+					},
+					Raw: frrk8sv1beta1.RawConfig{
+						Config: []byte("foo"),
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors:    []*frr.NeighborConfig{},
+					}},
+					ExtraConfig: "foo\n",
+				},
+			))
+
+			secondConfig := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test1",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{},
+					},
+					Raw: frrk8sv1beta1.RawConfig{
+						Priority: 10,
+						Config:   []byte("bar"),
+					},
+				},
+			}
+			err = k8sClient.Create(context.Background(), secondConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors:    []*frr.NeighborConfig{},
+					}},
+					ExtraConfig: "foo\nbar\n",
+				},
+			))
+
+			err = k8sClient.Delete(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers:     []*frr.RouterConfig{},
+					ExtraConfig: "bar\n",
+				},
+			))
 		})
 	})
 })

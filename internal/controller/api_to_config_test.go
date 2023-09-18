@@ -1500,6 +1500,96 @@ func TestConversion(t *testing.T) {
 			expected: nil,
 			err:      errors.New("failed to process neighbor 65012@192.0.2.7 for router 65010-: secret ref not found for neighbor 65012@192.0.2.7"),
 		},
+		{
+			name: "Single Router and injection",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+								},
+							},
+						},
+						Raw: v1beta1.RawConfig{
+							Config: []byte("foo"),
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65001,
+						RouterID:     "192.0.2.1",
+						Neighbors:    []*frr.NeighborConfig{},
+						VRF:          "",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+				},
+				ExtraConfig: "foo\n",
+			},
+			err: nil,
+		},
+		{
+			name: "Single Router and double injection",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+								},
+							},
+						},
+						Raw: v1beta1.RawConfig{
+							Config:   []byte("foo"),
+							Priority: 5,
+						},
+					},
+				}, {
+					Spec: v1beta1.FRRConfigurationSpec{
+						Raw: v1beta1.RawConfig{
+							Config:   []byte("bar\nbaz"),
+							Priority: 10,
+						},
+					},
+				}, {
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+								},
+							},
+						},
+						Raw: v1beta1.RawConfig{
+							Config: []byte("bar"),
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65001,
+						RouterID:     "192.0.2.1",
+						Neighbors:    []*frr.NeighborConfig{},
+						VRF:          "",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+				},
+				ExtraConfig: "bar\nfoo\nbar\nbaz\n",
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
