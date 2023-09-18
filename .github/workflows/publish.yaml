@@ -53,7 +53,7 @@ jobs:
       id-token: write # needed for signing the images with GitHub OIDC Token
     steps:
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@main
