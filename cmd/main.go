@@ -34,6 +34,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -117,6 +118,7 @@ func main() {
 	}
 
 	ctx := ctrl.SetupSignalHandler()
+
 	//+kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
@@ -155,14 +157,32 @@ func main() {
 		}
 
 		setupLog.Info("Starting controllers")
+		reloadStatusChan := make(chan event.GenericEvent)
+		reloadStatus := func() {
+			reloadStatusChan <- controller.NewStateEvent()
+		}
+		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
+
 		if err = (&controller.FRRConfigurationReconciler{
 			Client:     mgr.GetClient(),
 			Scheme:     mgr.GetScheme(),
-			FRRHandler: frr.NewFRR(ctx, logger, logging.Level(logLevel)),
+			FRRHandler: frrInstance,
 			Logger:     logger,
 			NodeName:   nodeName,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
+			os.Exit(1)
+		}
+
+		if err = (&controller.FRRStateReconciler{
+			Client:    mgr.GetClient(),
+			Scheme:    mgr.GetScheme(),
+			FRRStatus: frrInstance,
+			Logger:    logger,
+			NodeName:  nodeName,
+			Update:    reloadStatusChan,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 			os.Exit(1)
 		}
 	}()
