@@ -3,6 +3,7 @@
 # It should be run by config/default
 resources:
 - bases/frrk8s.metallb.io_frrconfigurations.yaml
+- bases/frrk8s.metallb.io_frrnodestates.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:
