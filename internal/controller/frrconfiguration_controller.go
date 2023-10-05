@@ -18,7 +18,6 @@ package controller
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
@@ -97,11 +96,6 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	config, err := apiToFRR(cfgs, secrets)
-	secretNotFound := SecretNotFoundError{}
-	if errors.As(err, &secretNotFound) { // This might be a receiving order issue so we need to return the error and retry
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "secret not found", err)
-		return ctrl.Result{}, err
-	}
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
