@@ -42,6 +42,7 @@ func NewK8sReporter(kubeconfig, namespace string) *k8sreporter.KubernetesReporte
 	// The list of CRDs we want to dump
 	crds := []k8sreporter.CRData{
 		{Cr: &frrk8sv1beta1.FRRConfigurationList{}},
+		{Cr: &frrk8sv1beta1.FRRNodeStateList{}},
 	}
 
 	reporter, err := k8sreporter.New(kubeconfig, addToScheme, dumpNamespace, ReportPath, crds...)
