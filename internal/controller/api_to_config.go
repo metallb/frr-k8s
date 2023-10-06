@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/community"
@@ -144,6 +145,24 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, pass
 		EBGPMultiHop: n.EBGPMultiHop,
 		BFDProfile:   n.BFDProfile,
 	}
+
+	holdTime := n.HoldTime.Duration
+	err = validateHoldTime(holdTime)
+	if err != nil {
+		return nil, err
+	}
+	keepaliveTime := n.KeepaliveTime.Duration
+	if keepaliveTime == 0 {
+		keepaliveTime = holdTime / 3
+	}
+
+	// keepalive must be lower than holdtime
+	if keepaliveTime > holdTime {
+		return nil, fmt.Errorf("invalid keepaliveTime %q", n.KeepaliveTime)
+	}
+
+	res.HoldTime = uint64(holdTime / time.Second)
+	res.KeepaliveTime = uint64(keepaliveTime / time.Second)
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
 	if err != nil {
@@ -452,4 +471,12 @@ func joinRawConfigs(raw []namedRawConfig) string {
 		res.WriteString("\n")
 	}
 	return res.String()
+}
+
+func validateHoldTime(ht time.Duration) error {
+	rounded := time.Duration(int(ht.Seconds())) * time.Second
+	if rounded != 0 && rounded < 3*time.Second {
+		return fmt.Errorf("invalid hold time %q: must be 0 or >=3s", ht)
+	}
+	return nil
 }
