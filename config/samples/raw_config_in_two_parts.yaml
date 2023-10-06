@@ -1,0 +1,47 @@
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: test
+  namespace: frr-k8s-system
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: 172.18.0.6
+        asn: 64512
+        port: 179
+      - address: 172.30.0.3
+        asn: 64512
+        port: 180
+      - address: 172.30.0.2
+        asn: 4200000000
+        ebgpMultiHop: true
+        port: 180
+  raw:
+    rawConfig: |-
+      router bgp 64512
+        address-family ipv4 unicast
+        neighbor 172.18.0.5 activate
+        neighbor 172.18.0.5 route-map 172.18.0.5-in in
+        neighbor 172.18.0.5 route-map 172.18.0.5-out out
+        exit-address-family
+        address-family ipv6 unicast
+        neighbor 172.18.0.5 activate
+        neighbor 172.18.0.5 route-map 172.18.0.5-in in
+        neighbor 172.18.0.5 route-map 172.18.0.5-out out
+        exit-address-family
+---
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: test1
+  namespace: frr-k8s-system
+spec:
+  raw:
+    priority: 5
+    rawConfig: |-
+      router bgp 64512
+        neighbor 172.18.0.5 remote-as 4200000000
+        neighbor 172.18.0.5 timers 0 0
+        neighbor 172.18.0.5 port 179

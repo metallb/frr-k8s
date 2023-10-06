@@ -1,0 +1,22 @@
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: test
+  namespace: frr-k8s-system
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: 172.30.0.3
+        asn: 64512
+        port: 180
+        toAdvertise:
+          allowed:
+            mode: all
+        toReceive:
+          allowed:
+            mode: all
+  nodeSelector:
+    labelSelector:
+      foo: "bar"

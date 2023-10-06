@@ -1,0 +1,59 @@
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: test
+  namespace: frr-k8s-system
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: 172.30.0.3
+        asn: 64512
+        port: 180
+        toAdvertise:
+          allowed:
+            mode: all
+        toReceive:
+          allowed:
+            mode: all
+      - address: 172.18.0.5
+        asn: 64512
+        port: 179
+        toAdvertise:
+          allowed:
+            prefixes:
+            - 192.168.100.0/24
+        toReceive:
+          allowed:
+            prefixes:
+            - 192.168.2.0/24
+            - 192.169.2.0/24
+      - address: 172.30.0.2
+        asn: 4200000000
+        ebgpMultiHop: true
+        port: 180
+        toAdvertise:
+          allowed:
+            prefixes:
+            - 192.168.100.0/24
+        toReceive:
+          allowed:
+            prefixes:
+            - 192.168.2.0/24
+            - 192.169.2.0/24
+      - address: 172.18.0.6
+        asn: 4200000000
+        port: 179
+        toAdvertise:
+          allowed:
+            prefixes:
+            - 192.168.100.0/24
+        toReceive:
+          allowed:
+            prefixes:
+            - 192.168.2.0/24
+            - 192.169.2.0/24
+      prefixes:
+      - 192.168.100.0/24
+      - 192.169.101.0/24
