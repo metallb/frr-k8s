@@ -187,6 +187,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -312,6 +313,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65031,
 								Addr:     "192.0.2.16",
 								Port:     179,
+								VRFName:  "vrf1",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1298,6 +1300,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65017,
 								Addr:     "192.0.2.7",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1318,6 +1321,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1451,6 +1455,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65017,
 								Addr:     "192.0.2.7",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1466,6 +1471,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Password: "password2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},

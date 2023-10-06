@@ -118,7 +118,7 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret, bfdPr
 	}
 
 	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, secrets, bfdProfiles)
+		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, r.VRF, secrets, bfdProfiles)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
@@ -128,7 +128,7 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret, bfdPr
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
@@ -144,6 +144,7 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, pass
 		IPFamily:     neighborFamily,
 		EBGPMultiHop: n.EBGPMultiHop,
 		BFDProfile:   n.BFDProfile,
+		VRFName:      routerVRF,
 	}
 
 	holdTime := n.HoldTime.Duration
