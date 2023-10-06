@@ -341,12 +341,13 @@ spec:
                 properties:
                   priority:
                     description: Sets the order with this configuration is appended
-                      to the bottom of the rendered configuration
+                      to the bottom of the rendered configuration. A higher value
+                      means the raw config is appended later in the configuration
+                      file.
                     type: integer
                   rawConfig:
                     description: A raw FRR configuration to be appended to the configuration
                       rendered via the k8s api.
-                    format: byte
                     type: string
                 type: object
             type: object

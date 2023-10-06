@@ -363,7 +363,6 @@ spec:
                   rawConfig:
                     description: A raw FRR configuration to be appended to the configuration
                       rendered via the k8s api.
-                    format: byte
                     type: string
                 type: object
             type: object

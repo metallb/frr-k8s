@@ -677,7 +677,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					Raw: frrk8sv1beta1.RawConfig{
-						Config: []byte("foo"),
+						Config: "foo",
 					},
 				},
 			}
@@ -707,7 +707,7 @@ var _ = Describe("Frrk8s controller", func() {
 					},
 					Raw: frrk8sv1beta1.RawConfig{
 						Priority: 10,
-						Config:   []byte("bar"),
+						Config:   "bar",
 					},
 				},
 			}

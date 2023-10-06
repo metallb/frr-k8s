@@ -1514,7 +1514,7 @@ func TestConversion(t *testing.T) {
 							},
 						},
 						Raw: v1beta1.RawConfig{
-							Config: []byte("foo"),
+							Config: "foo",
 						},
 					},
 				},
@@ -1548,14 +1548,14 @@ func TestConversion(t *testing.T) {
 							},
 						},
 						Raw: v1beta1.RawConfig{
-							Config:   []byte("foo"),
+							Config:   "foo",
 							Priority: 5,
 						},
 					},
 				}, {
 					Spec: v1beta1.FRRConfigurationSpec{
 						Raw: v1beta1.RawConfig{
-							Config:   []byte("bar\nbaz"),
+							Config:   "bar\nbaz",
 							Priority: 10,
 						},
 					},
@@ -1570,7 +1570,7 @@ func TestConversion(t *testing.T) {
 							},
 						},
 						Raw: v1beta1.RawConfig{
-							Config: []byte("bar"),
+							Config: "bar",
 						},
 					},
 				},
