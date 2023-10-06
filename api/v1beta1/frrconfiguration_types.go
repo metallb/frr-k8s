@@ -100,10 +100,12 @@ type Neighbor struct {
 	PasswordSecret v1.SecretReference `json:"password,omitempty"`
 
 	// Requested BGP hold time, per RFC4271.
+	// +kubebuilder:default:="90s"
 	// +optional
 	HoldTime metav1.Duration `json:"holdTime,omitempty"`
 
 	// Requested BGP keepalive time, per RFC4271.
+	// +kubebuilder:default:="30s"
 	// +optional
 	KeepaliveTime metav1.Duration `json:"keepaliveTime,omitempty"`
 
