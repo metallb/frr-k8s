@@ -686,6 +686,33 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "One neighbor, invalid address",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "19@.0.2.@1",
+											Port:    179,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("failed to find ipfamily"),
+		},
+		{
 			name: "One neighbor, trying to set community on an unallowed prefix",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
