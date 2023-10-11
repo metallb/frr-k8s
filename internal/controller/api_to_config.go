@@ -38,7 +38,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secr
 	rawConfigs := make([]namedRawConfig, 0)
 	routersForVRF := map[string]*frr.RouterConfig{}
 	for _, cfg := range fromK8s {
-		if cfg.Spec.Raw.Config != nil && len(cfg.Spec.Raw.Config) > 0 {
+		if cfg.Spec.Raw.Config != "" {
 			raw := namedRawConfig{RawConfig: cfg.Spec.Raw, configName: cfg.Name}
 			rawConfigs = append(rawConfigs, raw)
 		}
@@ -400,7 +400,7 @@ func joinRawConfigs(raw []namedRawConfig) string {
 	})
 	res := bytes.Buffer{}
 	for _, r := range raw {
-		res.Write(r.Config)
+		res.Write([]byte(r.Config))
 		res.WriteString("\n")
 	}
 	return res.String()

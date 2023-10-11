@@ -153,10 +153,10 @@ const neighborFamilyTemplate = `router bgp {{.RouterASN}}
   neighbor {{.NeighborIP}} route-map {{.NeighborIP}}-out out
  exit-address-family`
 
-func rawConfigForFRR(configTemplate string, myASN uint32, frr *frrcontainer.FRR) ([]byte, error) {
+func rawConfigForFRR(configTemplate string, myASN uint32, frr *frrcontainer.FRR) (string, error) {
 	t, err := template.New("bgp Config Template").Parse(configTemplate)
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Failed to create bgp template")
+		return "", errors.Wrapf(err, "Failed to create bgp template")
 	}
 
 	var b bytes.Buffer
@@ -177,9 +177,9 @@ func rawConfigForFRR(configTemplate string, myASN uint32, frr *frrcontainer.FRR)
 			NeighborMultiHop: frr.NeighborConfig.MultiHop,
 		})
 	if err != nil {
-		return []byte{}, errors.Wrapf(err, "Failed to update bgp template")
+		return "", errors.Wrapf(err, "Failed to update bgp template")
 	}
 
-	return b.Bytes(), nil
+	return b.String(), nil
 
 }

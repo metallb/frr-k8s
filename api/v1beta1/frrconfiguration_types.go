@@ -44,7 +44,7 @@ type RawConfig struct {
 
 	// A raw FRR configuration to be appended to the configuration
 	// rendered via the k8s api.
-	Config []byte `json:"rawConfig,omitempty"`
+	Config string `json:"rawConfig,omitempty"`
 }
 
 type BGPConfig struct {
