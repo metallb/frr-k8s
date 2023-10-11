@@ -83,7 +83,7 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
-					Namespace: "default",
+					Namespace: k8s.FRRK8sNamespace,
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
 					BGP: frrk8sv1beta1.BGPConfig{
@@ -106,7 +106,7 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			configRawSecondBit := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test1",
-					Namespace: "default",
+					Namespace: k8s.FRRK8sNamespace,
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
 					Raw: frrk8sv1beta1.RawConfig{

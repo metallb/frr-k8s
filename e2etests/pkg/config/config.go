@@ -68,7 +68,7 @@ func (u *Updater) Update(secrets []v1.Secret, configs ...frrk8sv1beta1.FRRConfig
 }
 
 func (u *Updater) Clean() error {
-	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{}, client.InNamespace("default"))
+	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{}, client.InNamespace(k8s.FRRK8sNamespace))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}
