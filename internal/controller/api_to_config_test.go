@@ -1927,7 +1927,11 @@ func TestConversion(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			frr, err := apiToFRR(test.fromK8s, test.secrets)
+			resources := ClusterResources{
+				FRRConfigs:      test.fromK8s,
+				PasswordSecrets: test.secrets,
+			}
+			frr, err := apiToFRR(resources)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}

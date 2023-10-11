@@ -54,6 +54,8 @@ type FRRConfigurationReconciler struct {
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations/finalizers,verbs=update
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,verbs=get;list;watch
+// +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,resourceNames="frr-k8s-validating-webhook-configuration",verbs=update
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
@@ -95,7 +97,11 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	config, err := apiToFRR(cfgs, secrets)
+	resources := ClusterResources{
+		FRRConfigs:      cfgs,
+		PasswordSecrets: secrets,
+	}
+	config, err := apiToFRR(resources)
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
@@ -119,8 +125,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
-	empty := []frrk8sv1beta1.FRRConfiguration{}
-	config, err := apiToFRR(empty, map[string]corev1.Secret{})
+	config, err := apiToFRR(ClusterResources{})
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
 		panic("failed to translate empty config")
