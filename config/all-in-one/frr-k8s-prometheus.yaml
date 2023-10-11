@@ -406,6 +406,7 @@ rules:
   - get
   - list
   - watch
+  - update
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
@@ -438,6 +439,22 @@ rules:
   - get
   - list
   - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resourceNames:
+  - frr-k8s-validating-webhook-configuration
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - update
 - apiGroups:
   - frrk8s.metallb.io
   resources:
@@ -681,6 +698,12 @@ metadata:
   namespace: frr-k8s-system
 ---
 apiVersion: v1
+kind: Secret
+metadata:
+  name: frr-k8s-webhook-server-cert
+  namespace: frr-k8s-system
+---
+apiVersion: v1
 kind: Service
 metadata:
   labels:
@@ -703,6 +726,103 @@ spec:
     targetPort: frrmetricshttps
   selector:
     control-plane: frr-k8s
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frr-k8s-webhook-service
+  namespace: frr-k8s-system
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    control-plane: webhook-server
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app.kubernetes.io/component: frr-k8s
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: frr-k8s
+    app.kubernetes.io/part-of: frr-k8s
+    control-plane: webhook-server
+  name: frr-k8s-webhook-server
+  namespace: frr-k8s-system
+spec:
+  selector:
+    matchLabels:
+      control-plane: webhook-server
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
+      labels:
+        app: frr-k8s-webhook-server
+        control-plane: webhook-server
+    spec:
+      containers:
+      - args:
+        - --log-level=info
+        - --webhook-mode=onlywebhook
+        - --namespace=$(NAMESPACE)
+        - --health-probe-bind-address=:8081
+        command:
+        - /frr-k8s
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: quay.io/metallb/frr-k8s:dev
+        imagePullPolicy: IfNotPresent
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        name: frr-k8s-webhook-server
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+            - ALL
+          readOnlyRootFilesystem: true
+        volumeMounts:
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: cert
+          readOnly: true
+      serviceAccountName: frr-k8s-daemon
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: frr-k8s-webhook-server-cert
 ---
 apiVersion: apps/v1
 kind: DaemonSet
@@ -1006,3 +1126,30 @@ spec:
   selector:
     matchLabels:
       control-plane: frr-k8s
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  creationTimestamp: null
+  name: frr-k8s-validating-webhook-configuration
+webhooks:
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: frr-k8s-webhook-service
+      namespace: frr-k8s-system
+      path: /validate-frrk8s-metallb-io-v1beta1-frrconfiguration
+  failurePolicy: Fail
+  name: frrconfigurationsvalidationwebhook.metallb.io
+  rules:
+  - apiGroups:
+    - frrk8s.metallb.io
+    apiVersions:
+    - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - frrconfigurations
+  sideEffects: None

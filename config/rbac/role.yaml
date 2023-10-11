@@ -14,6 +14,22 @@ rules:
   - list
   - watch
 - apiGroups:
+  - admissionregistration.k8s.io
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - admissionregistration.k8s.io
+  resourceNames:
+  - frr-k8s-validating-webhook-configuration
+  resources:
+  - validatingwebhookconfigurations
+  verbs:
+  - update
+- apiGroups:
   - frrk8s.metallb.io
   resources:
   - frrconfigurations
