@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
@@ -14,6 +15,7 @@ import (
 	"k8s.io/utils/pointer"
 
 	v1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 func TestConversion(t *testing.T) {
@@ -40,6 +42,12 @@ func TestConversion(t *testing.T) {
 											ASN:     65002,
 											Address: "192.0.2.2",
 											Port:    179,
+											KeepaliveTime: metav1.Duration{
+												Duration: 20 * time.Second,
+											},
+											HoldTime: metav1.Duration{
+												Duration: 40 * time.Second,
+											},
 										},
 									},
 									VRF:      "",
@@ -58,11 +66,13 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.1",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily: ipfamily.IPv4,
-								Name:     "65002@192.0.2.2",
-								ASN:      65002,
-								Addr:     "192.0.2.2",
-								Port:     179,
+								IPFamily:      ipfamily.IPv4,
+								Name:          "65002@192.0.2.2",
+								ASN:           65002,
+								Addr:          "192.0.2.2",
+								Port:          179,
+								KeepaliveTime: 20,
+								HoldTime:      40,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -177,6 +187,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -302,6 +313,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65031,
 								Addr:     "192.0.2.16",
 								Port:     179,
+								VRFName:  "vrf1",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1288,6 +1300,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65017,
 								Addr:     "192.0.2.7",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1308,6 +1321,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1441,6 +1455,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65017,
 								Addr:     "192.0.2.7",
 								Port:     179,
+								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1456,6 +1471,7 @@ func TestConversion(t *testing.T) {
 								ASN:      65014,
 								Addr:     "2001:db8::4",
 								Port:     179,
+								VRFName:  "vrf2",
 								Password: "password2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -1846,6 +1862,39 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			name: "HoldTime bigger than keepalive time",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65002,
+											Address: "192.0.2.2",
+											Port:    179,
+											KeepaliveTime: metav1.Duration{
+												Duration: 50 * time.Second,
+											},
+											HoldTime: metav1.Duration{
+												Duration: 40 * time.Second,
+											},
+										},
+									},
+									VRF: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid keepaliveTime {"50s"}`),
 		},
 	}
 

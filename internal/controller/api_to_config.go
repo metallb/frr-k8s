@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"reflect"
 	"sort"
+	"time"
 
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/community"
@@ -117,7 +118,7 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret, bfdPr
 	}
 
 	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, secrets, bfdProfiles)
+		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, r.VRF, secrets, bfdProfiles)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
@@ -127,7 +128,7 @@ func routerToFRRConfig(r v1beta1.Router, secrets map[string]corev1.Secret, bfdPr
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
@@ -143,7 +144,26 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, pass
 		IPFamily:     neighborFamily,
 		EBGPMultiHop: n.EBGPMultiHop,
 		BFDProfile:   n.BFDProfile,
+		VRFName:      routerVRF,
 	}
+
+	holdTime := n.HoldTime.Duration
+	err = validateHoldTime(holdTime)
+	if err != nil {
+		return nil, err
+	}
+	keepaliveTime := n.KeepaliveTime.Duration
+	if keepaliveTime == 0 {
+		keepaliveTime = holdTime / 3
+	}
+
+	// keepalive must be lower than holdtime
+	if keepaliveTime > holdTime {
+		return nil, fmt.Errorf("invalid keepaliveTime %q", n.KeepaliveTime)
+	}
+
+	res.HoldTime = uint64(holdTime / time.Second)
+	res.KeepaliveTime = uint64(keepaliveTime / time.Second)
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
 	if err != nil {
@@ -452,4 +472,12 @@ func joinRawConfigs(raw []namedRawConfig) string {
 		res.WriteString("\n")
 	}
 	return res.String()
+}
+
+func validateHoldTime(ht time.Duration) error {
+	rounded := time.Duration(int(ht.Seconds())) * time.Second
+	if rounded != 0 && rounded < 3*time.Second {
+		return fmt.Errorf("invalid hold time %q: must be 0 or >=3s", ht)
+	}
+	return nil
 }
