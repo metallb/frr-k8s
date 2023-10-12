@@ -259,11 +259,132 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ginkgo.By("validating")
 		ValidatePodK8SClientErrorMetrics(pods, frrs, promPod, ipfamily.IPv4)
 	})
+
+	ginkgo.DescribeTable("BFD metrics from FRR", func(bfdProfile frrk8sv1beta1.BFDProfile, ipFamily ipfamily.Family, vrfName string) {
+		frrs := config.ContainersForVRF(infra.FRRContainers, vrfName)
+		peersConfig := config.PeersForContainers(frrs, ipFamily)
+		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
+		for i := range neighbors {
+			neighbors[i].BFDProfile = bfdProfile.Name
+		}
+		myAsn := infra.FRRK8sASN
+		if vrfName != "" {
+			myAsn = infra.FRRK8sASNVRF
+		}
+		config := frrk8sv1beta1.FRRConfiguration{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test",
+				Namespace: "default",
+			},
+			Spec: frrk8sv1beta1.FRRConfigurationSpec{
+				BGP: frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN:       uint32(myAsn),
+							VRF:       vrfName,
+							Neighbors: neighbors,
+						},
+					},
+					BFDProfiles: []frrk8sv1beta1.BFDProfile{
+						bfdProfile,
+					},
+				},
+			},
+		}
+
+		ginkgo.By("pairing with nodes")
+		for _, c := range frrs {
+			err := frrcontainer.PairWithNodes(cs, c, ipFamily, func(container *frrcontainer.FRR) {
+				container.NeighborConfig.BFDEnabled = true
+			})
+			framework.ExpectNoError(err)
+		}
+
+		err := updater.Update(peersConfig.Secrets, config)
+		framework.ExpectNoError(err)
+
+		nodes, err := k8s.Nodes(cs)
+		framework.ExpectNoError(err)
+
+		for _, c := range frrs {
+			ValidateFRRPeeredWithNodes(nodes, c, ipFamily)
+		}
+
+		pods, err := k8s.FRRK8sPods(cs)
+		framework.ExpectNoError(err)
+
+		ginkgo.By("validating")
+		ValidatePodBFDUPMetrics(pods, frrs, promPod, ipFamily, bfdProfile.EchoMode)
+
+		ginkgo.By("disabling BFD in external FRR containers")
+		for _, c := range frrs {
+			err := frrcontainer.PairWithNodes(cs, c, ipFamily, func(container *frrcontainer.FRR) {
+				container.NeighborConfig.BFDEnabled = false
+			})
+			framework.ExpectNoError(err)
+		}
+
+		ginkgo.By("validating session down metrics")
+		ValidatePodBFDDownMetrics(pods, frrs, promPod, ipFamily, bfdProfile.EchoMode)
+
+	},
+		ginkgo.Entry("IPV4 - default",
+			frrk8sv1beta1.BFDProfile{
+				Name: "simple",
+			}, ipfamily.IPv4, infra.DefaultVRFName),
+		ginkgo.Entry("IPV4 - full params",
+			frrk8sv1beta1.BFDProfile{
+				Name:             "full1",
+				ReceiveInterval:  60,
+				TransmitInterval: 61,
+				EchoInterval:     62,
+				EchoMode:         false,
+				PassiveMode:      false,
+				MinimumTTL:       254,
+			}, ipfamily.IPv4, infra.DefaultVRFName),
+		ginkgo.Entry("IPV4 - full params- VRF",
+			frrk8sv1beta1.BFDProfile{
+				Name:             "full1",
+				ReceiveInterval:  60,
+				TransmitInterval: 61,
+				EchoInterval:     62,
+				EchoMode:         false,
+				PassiveMode:      false,
+				MinimumTTL:       254,
+			}, ipfamily.IPv4, infra.VRFName),
+		ginkgo.Entry("IPV4 - echo mode enabled",
+			frrk8sv1beta1.BFDProfile{
+				Name:             "echo",
+				ReceiveInterval:  80,
+				TransmitInterval: 81,
+				EchoInterval:     82,
+				EchoMode:         true,
+				PassiveMode:      false,
+				MinimumTTL:       254,
+			}, ipfamily.IPv4, infra.DefaultVRFName),
+		ginkgo.Entry("IPV6 - default",
+			frrk8sv1beta1.BFDProfile{
+				Name: "simple",
+			}, ipfamily.IPv6, infra.DefaultVRFName),
+		ginkgo.Entry("IPV6 - echo mode enabled",
+			frrk8sv1beta1.BFDProfile{
+				Name:             "echo",
+				ReceiveInterval:  80,
+				TransmitInterval: 81,
+				EchoInterval:     82,
+				EchoMode:         true,
+				PassiveMode:      false,
+				MinimumTTL:       254,
+			}, ipfamily.IPv6, infra.DefaultVRFName),
+	)
 })
 
 type peerPrometheus struct {
 	labelsForQueryBGP string
 	labelsBGP         map[string]string
+	labelsForQueryBFD string
+	labelsBFD         map[string]string
+	noEcho            bool
 }
 
 func labelsForPeers(peers []*frrcontainer.FRR, ipFamily ipfamily.Family) []peerPrometheus {
@@ -280,14 +401,22 @@ func labelsForPeers(peers []*frrcontainer.FRR, ipFamily ipfamily.Family) []peerP
 		// who don't care about vrfs should do.
 		labelsBGP := map[string]string{"peer": peerAddr}
 		labelsForQueryBGP := fmt.Sprintf(`peer="%s"`, peerAddr)
+		labelsBFD := map[string]string{"peer": address}
+		labelsForQueryBFD := fmt.Sprintf(`peer="%s"`, address)
+		noEcho := c.NeighborConfig.MultiHop
 
 		if c.RouterConfig.VRF != "" {
 			labelsBGP["vrf"] = c.RouterConfig.VRF
 			labelsForQueryBGP = fmt.Sprintf(`peer="%s",vrf="%s"`, peerAddr, c.RouterConfig.VRF)
+			labelsBFD["vrf"] = c.RouterConfig.VRF
+			labelsForQueryBFD = fmt.Sprintf(`peer="%s",vrf="%s"`, address, c.RouterConfig.VRF)
 		}
 		res = append(res, peerPrometheus{
 			labelsBGP:         labelsBGP,
 			labelsForQueryBGP: labelsForQueryBGP,
+			labelsBFD:         labelsBFD,
+			labelsForQueryBFD: labelsForQueryBFD,
+			noEcho:            noEcho,
 		})
 	}
 	return res
@@ -594,5 +723,134 @@ func ValidatePodK8SClientErrorMetrics(frrPods []*corev1.Pod, frrContainers []*fr
 
 			return nil
 		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodBFDUPMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family, withEcho bool) {
+	selectors := labelsForPeers(frrContainers, ipfam)
+
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+			for _, selector := range selectors {
+				err = metrics.ValidateGaugeValue(1, "frrk8s_bfd_session_up", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_session_up{%s} == 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bfd_control_packet_input", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_control_packet_input{%s} >= 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bfd_control_packet_output", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_control_packet_output{%s} >= 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateGaugeValueCompare(metrics.GreaterOrEqualThan(0), "frrk8s_bfd_session_down_events", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_session_down_events{%s} >= 0`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bfd_session_up_events", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_session_up_events{%s} >= 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bfd_zebra_notifications", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_zebra_notifications{%s} >= 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				if withEcho {
+					echoVal := 1
+					if selector.noEcho {
+						echoVal = 0
+					}
+					err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(echoVal), "frrk8s_bfd_echo_packet_input", selector.labelsBFD, podMetrics)
+					if err != nil {
+						return err
+					}
+					err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_echo_packet_input{%s} >= %d`, selector.labelsForQueryBFD, echoVal), metrics.There)
+					if err != nil {
+						return err
+					}
+
+					err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(echoVal), "frrk8s_bfd_echo_packet_output", selector.labelsBFD, podMetrics)
+					if err != nil {
+						return err
+					}
+					err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_echo_packet_output{%s} >= %d`, selector.labelsForQueryBFD, echoVal), metrics.There)
+					if err != nil {
+						return err
+					}
+				}
+			}
+			return nil
+		}, time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
+	}
+}
+
+func ValidatePodBFDDownMetrics(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family, withEcho bool) {
+	selectors := labelsForPeers(frrContainers, ipfam)
+
+	for _, pod := range frrPods {
+		ginkgo.By(fmt.Sprintf("checking pod %s", pod.Name))
+		Eventually(func() error {
+			podMetrics, err := forPod(promPod, pod)
+			if err != nil {
+				return err
+			}
+
+			for _, selector := range selectors {
+				err = metrics.ValidateGaugeValue(0, "frrk8s_bfd_session_up", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_session_up{%s} == 0`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+
+				err = metrics.ValidateCounterValue(metrics.GreaterOrEqualThan(1), "frrk8s_bfd_session_down_events", selector.labelsBFD, podMetrics)
+				if err != nil {
+					return err
+				}
+				err = metrics.ValidateOnPrometheus(promPod, fmt.Sprintf(`frrk8s_bfd_session_down_events{%s} >= 1`, selector.labelsForQueryBFD), metrics.There)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}, time.Minute, 5*time.Second).ShouldNot(HaveOccurred())
 	}
 }

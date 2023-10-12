@@ -11,6 +11,8 @@ import (
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
+	"k8s.io/utils/pointer"
+
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -76,6 +78,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -189,6 +192,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{"2001:db8::/64"},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -244,6 +248,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{"2001:db8::/64"},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -254,7 +259,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
-				Routers: []*frr.RouterConfig{},
+				Routers:     []*frr.RouterConfig{},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -311,6 +317,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -376,6 +383,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -488,6 +496,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{"2001:db8::/64"},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -660,6 +669,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{"2001:db8::/64"},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -851,6 +861,7 @@ func TestConversion(t *testing.T) {
 						},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		}, {
@@ -915,6 +926,7 @@ func TestConversion(t *testing.T) {
 						},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -1040,6 +1052,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -1324,6 +1337,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{"2001:db8::/64", "2001:db9::/96"},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -1458,6 +1472,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
 		},
@@ -1530,6 +1545,7 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 				ExtraConfig: "foo\n",
 			},
 			err: nil,
@@ -1586,7 +1602,248 @@ func TestConversion(t *testing.T) {
 						IPV6Prefixes: []string{},
 					},
 				},
+				BFDProfiles: []frr.BFDProfile{},
 				ExtraConfig: "bar\nfoo\nbar\nbaz\n",
+			},
+			err: nil,
+		},
+		{
+			name: "Neighbor with BFDProfile",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:        65041,
+											Address:    "192.0.2.21",
+											Port:       179,
+											BFDProfile: "bfd1",
+										},
+									},
+								},
+							},
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65040,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:   ipfamily.IPv4,
+								Name:       "65041@192.0.2.21",
+								ASN:        65041,
+								Addr:       "192.0.2.21",
+								Port:       179,
+								BFDProfile: "bfd1",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									All:        false,
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{
+					{
+						Name:             "bfd1",
+						ReceiveInterval:  pointer.Uint32(42),
+						TransmitInterval: pointer.Uint32(43),
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Neighbor with BFDProfile does not exist",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:        65041,
+											Address:    "192.0.2.21",
+											Port:       179,
+											BFDProfile: "bfd2",
+										},
+									},
+								},
+							},
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New("got failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
+		},
+		{
+			name: "Neighbor with BFDProfile in different config",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:        65041,
+											Address:    "192.0.2.21",
+											Port:       179,
+											BFDProfile: "bfd2",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New("got failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
+		},
+		{
+			name: "Two BFDProfiles, but identical",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+								{
+									Name:             "bfd3",
+									ReceiveInterval:  42,
+									TransmitInterval: 44,
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New("duplicate bfd profile name bfd1"),
+		},
+		{
+			name: "Two BFDProfiles, from different configs",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+								{
+									Name:             "bfd2",
+									ReceiveInterval:  42,
+									TransmitInterval: 44,
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							BFDProfiles: []v1beta1.BFDProfile{
+								{
+									Name:             "bfd1",
+									ReceiveInterval:  42,
+									TransmitInterval: 43,
+								},
+								{
+									Name:             "bfd3",
+									ReceiveInterval:  42,
+									TransmitInterval: 45,
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{},
+				BFDProfiles: []frr.BFDProfile{
+					{
+						Name:             "bfd1",
+						ReceiveInterval:  pointer.Uint32(42),
+						TransmitInterval: pointer.Uint32(43),
+					},
+					{
+						Name:             "bfd2",
+						ReceiveInterval:  pointer.Uint32(42),
+						TransmitInterval: pointer.Uint32(44),
+					},
+					{
+						Name:             "bfd3",
+						ReceiveInterval:  pointer.Uint32(42),
+						TransmitInterval: pointer.Uint32(45),
+					},
+				},
 			},
 			err: nil,
 		},

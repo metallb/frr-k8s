@@ -39,6 +39,8 @@ import (
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
+	"k8s.io/utils/pointer"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	//+kubebuilder:scaffold:imports
@@ -198,6 +200,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 		})
@@ -229,6 +232,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -246,6 +250,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -278,6 +283,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -287,7 +293,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return localFRR.lastConfig
 			}).Should(Equal(
 				&frr.Config{
-					Routers: []*frr.RouterConfig{},
+					Routers:     []*frr.RouterConfig{},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 		})
@@ -375,6 +382,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -412,6 +420,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -439,6 +448,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 		})
@@ -497,6 +507,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -529,6 +540,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -550,6 +562,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Neighbors:    []*frr.NeighborConfig{},
 						},
 					},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 		})
@@ -623,6 +636,7 @@ var _ = Describe("Frrk8s controller", func() {
 							},
 						},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 
@@ -658,6 +672,7 @@ var _ = Describe("Frrk8s controller", func() {
 							},
 						},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 				},
 			))
 		})
@@ -692,6 +707,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "foo\n",
 				},
 			))
@@ -722,6 +738,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
+					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "foo\nbar\n",
 				},
 			))
@@ -733,9 +750,68 @@ var _ = Describe("Frrk8s controller", func() {
 			}).Should(Equal(
 				&frr.Config{
 					Routers:     []*frr.RouterConfig{},
+					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "bar\n",
 				},
 			))
 		})
+
+		It("should handle the BFD profile", func() {
+			frrConfig := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: uint32(42),
+							},
+						},
+						BFDProfiles: []frrk8sv1beta1.BFDProfile{
+							{
+								Name: "foo",
+							},
+							{
+								Name:            "bar",
+								ReceiveInterval: uint32(47),
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() *frr.Config {
+				return localFRR.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors:    []*frr.NeighborConfig{},
+					}},
+					BFDProfiles: []frr.BFDProfile{
+						{
+							Name:             "bar",
+							ReceiveInterval:  pointer.Uint32(47),
+							TransmitInterval: pointer.Uint32(300),
+							DetectMultiplier: pointer.Uint32(3),
+							EchoInterval:     pointer.Uint32(50),
+							MinimumTTL:       pointer.Uint32(254),
+						}, {
+							Name:             "foo",
+							ReceiveInterval:  pointer.Uint32(300),
+							TransmitInterval: pointer.Uint32(300),
+							DetectMultiplier: pointer.Uint32(3),
+							EchoInterval:     pointer.Uint32(50),
+							MinimumTTL:       pointer.Uint32(254),
+						},
+					},
+				},
+			))
+		})
+
 	})
 })
