@@ -210,3 +210,90 @@ spec:
       terminationGracePeriodSeconds: 10
       shareProcessNamespace: true
       hostNetwork: true
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webhook-server
+  namespace: system
+  labels:
+    control-plane: webhook-server
+    app.kubernetes.io/name: frr-k8s
+    app.kubernetes.io/instance: frr-k8s
+    app.kubernetes.io/component: frr-k8s
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/part-of: frr-k8s
+    app.kubernetes.io/managed-by: kustomize
+spec:
+  selector:
+    matchLabels:
+      control-plane: webhook-server
+  template:
+    metadata:
+      annotations:
+        kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
+      labels:
+        control-plane: webhook-server
+        app: frr-k8s-webhook-server
+    spec:
+      containers:
+      - command:
+        - /frr-k8s
+        args:
+        - "--log-level=info"
+        - "--webhook-mode=onlywebhook"
+        - "--namespace=$(NAMESPACE)"
+        - "--health-probe-bind-address=:8081"
+        env:
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        image: controller:latest
+        imagePullPolicy: IfNotPresent
+        name: frr-k8s-webhook-server
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+          readOnlyRootFilesystem: true
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: 15
+          periodSeconds: 20
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: 5
+          periodSeconds: 10
+        # TODO(user): Configure the resources accordingly based on the project requirements.
+        # More info: https://kubernetes.io/docs/concepts/configuration/manage-resources-containers/
+        resources:
+          limits:
+            cpu: 500m
+            memory: 128Mi
+          requests:
+            cpu: 10m
+            memory: 64Mi
+        volumeMounts:
+        - name: cert
+          mountPath: /tmp/k8s-webhook-server/serving-certs
+          readOnly: true
+      tolerations:
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/master
+        operator: Exists
+      - effect: NoSchedule
+        key: node-role.kubernetes.io/control-plane
+        operator: Exists
+      volumes:
+        - name: cert
+          secret:
+            defaultMode: 420
+            secretName: webhook-server-cert
+      serviceAccountName: daemon
+      terminationGracePeriodSeconds: 10

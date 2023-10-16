@@ -95,7 +95,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		config := frrk8sv1beta1.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
-				Namespace: "default",
+				Namespace: k8s.FRRK8sNamespace,
 			},
 			Spec: frrk8sv1beta1.FRRConfigurationSpec{
 				BGP: frrk8sv1beta1.BGPConfig{
@@ -223,11 +223,9 @@ var _ = ginkgo.Describe("Metrics", func() {
 		frrs := config.ContainersForVRF(infra.FRRContainers, "")
 		peersConfig := config.PeersForContainers(frrs, ipfamily.IPv4)
 		for i := range peersConfig.PeersV4 {
-			peersConfig.PeersV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
-				{
-					LocalPref: 200,
-					Prefixes:  []string{"1.2.3.0/24"},
-				},
+			peersConfig.PeersV4[i].Neigh.PasswordSecret = corev1.SecretReference{
+				Name:      "nonexisting",
+				Namespace: k8s.FRRK8sNamespace,
 			}
 		}
 		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
@@ -235,7 +233,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		config := frrk8sv1beta1.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
-				Namespace: "default",
+				Namespace: k8s.FRRK8sNamespace,
 			},
 			Spec: frrk8sv1beta1.FRRConfigurationSpec{
 				BGP: frrk8sv1beta1.BGPConfig{
@@ -274,7 +272,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		config := frrk8sv1beta1.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
-				Namespace: "default",
+				Namespace: k8s.FRRK8sNamespace,
 			},
 			Spec: frrk8sv1beta1.FRRConfigurationSpec{
 				BGP: frrk8sv1beta1.BGPConfig{

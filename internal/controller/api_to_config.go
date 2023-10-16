@@ -17,13 +17,9 @@ import (
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
-type SecretNotFoundError struct {
-	Name     string
-	Neighbor string
-}
-
-func (s SecretNotFoundError) Error() string {
-	return fmt.Sprintf("secret %s not found for neighbor %s", s.Name, s.Neighbor)
+type ClusterResources struct {
+	FRRConfigs      []v1beta1.FRRConfiguration
+	PasswordSecrets map[string]corev1.Secret
 }
 
 type namedRawConfig struct {
@@ -31,7 +27,7 @@ type namedRawConfig struct {
 	configName string
 }
 
-func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secret) (*frr.Config, error) {
+func apiToFRR(resources ClusterResources) (*frr.Config, error) {
 	res := &frr.Config{
 		Routers:     make([]*frr.RouterConfig, 0),
 		BFDProfiles: make([]frr.BFDProfile, 0),
@@ -40,7 +36,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secr
 	rawConfigs := make([]namedRawConfig, 0)
 	routersForVRF := map[string]*frr.RouterConfig{}
 	bfdProfilesAllConfigs := map[string]*frr.BFDProfile{}
-	for _, cfg := range fromK8s {
+	for _, cfg := range resources.FRRConfigs {
 		bfdProfiles := map[string]*frr.BFDProfile{}
 		if cfg.Spec.Raw.Config != "" {
 			raw := namedRawConfig{RawConfig: cfg.Spec.Raw, configName: cfg.Name}
@@ -68,7 +64,7 @@ func apiToFRR(fromK8s []v1beta1.FRRConfiguration, secrets map[string]corev1.Secr
 		}
 
 		for _, r := range cfg.Spec.BGP.Routers {
-			routerCfg, err := routerToFRRConfig(r, secrets, bfdProfiles)
+			routerCfg, err := routerToFRRConfig(r, resources.PasswordSecrets, bfdProfiles)
 			if err != nil {
 				return nil, err
 			}
@@ -183,7 +179,7 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 	}
 	secret, ok := passwordSecrets[n.PasswordSecret.Name]
 	if !ok {
-		return "", SecretNotFoundError{Name: n.PasswordSecret.Name, Neighbor: neighborName(n.ASN, n.Address)}
+		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n.ASN, n.Address))}
 	}
 	if secret.Type != corev1.SecretTypeBasicAuth {
 		return "", fmt.Errorf("secret type mismatch on %q/%q, type %q is expected ", secret.Namespace,

@@ -77,7 +77,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
-					Namespace: "default",
+					Namespace: k8s.FRRK8sNamespace,
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
 					BGP: frrk8sv1beta1.BGPConfig{
