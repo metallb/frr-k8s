@@ -1,6 +1,6 @@
 module github.com/metallb/frrk8stests
 
-go 1.19
+go 1.20
 
 replace (
 	github.com/metallb/frrk8s => ../
