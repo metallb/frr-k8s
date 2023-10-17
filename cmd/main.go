@@ -75,6 +75,7 @@ func main() {
 		certDir             string
 		certServiceName     string
 		webhookMode         string
+		pprofAddr           string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -86,6 +87,7 @@ func main() {
 	flag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
+	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 
 	opts := zap.Options{
 		Development: true,
@@ -119,6 +121,7 @@ func main() {
 		Metrics: metricsserver.Options{
 			BindAddress: metricsAddr,
 		},
+		PprofBindAddress: pprofAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
