@@ -127,7 +127,7 @@ func (r *FRRStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.FRRNodeState{}).
-		Watches(&source.Channel{Source: r.Update}, &handler.EnqueueRequestForObject{}).
+		WatchesRawSource(&source.Channel{Source: r.Update}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
 }

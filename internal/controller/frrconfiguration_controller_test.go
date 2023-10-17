@@ -26,12 +26,12 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
-	"k8s.io/utils/pointer"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -697,18 +697,18 @@ var _ = Describe("Frrk8s controller", func() {
 					BFDProfiles: []frr.BFDProfile{
 						{
 							Name:             "bar",
-							ReceiveInterval:  pointer.Uint32(47),
-							TransmitInterval: pointer.Uint32(300),
-							DetectMultiplier: pointer.Uint32(3),
-							EchoInterval:     pointer.Uint32(50),
-							MinimumTTL:       pointer.Uint32(254),
+							ReceiveInterval:  ptr.To[uint32](47),
+							TransmitInterval: ptr.To[uint32](300),
+							DetectMultiplier: ptr.To[uint32](3),
+							EchoInterval:     ptr.To[uint32](50),
+							MinimumTTL:       ptr.To[uint32](254),
 						}, {
 							Name:             "foo",
-							ReceiveInterval:  pointer.Uint32(300),
-							TransmitInterval: pointer.Uint32(300),
-							DetectMultiplier: pointer.Uint32(3),
-							EchoInterval:     pointer.Uint32(50),
-							MinimumTTL:       pointer.Uint32(254),
+							ReceiveInterval:  ptr.To[uint32](300),
+							TransmitInterval: ptr.To[uint32](300),
+							DetectMultiplier: ptr.To[uint32](3),
+							EchoInterval:     ptr.To[uint32](50),
+							MinimumTTL:       ptr.To[uint32](254),
 						},
 					},
 				},

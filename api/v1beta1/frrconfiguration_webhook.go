@@ -15,6 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var (
@@ -41,24 +42,24 @@ type nodeAndConfigs struct {
 }
 
 // ValidateCreate implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateCreate() error {
+func (frrConfig *FRRConfiguration) ValidateCreate() (admission.Warnings, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
-	return validateConfig(frrConfig)
+	return nil, validateConfig(frrConfig)
 }
 
 // ValidateUpdate implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateUpdate(old runtime.Object) error {
+func (frrConfig *FRRConfiguration) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
-	return validateConfig(frrConfig)
+	return nil, validateConfig(frrConfig)
 }
 
 // ValidateDelete implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateDelete() error {
-	return nil
+func (frrConfig *FRRConfiguration) ValidateDelete() (admission.Warnings, error) {
+	return nil, nil
 }
 
 func validateConfig(frrConfig *FRRConfiguration) error {
