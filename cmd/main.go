@@ -233,6 +233,7 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 		DNSName:        fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
 		IsReady:        notifyFinished,
 		Webhooks:       webhooks,
+		FieldOwner:     "frr-k8s",
 	})
 	if err != nil {
 		level.Error(logger).Log("error", err, "unable to set up", "cert rotation")
