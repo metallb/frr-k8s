@@ -26,9 +26,10 @@ type FRRNodeStateSpec struct {
 
 // FRRNodeStateStatus defines the observed state of FRRNodeState.
 type FRRNodeStateStatus struct {
-	DesiredConfig    string `json:"desiredConfig,omitempty"`
-	RunningConfig    string `json:"runningConfig,omitempty"`
-	LastReloadResult string `json:"lastReloadResult,omitempty"`
+	DesiredConfig        string `json:"desiredConfig,omitempty"`
+	RunningConfig        string `json:"runningConfig,omitempty"`
+	LastConversionResult string `json:"lastConversionResult,omitempty"`
+	LastReloadResult     string `json:"lastReloadResult,omitempty"`
 }
 
 //+kubebuilder:object:root=true

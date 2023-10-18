@@ -40,6 +40,8 @@ spec:
             properties:
               desiredConfig:
                 type: string
+              lastConversionResult:
+                type: string
               lastReloadResult:
                 type: string
               runningConfig:
