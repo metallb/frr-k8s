@@ -75,7 +75,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 		cs = f.ClientSet
 	})
 
-	ginkgo.Context("Exposing the status", func() {
+	ginkgo.Context("Exposing the frr status", func() {
 		ginkgo.It("Works with valid config", func() {
 			frrconfig := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -249,6 +249,86 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 							"router bgp 64515",
 						); err != nil {
 							return err
+						}
+						return nil
+					})
+				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			}
+		})
+	})
+
+	ginkgo.Context("Exposing the configuration conversion status", func() {
+		ginkgo.It("Works with valid config", func() {
+			validFRRConfig := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: 64515,
+								VRF: "",
+							},
+						},
+					},
+				},
+			}
+
+			nodes, err := k8s.Nodes(cs)
+			framework.ExpectNoError(err)
+			ginkgo.By("Creating a valid configuration")
+			err = updater.Update([]corev1.Secret{}, validFRRConfig)
+			framework.ExpectNoError(err)
+
+			for _, node := range nodes {
+				Eventually(func() error {
+					return nodeMatchesStatus(cl, node.Name, func(status frrk8sv1beta1.FRRNodeState) error {
+						if status.Status.LastConversionResult != reloadSuccess {
+							return fmt.Errorf("LastConversionResult is not success for node %s", node.Name)
+						}
+						return nil
+					})
+				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			}
+
+			ginkgo.By("Applying an invalid config")
+
+			invalidConfig := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: infra.FRRK8sASN,
+								Neighbors: []frrk8sv1beta1.Neighbor{
+									{
+										ASN:     1234,
+										Address: "192.168.1.1",
+										PasswordSecret: corev1.SecretReference{
+											Name:      "nonexisting",
+											Namespace: k8s.FRRK8sNamespace,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err = updater.Update([]corev1.Secret{}, invalidConfig)
+			framework.ExpectNoError(err)
+
+			for _, node := range nodes {
+				Eventually(func() error {
+					return nodeMatchesStatus(cl, node.Name, func(status frrk8sv1beta1.FRRNodeState) error {
+						if !strings.Contains(status.Status.LastConversionResult, "secret nonexisting not found") {
+							return fmt.Errorf("LastConversionResult does not contain secret nonexisting not found for node %s", node.Name)
 						}
 						return nil
 					})
