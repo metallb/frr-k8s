@@ -119,17 +119,14 @@ type OutgoingFilter struct {
 // templateConfig uses the template library to template
 // 'globalConfigTemplate' using 'data'.
 func templateConfig(data interface{}) (string, error) {
-	i := 0
-	currentCounterName := ""
+	counterMap := map[string]int{}
 	t, err := template.New("frr.tmpl").Funcs(
 		template.FuncMap{
 			"counter": func(counterName string) int {
-				if currentCounterName != counterName {
-					currentCounterName = counterName
-					i = 0
-				}
-				i++
-				return i
+				counter := counterMap[counterName]
+				counter++
+				counterMap[counterName] = counter
+				return counter
 			},
 			"frrIPFamily": func(ipFamily ipfamily.Family) string {
 				if ipFamily == "ipv6" {
