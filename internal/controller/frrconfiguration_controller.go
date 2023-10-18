@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -40,14 +41,25 @@ import (
 	"github.com/metallb/frrk8s/internal/frr"
 )
 
+const ConversionSuccess = "success"
+
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	FRRHandler frr.ConfigHandler
-	Logger     log.Logger
-	NodeName   string
-	Namespace  string
+	Scheme             *runtime.Scheme
+	FRRHandler         frr.ConfigHandler
+	Logger             log.Logger
+	NodeName           string
+	Namespace          string
+	ReloadStatus       func()
+	conversionResult   string
+	conversionResMutex sync.Mutex
+}
+
+func (r *FRRConfigurationReconciler) ConversionResult() string {
+	r.conversionResMutex.Lock()
+	defer r.conversionResMutex.Unlock()
+	return r.conversionResult
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -60,11 +72,24 @@ type FRRConfigurationReconciler struct {
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
 	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.NamespacedName.String())
+	lastConversionResult := r.conversionResult
+	conversionResult := ConversionSuccess
+
+	defer func() {
+		r.conversionResMutex.Lock()
+		r.conversionResult = conversionResult
+		r.conversionResMutex.Unlock()
+		if conversionResult != lastConversionResult {
+			r.ReloadStatus()
+		}
+	}()
+
 	updates.Inc()
 
 	configs := frrk8sv1beta1.FRRConfigurationList{}
 	err := r.Client.List(ctx, &configs)
 	if err != nil {
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
 	}
 
@@ -75,6 +100,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		if err != nil {
 			updateErrors.Inc()
 			configStale.Set(1)
+			conversionResult = fmt.Sprintf("failed: %v", err)
 		}
 		return ctrl.Result{}, err
 	}
@@ -82,6 +108,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	thisNode := &corev1.Node{}
 	err = r.Client.Get(ctx, types.NamespacedName{Name: r.NodeName}, thisNode)
 	if err != nil {
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
 	}
 
@@ -89,11 +116,13 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
 	}
 
 	secrets, err := r.getSecrets(ctx)
 	if err != nil {
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
 	}
 
@@ -106,6 +135,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		updateErrors.Inc()
 		configStale.Set(1)
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, nil
 	}
 
@@ -114,6 +144,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
+		conversionResult = fmt.Sprintf("failed: %v", err)
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
 		return ctrl.Result{}, err
 	}

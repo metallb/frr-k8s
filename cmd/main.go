@@ -163,24 +163,27 @@ func main() {
 		}
 		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
 
-		if err = (&controller.FRRConfigurationReconciler{
-			Client:     mgr.GetClient(),
-			Scheme:     mgr.GetScheme(),
-			FRRHandler: frrInstance,
-			Logger:     logger,
-			NodeName:   nodeName,
-		}).SetupWithManager(mgr); err != nil {
+		configReconciler := &controller.FRRConfigurationReconciler{
+			Client:       mgr.GetClient(),
+			Scheme:       mgr.GetScheme(),
+			FRRHandler:   frrInstance,
+			Logger:       logger,
+			NodeName:     nodeName,
+			ReloadStatus: reloadStatus,
+		}
+		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
 			os.Exit(1)
 		}
 
 		if err = (&controller.FRRStateReconciler{
-			Client:    mgr.GetClient(),
-			Scheme:    mgr.GetScheme(),
-			FRRStatus: frrInstance,
-			Logger:    logger,
-			NodeName:  nodeName,
-			Update:    reloadStatusChan,
+			Client:           mgr.GetClient(),
+			Scheme:           mgr.GetScheme(),
+			FRRStatus:        frrInstance,
+			Logger:           logger,
+			NodeName:         nodeName,
+			Update:           reloadStatusChan,
+			ConversionResult: configReconciler,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 			os.Exit(1)

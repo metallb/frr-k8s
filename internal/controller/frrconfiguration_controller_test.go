@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -58,22 +59,29 @@ func (f *fakeFRR) ApplyConfig(config *frr.Config) error {
 	return nil
 }
 
+var reloadCalled bool
+
+func fakeReloadStatus() {
+	reloadCalled = true
+}
+
 var _ = Describe("Frrk8s controller", func() {
-	Context("when a FRRConfiguration is created", func() {
-		AfterEach(func() {
-			toDel := &frrk8sv1beta1.FRRConfiguration{}
-			err := k8sClient.DeleteAllOf(context.Background(), toDel, client.InNamespace("default"))
-			if apierrors.IsNotFound(err) {
-				return
-			}
+	AfterEach(func() {
+		toDel := &frrk8sv1beta1.FRRConfiguration{}
+		err := k8sClient.DeleteAllOf(context.Background(), toDel, client.InNamespace("default"))
+		if apierrors.IsNotFound(err) {
+			return
+		}
+		Expect(err).ToNot(HaveOccurred())
+		Eventually(func() int {
+			frrConfigList := &frrk8sv1beta1.FRRConfigurationList{}
+			err := k8sClient.List(context.Background(), frrConfigList)
 			Expect(err).ToNot(HaveOccurred())
-			Eventually(func() int {
-				frrConfigList := &frrk8sv1beta1.FRRConfigurationList{}
-				err := k8sClient.List(context.Background(), frrConfigList)
-				Expect(err).ToNot(HaveOccurred())
-				return len(frrConfigList.Items)
-			}).Should(Equal(0))
-		})
+			return len(frrConfigList.Items)
+		}).Should(Equal(0))
+	})
+
+	Context("when a FRRConfiguration is created", func() {
 
 		It("should apply the configuration to FRR", func() {
 			frrConfig := &frrk8sv1beta1.FRRConfiguration{
@@ -716,4 +724,65 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 	})
+
+	Context("when reporting the conversion status", func() {
+		BeforeEach(func() {
+			reloadCalled = false
+		})
+
+		It("should notify when the last conversion status changed", func() {
+			By("making the conversion fail")
+			frrConfig := &frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						BFDProfiles: []frrk8sv1beta1.BFDProfile{
+							{
+								Name: "foo",
+							},
+							{
+								Name: "foo",
+							},
+						},
+					},
+				},
+			}
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool {
+				return reloadCalled
+			}, 5*time.Second).Should(BeTrue())
+			reloadCalled = false
+
+			By("updating to a valid config")
+			frrConfig.Spec = frrk8sv1beta1.FRRConfigurationSpec{
+				BGP: frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN: uint32(42),
+						},
+					},
+				},
+			}
+			err = k8sClient.Update(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() bool {
+				return reloadCalled
+			}, 5*time.Second).Should(BeTrue())
+			reloadCalled = false
+
+			By("updating with another valid config")
+			frrConfig.Spec.BGP.Routers[0].ASN = uint32(44)
+
+			err = k8sClient.Update(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Consistently(func() bool {
+				return reloadCalled
+			}, 5*time.Second).Should(BeFalse())
+		})
+	})
+
 })
