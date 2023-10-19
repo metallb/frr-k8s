@@ -94,10 +94,12 @@ func testCheckConfigFile(t *testing.T) {
 	}
 }
 
+var emptyCB = func() {}
+
 func TestSingleSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -139,7 +141,7 @@ func TestSingleSession(t *testing.T) {
 func TestTwoRoutersTwoNeighbors(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -212,7 +214,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 func TestTwoSessionsAcceptAll(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -252,7 +254,7 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -306,7 +308,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -367,7 +369,7 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -413,7 +415,7 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -455,7 +457,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -512,7 +514,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -607,7 +609,7 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
 
 	config := Config{
 		Routers: []*RouterConfig{

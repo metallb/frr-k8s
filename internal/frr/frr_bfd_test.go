@@ -15,7 +15,7 @@ import (
 func TestSingleSessionBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
@@ -59,7 +59,7 @@ func TestSingleSessionBFD(t *testing.T) {
 func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
 	defer cancel()
 
 	config := Config{
