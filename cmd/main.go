@@ -38,6 +38,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -73,6 +75,7 @@ func main() {
 		certDir             string
 		certServiceName     string
 		webhookMode         string
+		pprofAddr           string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -84,6 +87,7 @@ func main() {
 	flag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
+	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 
 	opts := zap.Options{
 		Development: true,
@@ -97,20 +101,27 @@ func main() {
 		os.Exit(1)
 	}
 
-	namespaceSelector := cache.ObjectSelector{
+	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		MetricsBindAddress:     metricsAddr,
-		Port:                   9443,
 		HealthProbeBindAddress: probeAddr,
-		NewCache: cache.BuilderWithOptions(cache.Options{
-			SelectorsByObject: map[client.Object]cache.ObjectSelector{
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}: namespaceSelector,
 			},
-		}),
+		},
+		WebhookServer: webhook.NewServer(
+			webhook.Options{
+				Port: 9443,
+			},
+		),
+		Metrics: metricsserver.Options{
+			BindAddress: metricsAddr,
+		},
+		PprofBindAddress: pprofAddr,
 	})
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
@@ -225,6 +236,7 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 		DNSName:        fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
 		IsReady:        notifyFinished,
 		Webhooks:       webhooks,
+		FieldOwner:     "frr-k8s",
 	})
 	if err != nil {
 		level.Error(logger).Log("error", err, "unable to set up", "cert rotation")

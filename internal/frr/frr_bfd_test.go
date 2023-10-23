@@ -9,7 +9,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/metallb/frrk8s/internal/ipfamily"
 	"github.com/metallb/frrk8s/internal/logging"
-	"k8s.io/utils/pointer"
+	"k8s.io/utils/ptr"
 )
 
 func TestSingleSessionBFD(t *testing.T) {
@@ -36,13 +36,13 @@ func TestSingleSessionBFD(t *testing.T) {
 		BFDProfiles: []BFDProfile{
 			{
 				Name:             "test",
-				ReceiveInterval:  pointer.Uint32(100),
-				TransmitInterval: pointer.Uint32(200),
-				DetectMultiplier: pointer.Uint32(3),
-				EchoInterval:     pointer.Uint32(25),
+				ReceiveInterval:  ptr.To[uint32](100),
+				TransmitInterval: ptr.To[uint32](200),
+				DetectMultiplier: ptr.To[uint32](3),
+				EchoInterval:     ptr.To[uint32](25),
 				EchoMode:         true,
 				PassiveMode:      true,
-				MinimumTTL:       pointer.Uint32(20),
+				MinimumTTL:       ptr.To[uint32](20),
 			}, {
 				Name: "testdefault",
 			},
@@ -91,13 +91,13 @@ func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 		BFDProfiles: []BFDProfile{
 			{
 				Name:             "test",
-				ReceiveInterval:  pointer.Uint32(100),
-				TransmitInterval: pointer.Uint32(200),
-				DetectMultiplier: pointer.Uint32(3),
-				EchoInterval:     pointer.Uint32(25),
+				ReceiveInterval:  ptr.To[uint32](100),
+				TransmitInterval: ptr.To[uint32](200),
+				DetectMultiplier: ptr.To[uint32](3),
+				EchoInterval:     ptr.To[uint32](25),
 				EchoMode:         true,
 				PassiveMode:      true,
-				MinimumTTL:       pointer.Uint32(20),
+				MinimumTTL:       ptr.To[uint32](20),
 			}, {
 				Name: "testdefault",
 			},

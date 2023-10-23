@@ -151,9 +151,9 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		mock.forceError = test.failValidate
 
 		if test.isNew {
-			err = test.config.ValidateCreate()
+			_, err = test.config.ValidateCreate()
 		} else {
-			err = test.config.ValidateUpdate(nil)
+			_, err = test.config.ValidateUpdate(nil)
 		}
 		if test.failValidate && err == nil {
 			t.Fatalf("test %s failed, expecting error", test.desc)

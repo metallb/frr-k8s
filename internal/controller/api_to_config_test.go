@@ -12,10 +12,10 @@ import (
 	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
 	"github.com/metallb/frrk8s/internal/frr"
 	"github.com/metallb/frrk8s/internal/ipfamily"
-	"k8s.io/utils/pointer"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 )
 
 func TestConversion(t *testing.T) {
@@ -1713,8 +1713,8 @@ func TestConversion(t *testing.T) {
 				BFDProfiles: []frr.BFDProfile{
 					{
 						Name:             "bfd1",
-						ReceiveInterval:  pointer.Uint32(42),
-						TransmitInterval: pointer.Uint32(43),
+						ReceiveInterval:  ptr.To[uint32](42),
+						TransmitInterval: ptr.To[uint32](43),
 					},
 				},
 			},
@@ -1873,18 +1873,18 @@ func TestConversion(t *testing.T) {
 				BFDProfiles: []frr.BFDProfile{
 					{
 						Name:             "bfd1",
-						ReceiveInterval:  pointer.Uint32(42),
-						TransmitInterval: pointer.Uint32(43),
+						ReceiveInterval:  ptr.To[uint32](42),
+						TransmitInterval: ptr.To[uint32](43),
 					},
 					{
 						Name:             "bfd2",
-						ReceiveInterval:  pointer.Uint32(42),
-						TransmitInterval: pointer.Uint32(44),
+						ReceiveInterval:  ptr.To[uint32](42),
+						TransmitInterval: ptr.To[uint32](44),
 					},
 					{
 						Name:             "bfd3",
-						ReceiveInterval:  pointer.Uint32(42),
-						TransmitInterval: pointer.Uint32(45),
+						ReceiveInterval:  ptr.To[uint32](42),
+						TransmitInterval: ptr.To[uint32](45),
 					},
 				},
 			},
