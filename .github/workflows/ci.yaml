@@ -68,6 +68,7 @@ jobs:
           popd
           make manifests
           make generate-all-in-one
+          make api-docs
           make checkuncommitted
 
       - name: Helm doc generate

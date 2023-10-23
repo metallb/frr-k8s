@@ -1,0 +1,9 @@
+processor:
+  # RE2 regular expressions describing types that should be excluded from the generated documentation.
+  ignoreTypes:
+    - "List$"
+    - "Associa(ted|tor|tionStatus|tionConf)$"
+    - "AllowMode"
+  # RE2 regular expressions describing type fields that should be excluded from the generated documentation.
+  ignoreFields:
+    - "TypeMeta$"
