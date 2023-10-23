@@ -18,7 +18,8 @@ spec:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: FRRNodeState is the Schema for the FRRNodeStates API.
+        description: FRRNodeState exposes the status of the FRR instance running on
+          each node.
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -39,12 +40,23 @@ spec:
             description: FRRNodeStateStatus defines the observed state of FRRNodeState.
             properties:
               desiredConfig:
+                description: DesiredConfig represents the desired FRR config, as the
+                  result of translating all of the `FRRConfiguration`s for the given
+                  node.
                 type: string
               lastConversionResult:
+                description: LastConversionResult is the status of the last translation
+                  between the `FRRConfiguration`s resources and FRR's configuration,
+                  contains "success" or an error.
                 type: string
               lastReloadResult:
+                description: LastReloadResult represents the status of the last configuration
+                  update operation by FRR, contains "success" or an error.
                 type: string
               runningConfig:
+                description: RunningConfig represents the current FRR running config,
+                  which is the configuration the FRR instance is currently running
+                  with.
                 type: string
             type: object
         type: object

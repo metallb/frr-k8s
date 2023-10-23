@@ -26,17 +26,21 @@ type FRRNodeStateSpec struct {
 
 // FRRNodeStateStatus defines the observed state of FRRNodeState.
 type FRRNodeStateStatus struct {
-	DesiredConfig        string `json:"desiredConfig,omitempty"`
-	RunningConfig        string `json:"runningConfig,omitempty"`
+	// DesiredConfig represents the desired FRR config, as the result of translating all of the `FRRConfiguration`s for the given node.
+	DesiredConfig string `json:"desiredConfig,omitempty"`
+	// RunningConfig represents the current FRR running config, which is the configuration the FRR instance is currently running with.
+	RunningConfig string `json:"runningConfig,omitempty"`
+	// LastConversionResult is the status of the last translation between the `FRRConfiguration`s resources and FRR's configuration, contains "success" or an error.
 	LastConversionResult string `json:"lastConversionResult,omitempty"`
-	LastReloadResult     string `json:"lastReloadResult,omitempty"`
+	// LastReloadResult represents the status of the last configuration update operation by FRR, contains "success" or an error.
+	LastReloadResult string `json:"lastReloadResult,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:scope=Cluster
 
-// FRRNodeState is the Schema for the FRRNodeStates API.
+// FRRNodeState exposes the status of the FRR instance running on each node.
 type FRRNodeState struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

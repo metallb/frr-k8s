@@ -23,12 +23,15 @@ import (
 
 // FRRConfigurationSpec defines the desired state of FRRConfiguration.
 type FRRConfigurationSpec struct {
+	// BGP is the configuration related to the BGP protocol.
 	// +optional
 	BGP BGPConfig `json:"bgp,omitempty"`
 
+	// Raw is a snippet of raw frr configuration that gets appended to the
+	// one rendered translating the type safe API.
 	// +optional
 	Raw RawConfig `json:"raw,omitempty"`
-	// Limits the nodes that will attempt to apply this config.
+	// NodeSelector limits the nodes that will attempt to apply this config.
 	// When specified, the configuration will be considered only on nodes
 	// whose labels match the specified selectors.
 	// When it is not specified all nodes will attempt to apply this config.
@@ -36,84 +39,88 @@ type FRRConfigurationSpec struct {
 	NodeSelector metav1.LabelSelector `json:"nodeSelector,omitempty"`
 }
 
+// RawConfig is a snippet of raw frr configuration that gets appended to the
+// rendered configuration.
 type RawConfig struct {
-	// Sets the order with this configuration is appended to the
+	// Priority is the order with this configuration is appended to the
 	// bottom of the rendered configuration. A higher value means the
 	// raw config is appended later in the configuration file.
 	Priority int `json:"priority,omitempty"`
 
-	// A raw FRR configuration to be appended to the configuration
+	// Config is a raw FRR configuration to be appended to the configuration
 	// rendered via the k8s api.
 	Config string `json:"rawConfig,omitempty"`
 }
 
+// BGPConfig is the configuration related to the BGP protocol.
 type BGPConfig struct {
-	// The list of routers we want FRR to configure (one per VRF).
+	// Routers is the list of routers we want FRR to configure (one per VRF).
 	// +optional
 	Routers []Router `json:"routers"`
-	// The list of bfd profiles to be used when configuring the neighbors.
+	// BFDProfiles is the list of bfd profiles to be used when configuring the neighbors.
 	// +optional
 	BFDProfiles []BFDProfile `json:"bfdProfiles,omitempty"`
 }
 
 // Router represent a neighbor router we want FRR to connect to.
 type Router struct {
-	// AS number to use for the local end of the session.
+	// ASN is the AS number to use for the local end of the session.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=4294967295
 	ASN uint32 `json:"asn"`
-	// BGP router ID
+	// ID is the BGP router ID
 	// +optional
 	ID string `json:"id,omitempty"`
-	// The host VRF used to establish sessions from this router.
+	// VRF is the host vrf used to establish sessions from this router.
 	// +optional
 	VRF string `json:"vrf,omitempty"`
-	// The list of neighbors we want to establish BGP sessions with.
+	// Neighbors is the list of neighbors we want to establish BGP sessions with.
 	// +optional
 	Neighbors []Neighbor `json:"neighbors,omitempty"`
-	// The list of prefixes we want to advertise from this router instance.
+	// Prefixes is the list of prefixes we want to advertise from this router instance.
 	// +optional
 	Prefixes []string `json:"prefixes,omitempty"`
 }
 
+// Neighbor represents a BGP Neighbor we want FRR to connect to.
 type Neighbor struct {
-	// AS number to use for the local end of the session.
+	// ASN is the AS number to use for the local end of the session.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=4294967295
 	ASN uint32 `json:"asn"`
 
-	// The IP address to establish the session with.
+	// Address is the IP address to establish the session with.
 	Address string `json:"address"`
 
-	// Port to dial when establishing the session.
+	// Port is the port to dial when establishing the session.
 	// Defaults to 179.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=16384
 	Port *uint16 `json:"port,omitempty"`
 
-	// passwordSecret is name of the authentication secret for the neighbor.
+	// PasswordSecret is name of the authentication secret for the neighbor.
 	// the secret must be of type "kubernetes.io/basic-auth", and created in the
 	// same namespace as the frr-k8s daemon. The password is stored in the
 	// secret as the key "password".
 	// +optional
 	PasswordSecret v1.SecretReference `json:"password,omitempty"`
 
-	// Requested BGP hold time, per RFC4271.
+	// HoldTime is the requested BGP hold time, per RFC4271.
 	// Defaults to 180s.
 	// +optional
 	HoldTime *metav1.Duration `json:"holdTime,omitempty"`
 
-	// Requested BGP keepalive time, per RFC4271.
+	// KeepaliveTime is the requested BGP keepalive time, per RFC4271.
 	// Defaults to 60s.
 	// +optional
 	KeepaliveTime *metav1.Duration `json:"keepaliveTime,omitempty"`
 
-	// To set if the BGPPeer is multi-hops away.
+	// EBGPMultiHop indicates if the BGPPeer is multi-hops away.
 	// +optional
 	EBGPMultiHop bool `json:"ebgpMultiHop,omitempty"`
 
-	// The name of the BFD Profile to be used for the BFD session associated
+	// BFDProfile is the name of the BFD Profile to be used for the BFD session associated
 	// to the BGP session. If not set, the BFD session won't be set up.
 	// +optional
 	BFDProfile string `json:"bfdProfile,omitempty"`
@@ -123,13 +130,16 @@ type Neighbor struct {
 	// +optional
 	ToAdvertise Advertise `json:"toAdvertise,omitempty"`
 
-	// Receive represents the list of prefixes to receive from the given neighbor.
+	// ToReceive represents the list of prefixes to receive from the given neighbor.
 	// +optional
 	ToReceive Receive `json:"toReceive,omitempty"`
 }
 
+// Advertise represents a list of prefixes to advertise to the given neighbor.
+
 type Advertise struct {
-	// Prefixes is the list of prefixes allowed to be propagated to
+
+	// Allowed is is the list of prefixes allowed to be propagated to
 	// this neighbor. They must match the prefixes defined in the router.
 	Allowed AllowedOutPrefixes `json:"allowed,omitempty"`
 
@@ -146,13 +156,15 @@ type Advertise struct {
 	PrefixesWithCommunity []CommunityPrefixes `json:"withCommunity,omitempty"`
 }
 
+// Receive represents a list of prefixes to receive from the given neighbor.
 type Receive struct {
-	// Prefixes is the list of prefixes allowed to be received from
+	// Allowed is the list of prefixes allowed to be received from
 	// this neighbor.
 	// +optional
 	Allowed AllowedInPrefixes `json:"allowed,omitempty"`
 }
 
+// PrefixSelector is a filter of prefixes to receive.
 type PrefixSelector struct {
 	// +kubebuilder:validation:Format="cidr"
 	Prefix string `json:"prefix,omitempty"`
@@ -186,22 +198,28 @@ type AllowedOutPrefixes struct {
 	Mode AllowMode `json:"mode,omitempty"`
 }
 
+// LocalPrefPrefixes is a list of prefixes associated to a local preference.
 type LocalPrefPrefixes struct {
 	// Prefixes is the list of prefixes associated to the local preference.
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:Format="cidr"
-	Prefixes  []string `json:"prefixes,omitempty"`
-	LocalPref uint32   `json:"localPref,omitempty"`
+	Prefixes []string `json:"prefixes,omitempty"`
+	// LocalPref is the local preference associated to the prefixes.
+	LocalPref uint32 `json:"localPref,omitempty"`
 }
 
+// CommunityPrefixes is a list of prefixes associated to a community.
 type CommunityPrefixes struct {
 	// Prefixes is the list of prefixes associated to the community.
 	// +kubebuilder:validation:MinItems=1
 	// +kubebuilder:validation:Format="cidr"
-	Prefixes  []string `json:"prefixes,omitempty"`
-	Community string   `json:"community,omitempty"`
+	Prefixes []string `json:"prefixes,omitempty"`
+	// Community is the community associated to the prefixes.
+	Community string `json:"community,omitempty"`
 }
 
+// BFDProfile is the configuration related to the BFD protocol associated
+// to a BGP session.
 type BFDProfile struct {
 	// The name of the BFD Profile to be referenced in other parts
 	// of the configuration.
@@ -268,7 +286,7 @@ type FRRConfigurationStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// FRRConfiguration is the Schema for the frrconfigurations API.
+// FRRConfiguration is a piece of FRR configuration.
 type FRRConfiguration struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
