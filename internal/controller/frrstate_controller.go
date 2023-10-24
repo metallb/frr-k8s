@@ -46,11 +46,12 @@ var passwordRegex = regexp.MustCompile(`password.*`)
 // FRRStateReconciler reconciles the FRRStatus object.
 type FRRStateReconciler struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Update    chan event.GenericEvent
-	Logger    log.Logger
-	NodeName  string
-	FRRStatus frr.StatusFetcher
+	Scheme           *runtime.Scheme
+	Update           chan event.GenericEvent
+	Logger           log.Logger
+	NodeName         string
+	FRRStatus        frr.StatusFetcher
+	ConversionResult ConversionResultFetcher
 }
 
 type stateEvent struct {
@@ -70,6 +71,10 @@ func NewStateEvent() event.GenericEvent {
 	evt.Name = "stateUpdate"
 	evt.Namespace = "metallbreload"
 	return event.GenericEvent{Object: &evt}
+}
+
+type ConversionResultFetcher interface {
+	ConversionResult() string
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch;create;update;patch;delete
@@ -94,9 +99,10 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	frrStatus := r.FRRStatus.GetStatus()
 
 	newStatus := frrk8sv1beta1.FRRNodeStateStatus{
-		DesiredConfig:    cleanPasswords(frrStatus.Desired),
-		RunningConfig:    cleanPasswords(frrStatus.Current),
-		LastReloadResult: cleanPasswords(frrStatus.LastReloadResult),
+		DesiredConfig:        cleanPasswords(frrStatus.Desired),
+		RunningConfig:        cleanPasswords(frrStatus.Current),
+		LastReloadResult:     cleanPasswords(frrStatus.LastReloadResult),
+		LastConversionResult: r.ConversionResult.ConversionResult(),
 	}
 	if reflect.DeepEqual(state.Status, newStatus) { // Do nothing
 		return ctrl.Result{}, nil

@@ -72,23 +72,25 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&FRRConfigurationReconciler{
-		Client:     k8sManager.GetClient(),
-		Scheme:     k8sManager.GetScheme(),
-		FRRHandler: &fakeFRRConfigHandler,
-		Logger:     log.NewNopLogger(),
-		NodeName:   testNodeName,
-		Namespace:  testNamespace,
+		Client:       k8sManager.GetClient(),
+		Scheme:       k8sManager.GetScheme(),
+		FRRHandler:   &fakeFRRConfigHandler,
+		Logger:       log.NewNopLogger(),
+		NodeName:     testNodeName,
+		Namespace:    testNamespace,
+		ReloadStatus: fakeReloadStatus,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
 	updateChan = make(chan event.GenericEvent)
 	err = (&FRRStateReconciler{
-		Client:    k8sManager.GetClient(),
-		Scheme:    k8sManager.GetScheme(),
-		FRRStatus: fakeStatus,
-		Logger:    log.NewNopLogger(),
-		NodeName:  testNodeName,
-		Update:    updateChan,
+		Client:           k8sManager.GetClient(),
+		Scheme:           k8sManager.GetScheme(),
+		FRRStatus:        fakeStatus,
+		Logger:           log.NewNopLogger(),
+		NodeName:         testNodeName,
+		ConversionResult: fakeConversionRes,
+		Update:           updateChan,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
