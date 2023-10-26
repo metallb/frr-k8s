@@ -5,6 +5,7 @@ package controller
 import (
 	"bytes"
 	"fmt"
+	"net"
 	"reflect"
 	"sort"
 	"time"
@@ -169,7 +170,10 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, rout
 	if err != nil {
 		return nil, err
 	}
-	res.Incoming = toReceiveToFRR(n.ToReceive)
+	res.Incoming, err = toReceiveToFRR(n.ToReceive)
+	if err != nil {
+		return nil, err
+	}
 	return res, nil
 }
 
@@ -296,30 +300,72 @@ func setLocalPrefToAdvertisements(advs map[string]*frr.OutgoingFilter, localPref
 	return nil
 }
 
-func toReceiveToFRR(toReceive v1beta1.Receive) frr.AllowedIn {
+func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {
 	res := frr.AllowedIn{
 		PrefixesV4: make([]frr.IncomingFilter, 0),
 		PrefixesV6: make([]frr.IncomingFilter, 0),
 	}
 	if toReceive.Allowed.Mode == v1beta1.AllowAll {
 		res.All = true
-		return res
+		return res, nil
 	}
-	for _, p := range toReceive.Allowed.Prefixes {
-		family := ipfamily.ForCIDRString(p)
-		if family == ipfamily.IPv4 {
-			res.PrefixesV4 = append(res.PrefixesV4, frr.IncomingFilter{Prefix: p, IPFamily: family})
+	for _, s := range toReceive.Allowed.Prefixes {
+		filter, err := filterForSelector(s)
+		if err != nil {
+			return frr.AllowedIn{}, err
+		}
+		if filter.IPFamily == ipfamily.IPv4 {
+			res.PrefixesV4 = append(res.PrefixesV4, filter)
 			continue
 		}
-		res.PrefixesV6 = append(res.PrefixesV6, frr.IncomingFilter{Prefix: p, IPFamily: family})
+		res.PrefixesV6 = append(res.PrefixesV6, filter)
 	}
 	sort.Slice(res.PrefixesV4, func(i, j int) bool {
-		return res.PrefixesV4[i].Prefix < res.PrefixesV4[j].Prefix
+		return res.PrefixesV4[i].LessThan(res.PrefixesV4[j])
 	})
 	sort.Slice(res.PrefixesV6, func(i, j int) bool {
-		return res.PrefixesV6[i].Prefix < res.PrefixesV6[j].Prefix
+		return res.PrefixesV6[i].LessThan(res.PrefixesV6[j])
 	})
-	return res
+	return res, nil
+}
+
+func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, error) {
+	_, cidr, err := net.ParseCIDR(selector.Prefix)
+	if err != nil {
+		return frr.IncomingFilter{}, fmt.Errorf("failed to parse prefix %s: %w", selector.Prefix, err)
+	}
+	maskLen, _ := cidr.Mask.Size()
+	err = validateSelectorLengths(maskLen, selector.LE, selector.GE)
+	if err != nil {
+		return frr.IncomingFilter{}, err
+	}
+
+	family := ipfamily.ForCIDRString(selector.Prefix)
+
+	return frr.IncomingFilter{
+		Prefix:   selector.Prefix,
+		IPFamily: family,
+		GE:       selector.GE,
+		LE:       selector.LE,
+	}, nil
+}
+
+// validateSelectorLengths checks the lengths respect the following
+// condition: mask length <= ge <= le
+func validateSelectorLengths(mask int, le, ge uint32) error {
+	if ge == 0 && le == 0 {
+		return nil
+	}
+	if le > 0 && ge > le {
+		return fmt.Errorf("invalid selector lengths: ge %d is bigger than le %d", ge, le)
+	}
+	if le > 0 && uint32(mask) > le {
+		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than le %d", mask, le)
+	}
+	if ge > 0 && uint32(mask) > ge {
+		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than ge %d", mask, ge)
+	}
+	return nil
 }
 
 func neighborName(ASN uint32, peerAddr string) string {
