@@ -131,7 +131,7 @@ type Neighbor struct {
 type Advertise struct {
 	// Prefixes is the list of prefixes allowed to be propagated to
 	// this neighbor. They must match the prefixes defined in the router.
-	Allowed AllowedPrefixes `json:"allowed,omitempty"`
+	Allowed AllowedOutPrefixes `json:"allowed,omitempty"`
 
 	// PrefixesWithLocalPref is a list of prefixes that are associated to a local
 	// preference when being advertised. The prefixes associated to a given local pref
@@ -150,11 +150,34 @@ type Receive struct {
 	// Prefixes is the list of prefixes allowed to be received from
 	// this neighbor.
 	// +optional
-	Allowed AllowedPrefixes `json:"allowed,omitempty"`
+	Allowed AllowedInPrefixes `json:"allowed,omitempty"`
 }
 
-type AllowedPrefixes struct {
+type PrefixSelector struct {
 	// +kubebuilder:validation:Format="cidr"
+	Prefix string `json:"prefix,omitempty"`
+	// The prefix length modifier. This selector accepts any matching prefix with length
+	// less or equal the given value.
+	// +kubebuilder:validation:Maximum:=128
+	// +kubebuilder:validation:Minimum:=1
+	LE uint32 `json:"le,omitempty"`
+	// The prefix length modifier. This selector accepts any matching prefix with length
+	// greater or equal the given value.
+	// +kubebuilder:validation:Maximum:=128
+	// +kubebuilder:validation:Minimum:=1
+	GE uint32 `json:"ge,omitempty"`
+}
+
+type AllowedInPrefixes struct {
+	Prefixes []PrefixSelector `json:"prefixes,omitempty"`
+	// Mode is the mode to use when handling the prefixes.
+	// When set to "filtered", only the prefixes in the given list will be allowed.
+	// When set to "all", all the prefixes configured on the router will be allowed.
+	// +kubebuilder:default:=filtered
+	Mode AllowMode `json:"mode,omitempty"`
+}
+
+type AllowedOutPrefixes struct {
 	Prefixes []string `json:"prefixes,omitempty"`
 	// Mode is the mode to use when handling the prefixes.
 	// When set to "filtered", only the prefixes in the given list will be allowed.
