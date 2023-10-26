@@ -20,10 +20,13 @@ ipv6 prefix-list 192.168.1.2-pl-ipv4 seq 2 deny any
 
 ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 1 permit fc00:f853:ccd:e800::/64
 ip prefix-list 192.168.1.2-inpl-ipv4 seq 2 permit 192.168.1.0/24
+ip prefix-list 192.168.1.2-inpl-ipv4 seq 3 permit 192.168.2.0/24 le 32 ge 24
+ip prefix-list 192.168.1.2-inpl-ipv4 seq 4 permit 192.168.3.0/24 le 32
+ip prefix-list 192.168.1.2-inpl-ipv4 seq 5 permit 192.168.3.0/24 ge 16
 
 
 
-ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 3 deny any
+ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 6 deny any
 route-map 192.168.1.2-in permit 3
   match ip address prefix-list 192.168.1.2-inpl-ipv4
 route-map 192.168.1.2-in permit 4
@@ -43,16 +46,46 @@ ipv6 prefix-list 192.168.1.3-pl-ipv4 seq 2 deny any
 
 
 
-ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 1 permit fc00:f853:ccd:e799::/64
-ip prefix-list 192.168.1.3-inpl-ipv4 seq 2 permit 192.169.1.0/24
+ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 1 permit fc00:f853:ccd:e800::/64
+ip prefix-list 192.168.1.3-inpl-ipv4 seq 2 permit 192.168.1.0/24
+ip prefix-list 192.168.1.3-inpl-ipv4 seq 3 permit 192.168.2.0/24 le 26 ge 24
+ip prefix-list 192.168.1.3-inpl-ipv4 seq 4 permit 192.168.3.0/24 le 32 ge 27
 
 
 
-ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 3 deny any
+ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 5 deny any
 route-map 192.168.1.3-in permit 3
   match ip address prefix-list 192.168.1.3-inpl-ipv4
 route-map 192.168.1.3-in permit 4
   match ipv6 address prefix-list 192.168.1.3-inpl-ipv4
+
+
+route-map 192.168.1.4-out permit 1
+  match ip address prefix-list 192.168.1.4-pl-ipv4
+route-map 192.168.1.4-out permit 2
+  match ipv6 address prefix-list 192.168.1.4-pl-ipv4
+
+
+
+ip prefix-list 192.168.1.4-pl-ipv4 seq 1 deny any
+ipv6 prefix-list 192.168.1.4-pl-ipv4 seq 2 deny any
+
+
+
+
+ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 1 permit fc00:f853:ccd:e799::/64
+ip prefix-list 192.168.1.4-inpl-ipv4 seq 2 permit 192.169.1.0/24
+ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 3 permit fc00:f853:ccd:e800::/64 le 32 ge 24
+ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 4 permit fc00:f853:ccd:e801::/64 ge 24
+ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 5 permit fc00:f853:ccd:e802::/64 le 32
+
+
+
+ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 6 deny any
+route-map 192.168.1.4-in permit 3
+  match ip address prefix-list 192.168.1.4-inpl-ipv4
+route-map 192.168.1.4-in permit 4
+  match ipv6 address prefix-list 192.168.1.4-inpl-ipv4
 
 router bgp 65000
   no bgp ebgp-requires-policy
@@ -64,11 +97,16 @@ router bgp 65000
   neighbor 192.168.1.2 timers 0 0
   
   
-  neighbor 192.168.1.3 remote-as 65001
+  neighbor 192.168.1.3 remote-as 65002
   neighbor 192.168.1.3 port 4567
   neighbor 192.168.1.3 timers 0 0
   
   
+  neighbor 192.168.1.4 remote-as 65001
+  neighbor 192.168.1.4 port 4567
+  neighbor 192.168.1.4 timers 0 0
+  
+  
 
   address-family ipv4 unicast
     neighbor 192.168.1.2 activate
@@ -90,5 +128,16 @@ router bgp 65000
     neighbor 192.168.1.3 activate
     neighbor 192.168.1.3 route-map 192.168.1.3-in in
     neighbor 192.168.1.3 route-map 192.168.1.3-out out
+  exit-address-family
+
+  address-family ipv4 unicast
+    neighbor 192.168.1.4 activate
+    neighbor 192.168.1.4 route-map 192.168.1.4-in in
+    neighbor 192.168.1.4 route-map 192.168.1.4-out out
+  exit-address-family
+  address-family ipv6 unicast
+    neighbor 192.168.1.4 activate
+    neighbor 192.168.1.4 route-map 192.168.1.4-in in
+    neighbor 192.168.1.4 route-map 192.168.1.4-out out
   exit-address-family
 

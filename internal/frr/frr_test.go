@@ -331,12 +331,57 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 									IPFamily: ipfamily.IPv4,
 									Prefix:   "192.168.1.0/24",
 								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.2.0/24",
+									LE:       32,
+									GE:       24,
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.3.0/24",
+									LE:       32,
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.3.0/24",
+									GE:       16,
+								},
+							},
+						},
+					}, {
+						IPFamily: ipfamily.IPv4,
+						ASN:      65002,
+						Addr:     "192.168.1.3",
+						Port:     4567,
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e800::/64",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.2.0/24",
+									LE:       26,
+									GE:       24,
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.3.0/24",
+									LE:       32,
+									GE:       27,
+								},
 							},
 						},
 					}, {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
-						Addr:     "192.168.1.3",
+						Addr:     "192.168.1.4",
 						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -347,6 +392,22 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 								{
 									IPFamily: ipfamily.IPv4,
 									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e800::/64",
+									LE:       32,
+									GE:       24,
+								},
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e801::/64",
+									GE:       24,
+								},
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "fc00:f853:ccd:e802::/64",
+									LE:       32,
 								},
 							},
 						},

@@ -67,7 +67,7 @@ ipv6 prefix-list {{$plistName}} seq {{counter $plistName}} deny any
 {{/* filtering incoming prefixes */}}
 {{$plistName:=allowedIncomingList $.neighbor}}
 {{ range $i := .neighbor.Incoming.AllPrefixes }}
-{{frrIPFamily $i.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$i.Prefix}}
+{{frrIPFamily $i.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$i.Prefix}}{{$i.Matcher}}
 {{- end }}
 
 {{ if not .neighbor.Incoming.PrefixesV4 }}
