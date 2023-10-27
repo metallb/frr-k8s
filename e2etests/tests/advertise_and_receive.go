@@ -152,7 +152,11 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 					ppV4[0].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
 					for i := range ppV4[1:] {
-						ppV4[i+1].Neigh.ToReceive.Allowed.Prefixes = []string{"192.168.2.0/24", "192.169.2.0/24"}
+						ppV4[i+1].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "192.168.2.0/24"},
+							{Prefix: "192.169.2.0/24"},
+						}
+
 						ppV4[i+1].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.100.0/24"}
 					}
 				},
@@ -178,7 +182,11 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 					ppV6[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 					ppV6[0].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
 					for i := range ppV6[1:] {
-						ppV6[i+1].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64"}
+						ppV6[i+1].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "fc00:f853:ccd:e899::/64"},
+							{Prefix: "fc00:f853:ccd:e900::/64"},
+						}
+
 						ppV6[i+1].Neigh.ToAdvertise.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64"}
 					}
 				},
@@ -205,14 +213,22 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 					ppV4[0].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
 					for i := range ppV4[1:] {
-						ppV4[i+1].Neigh.ToReceive.Allowed.Prefixes = []string{"192.168.2.0/24", "192.169.2.0/24"}
+						ppV4[i+1].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "192.168.2.0/24"},
+							{Prefix: "192.169.2.0/24"},
+						}
+
 						ppV4[i+1].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.100.0/24"}
 					}
 
 					ppV6[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
 					ppV6[0].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
 					for i := range ppV6[1:] {
-						ppV6[i+1].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e899::/64", "fc00:f853:ccd:e900::/64"}
+						ppV6[i+1].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "fc00:f853:ccd:e899::/64"},
+							{Prefix: "fc00:f853:ccd:e900::/64"},
+						}
+
 						ppV6[i+1].Neigh.ToAdvertise.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64"}
 					}
 				},

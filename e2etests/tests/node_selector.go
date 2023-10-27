@@ -332,12 +332,18 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalv4Prefixes: []string{"192.170.2.0/24", "192.171.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []string{"192.168.2.0/24", "192.169.2.0/24"}
+						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "192.168.2.0/24"},
+							{Prefix: "192.169.2.0/24"},
+						}
 					}
 				},
 				globalModifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []string{"192.170.2.0/24", "192.171.2.0/24"}
+						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "192.170.2.0/24"},
+							{Prefix: "192.171.2.0/24"},
+						}
 					}
 				},
 			}),
@@ -349,12 +355,18 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalv6Prefixes: []string{"fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"},
 				modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"}
+						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "fc00:f853:ccd:e799::/64"},
+							{Prefix: "fc00:f853:ccd:e800::/64"},
+						}
 					}
 				},
 				globalModifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []string{"fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"}
+						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+							{Prefix: "fc00:f853:ccd:e801::/64"},
+							{Prefix: "fc00:f853:ccd:e802::/64"},
+						}
 					}
 				},
 			}),
