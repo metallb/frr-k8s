@@ -28,12 +28,24 @@ var (
 )
 
 type Config struct {
-	Loglevel    string
+	Loglevel    LogLevel
 	Hostname    string
 	Routers     []*RouterConfig
 	BFDProfiles []BFDProfile
 	ExtraConfig string
 }
+
+type LogLevel string
+
+const (
+	// Allowed frr log levels are: emergencies, alerts, critical,
+	// 	errors, warnings, notifications, informational, or debugging
+	LogLevelDebug       LogLevel = "debugging"
+	LogLevelInfo        LogLevel = "informational"
+	LogLevelWarn        LogLevel = "warnings"
+	LogLevelError       LogLevel = "error"
+	LogLevelEmergencies LogLevel = "emergencies"
+)
 
 type reloadEvent struct {
 	config *Config

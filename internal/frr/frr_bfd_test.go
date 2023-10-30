@@ -8,17 +8,18 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/metallb/frrk8s/internal/ipfamily"
-	"github.com/metallb/frrk8s/internal/logging"
 	"k8s.io/utils/ptr"
 )
 
 func TestSingleSessionBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -59,10 +60,12 @@ func TestSingleSessionBFD(t *testing.T) {
 func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,

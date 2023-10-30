@@ -172,12 +172,19 @@ func main() {
 		reloadStatus := func() {
 			reloadStatusChan <- controller.NewStateEvent()
 		}
-		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
 
+		frrInstance := frr.NewFRR(ctx, reloadStatus, logger)
+		hostName, err := os.Hostname()
+		if err != nil {
+			setupLog.Error(err, "unable to get hostname")
+			os.Exit(1)
+		}
 		configReconciler := &controller.FRRConfigurationReconciler{
 			Client:       mgr.GetClient(),
 			Scheme:       mgr.GetScheme(),
 			FRRHandler:   frrInstance,
+			FRRLogLevel:  logging.LevelToFRR(logging.Level(logLevel)),
+			Hostname:     hostName,
 			Logger:       logger,
 			NodeName:     nodeName,
 			ReloadStatus: reloadStatus,

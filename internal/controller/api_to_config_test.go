@@ -18,6 +18,11 @@ import (
 	"k8s.io/utils/ptr"
 )
 
+const (
+	testHostname = "dummyhostname"
+	testLogLevel = frr.LogLevelInfo
+)
+
 func TestConversion(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -60,6 +65,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65001,
@@ -137,6 +144,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65010,
@@ -234,6 +243,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65020,
@@ -270,6 +281,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname:    testHostname,
+				Loglevel:    testLogLevel,
 				Routers:     []*frr.RouterConfig{},
 				BFDProfiles: []frr.BFDProfile{},
 			},
@@ -302,6 +315,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65030,
@@ -365,6 +380,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65040,
@@ -441,6 +458,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65040,
@@ -600,6 +619,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65040,
@@ -874,6 +895,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65040,
@@ -939,6 +962,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65040,
@@ -1010,6 +1035,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65040,
@@ -1161,6 +1188,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65010,
@@ -1279,6 +1308,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65010,
@@ -1487,6 +1518,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65010,
@@ -1688,6 +1721,8 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:    65010,
@@ -1820,6 +1855,8 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65001,
@@ -1877,6 +1914,8 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65001,
@@ -1925,6 +1964,8 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
 				Routers: []*frr.RouterConfig{
 					{
 						MyASN:        65040,
@@ -2111,7 +2152,9 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			expected: &frr.Config{
-				Routers: []*frr.RouterConfig{},
+				Hostname: testHostname,
+				Loglevel: testLogLevel,
+				Routers:  []*frr.RouterConfig{},
 				BFDProfiles: []frr.BFDProfile{
 					{
 						Name:             "bfd1",
@@ -2173,7 +2216,7 @@ func TestConversion(t *testing.T) {
 				FRRConfigs:      test.fromK8s,
 				PasswordSecrets: test.secrets,
 			}
-			frr, err := apiToFRR(resources)
+			frr, err := apiToFRR(testHostname, testLogLevel, resources)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}

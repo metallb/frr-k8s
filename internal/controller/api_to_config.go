@@ -28,8 +28,10 @@ type namedRawConfig struct {
 	configName string
 }
 
-func apiToFRR(resources ClusterResources) (*frr.Config, error) {
+func apiToFRR(hostname string, logLevel frr.LogLevel, resources ClusterResources) (*frr.Config, error) {
 	res := &frr.Config{
+		Hostname:    hostname,
+		Loglevel:    logLevel,
 		Routers:     make([]*frr.RouterConfig, 0),
 		BFDProfiles: make([]frr.BFDProfile, 0),
 	}

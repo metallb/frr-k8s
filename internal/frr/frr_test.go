@@ -15,17 +15,16 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/metallb/frrk8s/internal/ipfamily"
-	"github.com/metallb/frrk8s/internal/logging"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
-const testData = "testdata/"
+const (
+	testData     = "testdata/"
+	testHostname = "dummyhostname"
+	testLogLevel = LogLevelInfo
+)
 
 var update = flag.Bool("update", false, "update .golden files")
-
-func testOsHostname() (string, error) {
-	return "dummyhostname", nil
-}
 
 func testCompareFiles(t *testing.T, configFile, goldenFile string) {
 	var lastError error
@@ -74,7 +73,6 @@ func testSetup(t *testing.T) {
 	configFile, _ := testGenerateFileNames(t)
 	os.Setenv("FRR_CONFIG_FILE", configFile)
 	_ = os.Remove(configFile) // removing leftovers from previous runs
-	osHostname = testOsHostname
 }
 
 func testCheckConfigFile(t *testing.T) {
@@ -99,10 +97,12 @@ var emptyCB = func() {}
 func TestSingleSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -141,10 +141,12 @@ func TestSingleSession(t *testing.T) {
 func TestTwoRoutersTwoNeighbors(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -214,10 +216,12 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 func TestTwoSessionsAcceptAll(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -254,10 +258,12 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -308,10 +314,12 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -430,9 +438,11 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -476,9 +486,11 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -518,9 +530,11 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -575,9 +589,11 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,
@@ -670,9 +686,11 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
+		Hostname: testHostname,
+		Loglevel: testLogLevel,
 		Routers: []*RouterConfig{
 			{
 				MyASN: 65000,

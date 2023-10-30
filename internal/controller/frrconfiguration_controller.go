@@ -47,6 +47,8 @@ type FRRConfigurationReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	FRRHandler         frr.ConfigHandler
+	Hostname           string
+	FRRLogLevel        frr.LogLevel
 	Logger             log.Logger
 	NodeName           string
 	Namespace          string
@@ -129,7 +131,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		FRRConfigs:      cfgs,
 		PasswordSecrets: secrets,
 	}
-	config, err := apiToFRR(resources)
+	config, err := apiToFRR(r.Hostname, r.FRRLogLevel, resources)
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
@@ -155,7 +157,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
-	config, err := apiToFRR(ClusterResources{})
+	config, err := apiToFRR(r.Hostname, r.FRRLogLevel, ClusterResources{})
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
 		panic("failed to translate empty config")

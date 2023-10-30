@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/metallb/frrk8s/internal/logging"
 )
 
 type ConfigHandler interface {
@@ -34,7 +33,6 @@ type Status struct {
 
 type FRR struct {
 	reloadConfig    chan reloadEvent
-	logLevel        string
 	Status          Status
 	onStatusChanged StatusChanged
 	sync.Mutex
@@ -42,19 +40,7 @@ type FRR struct {
 
 const ReloadSuccess = "success"
 
-// Create a variable for os.Hostname() in order to make it easy to mock out
-// in unit tests.
-var osHostname = os.Hostname
-
 func (f *FRR) ApplyConfig(config *Config) error {
-	hostname, err := osHostname()
-	if err != nil {
-		return err
-	}
-
-	// TODO add internal wrapper
-	config.Loglevel = f.logLevel
-	config.Hostname = hostname
 	f.reloadConfig <- reloadEvent{config: config}
 	return nil
 }
@@ -62,10 +48,9 @@ func (f *FRR) ApplyConfig(config *Config) error {
 var debounceTimeout = 3 * time.Second
 var failureTimeout = time.Second * 5
 
-func NewFRR(ctx context.Context, onStatusChanged StatusChanged, logger log.Logger, logLevel logging.Level) *FRR {
+func NewFRR(ctx context.Context, onStatusChanged StatusChanged, logger log.Logger) *FRR {
 	res := &FRR{
 		reloadConfig:    make(chan reloadEvent),
-		logLevel:        logLevelToFRR(logLevel),
 		onStatusChanged: onStatusChanged,
 	}
 	reload := func(config *Config) error {
@@ -168,23 +153,4 @@ func readLastReloadResult() (string, string, error) {
 		return "", "", fmt.Errorf("invalid status file format: %s", string(bytes))
 	}
 	return lastReloadStatus[0], lastReloadStatus[1], nil
-}
-
-func logLevelToFRR(level logging.Level) string {
-	// Allowed frr log levels are: emergencies, alerts, critical,
-	// 		errors, warnings, notifications, informational, or debugging
-	switch level {
-	case logging.LevelAll, logging.LevelDebug:
-		return "debugging"
-	case logging.LevelInfo:
-		return "informational"
-	case logging.LevelWarn:
-		return "warnings"
-	case logging.LevelError:
-		return "error"
-	case logging.LevelNone:
-		return "emergencies"
-	}
-
-	return "informational"
 }

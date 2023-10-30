@@ -105,6 +105,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -137,6 +139,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -155,6 +159,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(43),
 						IPV4Prefixes: []string{"192.168.1.0/32"},
 						IPV6Prefixes: []string{},
@@ -188,6 +194,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -203,6 +211,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname:    testHostname,
+					Loglevel:    testLogLevel,
 					Routers:     []*frr.RouterConfig{},
 					BFDProfiles: []frr.BFDProfile{},
 				},
@@ -277,6 +287,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -308,6 +320,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -343,6 +357,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -409,6 +425,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -435,6 +453,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -464,6 +484,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{
 						{
 							MyASN:        uint32(42),
@@ -524,6 +546,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return *fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -560,6 +584,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return *fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -612,6 +638,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -643,6 +671,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
@@ -659,6 +689,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname:    testHostname,
+					Loglevel:    testLogLevel,
 					Routers:     []*frr.RouterConfig{},
 					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "bar\n",
@@ -697,6 +729,8 @@ var _ = Describe("Frrk8s controller", func() {
 				return fakeFRRConfigHandler.lastConfig
 			}).Should(Equal(
 				&frr.Config{
+					Hostname: testHostname,
+					Loglevel: testLogLevel,
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},

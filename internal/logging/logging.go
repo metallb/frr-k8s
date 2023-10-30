@@ -16,6 +16,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/metallb/frrk8s/internal/frr"
 	"k8s.io/klog"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
@@ -192,4 +193,21 @@ func parseLevel(lvl string) (level.Option, error) {
 	}
 
 	return nil, fmt.Errorf("failed to parse log level: %s", lvl)
+}
+
+func LevelToFRR(level Level) frr.LogLevel {
+	switch level {
+	case LevelAll, LevelDebug:
+		return frr.LogLevelDebug
+	case LevelInfo:
+		return frr.LogLevelInfo
+	case LevelWarn:
+		return frr.LogLevelWarn
+	case LevelError:
+		return frr.LogLevelError
+	case LevelNone:
+		return frr.LogLevelEmergencies
+	}
+
+	return frr.LogLevelInfo
 }
