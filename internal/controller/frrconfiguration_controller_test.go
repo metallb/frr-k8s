@@ -59,10 +59,10 @@ func (f *fakeFRR) ApplyConfig(config *frr.Config) error {
 	return nil
 }
 
-var reloadCalled bool
+var statusReloadCalled bool
 
 func fakeReloadStatus() {
-	reloadCalled = true
+	statusReloadCalled = true
 }
 
 var _ = Describe("Frrk8s controller", func() {
@@ -82,7 +82,6 @@ var _ = Describe("Frrk8s controller", func() {
 	})
 
 	Context("when a FRRConfiguration is created", func() {
-
 		It("should apply the configuration to FRR", func() {
 			frrConfig := &frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
@@ -756,12 +755,11 @@ var _ = Describe("Frrk8s controller", func() {
 				},
 			))
 		})
-
 	})
 
 	Context("when reporting the conversion status", func() {
 		BeforeEach(func() {
-			reloadCalled = false
+			statusReloadCalled = false
 		})
 
 		It("should notify when the last conversion status changed", func() {
@@ -787,9 +785,9 @@ var _ = Describe("Frrk8s controller", func() {
 			err := k8sClient.Create(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool {
-				return reloadCalled
+				return statusReloadCalled
 			}, 5*time.Second).Should(BeTrue())
-			reloadCalled = false
+			statusReloadCalled = false
 
 			By("updating to a valid config")
 			frrConfig.Spec = frrk8sv1beta1.FRRConfigurationSpec{
@@ -804,9 +802,9 @@ var _ = Describe("Frrk8s controller", func() {
 			err = k8sClient.Update(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() bool {
-				return reloadCalled
+				return statusReloadCalled
 			}, 5*time.Second).Should(BeTrue())
-			reloadCalled = false
+			statusReloadCalled = false
 
 			By("updating with another valid config")
 			frrConfig.Spec.BGP.Routers[0].ASN = uint32(44)
@@ -814,7 +812,7 @@ var _ = Describe("Frrk8s controller", func() {
 			err = k8sClient.Update(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Consistently(func() bool {
-				return reloadCalled
+				return statusReloadCalled
 			}, 5*time.Second).Should(BeFalse())
 		})
 	})

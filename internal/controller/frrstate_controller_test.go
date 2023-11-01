@@ -37,6 +37,7 @@ var (
 	fakeStatus        = &fakeFRRStatus{}
 	updateChan        chan event.GenericEvent
 	fakeConversionRes = &fakeConversionResult{}
+	fakeHealthRes     = &fakeHealthResult{}
 )
 
 type fakeFRRStatus struct {
@@ -58,6 +59,14 @@ type fakeConversionResult struct {
 }
 
 func (f *fakeConversionResult) ConversionResult() string {
+	return f.result
+}
+
+type fakeHealthResult struct {
+	result string
+}
+
+func (f *fakeHealthResult) HealthResult() string {
 	return f.result
 }
 
@@ -130,6 +139,7 @@ var _ = Describe("Frrk8s node status", func() {
 				}))
 
 			fakeConversionRes.result = "aaaa"
+			fakeHealthRes.result = "bbbb"
 			updateChan <- NewStateEvent()
 
 			Eventually(func() frrk8sv1beta1.FRRNodeState {
@@ -146,10 +156,11 @@ var _ = Describe("Frrk8s node status", func() {
 						"Name": Equal(testNodeName),
 					}),
 					"Status": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
-						"RunningConfig":        Equal("foo"),
-						"DesiredConfig":        Equal("bar1"),
-						"LastReloadResult":     Equal("error"),
-						"LastConversionResult": Equal("aaaa"),
+						"RunningConfig":         Equal("foo"),
+						"DesiredConfig":         Equal("bar1"),
+						"LastReloadResult":      Equal("error"),
+						"LastConversionResult":  Equal("aaaa"),
+						"LastHealthcheckResult": Equal("bbbb"),
 					}),
 				}))
 

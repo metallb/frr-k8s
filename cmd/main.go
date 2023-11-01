@@ -20,6 +20,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -76,6 +77,7 @@ func main() {
 		certServiceName     string
 		webhookMode         string
 		pprofAddr           string
+		healthCheckMode     string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -88,6 +90,7 @@ func main() {
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
+	flag.StringVar(&healthCheckMode, "healthcheck-mode", "enabled", "healthcheck mode: can be disabled or enabled")
 
 	opts := zap.Options{
 		Development: true,
@@ -172,8 +175,16 @@ func main() {
 		reloadStatus := func() {
 			reloadStatusChan <- controller.NewStateEvent()
 		}
+		reloadHealthChan := make(chan event.GenericEvent)
+		reloadHealth := func() {
+			reloadHealthChan <- controller.NewHealthCheckEvent()
+		}
 
-		frrInstance := frr.NewFRR(ctx, reloadStatus, logger)
+		onFRRReload := reloadStatus
+		if healthCheckMode == "enabled" {
+			onFRRReload = func() { reloadStatus(); reloadHealth() }
+		}
+		frrInstance := frr.NewFRR(ctx, onFRRReload, logger)
 		hostName, err := os.Hostname()
 		if err != nil {
 			setupLog.Error(err, "unable to get hostname")
@@ -188,10 +199,19 @@ func main() {
 			Logger:       logger,
 			NodeName:     nodeName,
 			ReloadStatus: reloadStatus,
+			HealthUpdate: reloadHealthChan,
 		}
 		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
 			os.Exit(1)
+		}
+
+		if healthCheckMode == "enabled" {
+			err = configReconciler.SetupHealthCheck(mgr.GetAPIReader(), ctx, 3, 30*time.Second, 5*time.Minute)
+			if err != nil {
+				setupLog.Error(err, "unable to setup healthcheck", "controller", "FRRConfiguration")
+				os.Exit(1)
+			}
 		}
 
 		if err = (&controller.FRRStateReconciler{
@@ -202,6 +222,7 @@ func main() {
 			NodeName:         nodeName,
 			Update:           reloadStatusChan,
 			ConversionResult: configReconciler,
+			HealthResult:     configReconciler,
 		}).SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 			os.Exit(1)

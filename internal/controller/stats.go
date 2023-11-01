@@ -38,9 +38,16 @@ var (
 		Name:      "config_stale_bool",
 		Help:      "1 if running on a stale configuration, because the latest config failed to load.",
 	})
+
+	configReset = prometheus.NewGauge(prometheus.GaugeOpts{
+		Namespace: Namespace,
+		Subsystem: Subsystem,
+		Name:      "config_reset_bool",
+		Help:      "1 if running on an empty config because the healthcheck",
+	})
 )
 
 func init() {
 	// Register custom metrics with the global prometheus registry
-	metrics.Registry.MustRegister(updates, updateErrors, configLoaded, configStale)
+	metrics.Registry.MustRegister(updates, updateErrors, configLoaded, configStale, configReset)
 }

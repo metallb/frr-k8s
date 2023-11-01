@@ -19,7 +19,9 @@ package controller
 import (
 	"context"
 	"fmt"
+	"reflect"
 	"sync"
+	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -33,6 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -41,6 +44,10 @@ import (
 )
 
 const ConversionSuccess = "success"
+const HealthSuccess = "success"
+const HealthFailed = "failed"
+
+var emptyConf = &frr.Config{} // not the actual empty config, but good enough for setting last applied field
 
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
@@ -55,12 +62,24 @@ type FRRConfigurationReconciler struct {
 	ReloadStatus       func()
 	conversionResult   string
 	conversionResMutex sync.Mutex
+	hc                 *healthChecker
+	HealthUpdate       chan event.GenericEvent
+	healthResult       string
+	healthResMutex     sync.Mutex
+	hcReset            bool
+	lastAppliedCfg     *frr.Config
 }
 
 func (r *FRRConfigurationReconciler) ConversionResult() string {
 	r.conversionResMutex.Lock()
 	defer r.conversionResMutex.Unlock()
 	return r.conversionResult
+}
+
+func (r *FRRConfigurationReconciler) HealthResult() string {
+	r.healthResMutex.Lock()
+	defer r.healthResMutex.Unlock()
+	return r.healthResult
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=get;list;watch;create;update;patch;delete
@@ -73,14 +92,17 @@ func (r *FRRConfigurationReconciler) ConversionResult() string {
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
 	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.NamespacedName.String())
+
 	lastConversionResult := r.conversionResult
 	conversionResult := ConversionSuccess
+	currHealthResult := r.healthResult
 
 	defer func() {
 		r.conversionResMutex.Lock()
 		r.conversionResult = conversionResult
 		r.conversionResMutex.Unlock()
-		if conversionResult != lastConversionResult {
+
+		if conversionResult != lastConversionResult || currHealthResult != r.healthResult {
 			r.ReloadStatus()
 		}
 	}()
@@ -97,13 +119,26 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", dumpK8sConfigs(configs))
 
 	if len(configs.Items) == 0 {
+		if r.lastAppliedCfg == emptyConf {
+			return ctrl.Result{}, nil
+		}
+
 		err := r.applyEmptyConfig(req)
 		if err != nil {
 			updateErrors.Inc()
 			configStale.Set(1)
 			conversionResult = fmt.Sprintf("failed: %v", err)
+			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+
+		r.hcReset = false
+		err = r.runHealthCheck(req)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		r.lastAppliedCfg = emptyConf
+		return ctrl.Result{}, nil
 	}
 
 	thisNode := &corev1.Node{}
@@ -142,6 +177,11 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", dumpFRRConfig(config))
 
+	if reflect.DeepEqual(r.lastAppliedCfg, config) {
+		level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "ignoring config", "already applied")
+		return ctrl.Result{}, r.runHealthCheck(req)
+	}
+
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
@@ -150,8 +190,11 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
+	r.hcReset = false
+	r.lastAppliedCfg = config
 	configLoaded.Set(1)
 	configStale.Set(0)
+	configReset.Set(0)
 
 	return ctrl.Result{}, nil
 }
@@ -165,7 +208,7 @@ func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
-		return err
+		return fmt.Errorf("failed to apply the empty config - req %s err: %w", req.NamespacedName.String(), err)
 	}
 	return nil
 }
@@ -203,6 +246,7 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&frrk8sv1beta1.FRRConfiguration{}).
 		Watches(&corev1.Node{}, &handler.EnqueueRequestForObject{}).
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
+		WatchesRawSource(&source.Channel{Source: r.HealthUpdate}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
 }
@@ -251,4 +295,68 @@ func filterNodeEvent(e event.UpdateEvent, thisNode string) bool {
 	}
 
 	return true
+}
+
+func (r *FRRConfigurationReconciler) runHealthCheck(req ctrl.Request) error {
+	if r.hcReset {
+		level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "ignoring healthcheck", "running on reset config")
+		return nil
+	}
+
+	healthResult := ""
+	defer func() {
+		r.healthResMutex.Lock()
+		r.healthResult = healthResult
+		r.healthResMutex.Unlock()
+	}()
+
+	if r.hc == nil {
+		return nil
+	}
+
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "running healthcheck", req.NamespacedName.String())
+	err := r.hc.Run()
+	if err == nil {
+		healthResult = HealthSuccess
+		return nil
+	}
+
+	level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "healthcheck failed", "resetting FRR config", "req", req.NamespacedName.String(), "err", err)
+	err = r.applyEmptyConfig(req)
+	if err != nil {
+		return fmt.Errorf("failed to reset frr config as part of healhcheck, err: %w", err)
+	}
+
+	healthResult = HealthFailed
+	configStale.Set(1)
+	configReset.Set(1)
+	r.hcReset = true
+
+	return nil
+}
+
+func (r *FRRConfigurationReconciler) SetupHealthCheck(cl client.Reader, ctx context.Context, attempts int, timeout, interval time.Duration) error {
+	if interval <= 0 {
+		return fmt.Errorf("invalid healthcheck interval %q, must be >= 0", interval)
+	}
+
+	r.hc = &healthChecker{
+		check:    healthcheckForAPIServer(cl, ctx, timeout, r.NodeName),
+		attempts: attempts,
+	}
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ticker.C:
+				r.HealthUpdate <- NewHealthCheckEvent()
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return nil
 }

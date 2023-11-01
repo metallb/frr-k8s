@@ -81,6 +81,7 @@ var _ = BeforeSuite(func() {
 		NodeName:     testNodeName,
 		Namespace:    testNamespace,
 		ReloadStatus: fakeReloadStatus,
+		HealthUpdate: make(chan event.GenericEvent),
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -92,6 +93,7 @@ var _ = BeforeSuite(func() {
 		Logger:           log.NewNopLogger(),
 		NodeName:         testNodeName,
 		ConversionResult: fakeConversionRes,
+		HealthResult:     fakeHealthRes,
 		Update:           updateChan,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())

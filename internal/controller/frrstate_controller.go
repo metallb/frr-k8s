@@ -52,6 +52,7 @@ type FRRStateReconciler struct {
 	NodeName         string
 	FRRStatus        frr.StatusFetcher
 	ConversionResult ConversionResultFetcher
+	HealthResult     HealthResultFetcher
 }
 
 type stateEvent struct {
@@ -77,6 +78,10 @@ type ConversionResultFetcher interface {
 	ConversionResult() string
 }
 
+type HealthResultFetcher interface {
+	HealthResult() string
+}
+
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
@@ -99,10 +104,11 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	frrStatus := r.FRRStatus.GetStatus()
 
 	newStatus := frrk8sv1beta1.FRRNodeStateStatus{
-		DesiredConfig:        cleanPasswords(frrStatus.Desired),
-		RunningConfig:        cleanPasswords(frrStatus.Current),
-		LastReloadResult:     cleanPasswords(frrStatus.LastReloadResult),
-		LastConversionResult: r.ConversionResult.ConversionResult(),
+		DesiredConfig:         cleanPasswords(frrStatus.Desired),
+		RunningConfig:         cleanPasswords(frrStatus.Current),
+		LastReloadResult:      cleanPasswords(frrStatus.LastReloadResult),
+		LastConversionResult:  r.ConversionResult.ConversionResult(),
+		LastHealthcheckResult: r.HealthResult.HealthResult(),
 	}
 	if reflect.DeepEqual(state.Status, newStatus) { // Do nothing
 		return ctrl.Result{}, nil
