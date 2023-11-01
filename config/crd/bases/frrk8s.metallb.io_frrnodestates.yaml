@@ -38,6 +38,8 @@ spec:
           status:
             description: FRRNodeStateStatus defines the observed state of FRRNodeState.
             properties:
+              LastHealthcheckResult:
+                type: string
               desiredConfig:
                 type: string
               lastConversionResult:
