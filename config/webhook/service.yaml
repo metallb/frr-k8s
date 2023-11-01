@@ -8,4 +8,4 @@ spec:
     - port: 443
       targetPort: 9443
   selector:
-    control-plane: webhook-server
+    app.kubernetes.io/component: frr-k8s-webhook-server

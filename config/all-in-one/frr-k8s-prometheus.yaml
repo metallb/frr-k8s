@@ -833,13 +833,13 @@ spec:
   - port: 443
     targetPort: 9443
   selector:
-    control-plane: webhook-server
+    app.kubernetes.io/component: frr-k8s-webhook-server
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: frr-k8s
+    app.kubernetes.io/component: frr-k8s-webhook-server
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/instance: frr-k8s
     app.kubernetes.io/managed-by: kustomize
@@ -851,14 +851,13 @@ metadata:
 spec:
   selector:
     matchLabels:
-      control-plane: webhook-server
+      app.kubernetes.io/component: frr-k8s-webhook-server
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
-        app: frr-k8s-webhook-server
-        control-plane: webhook-server
+        app.kubernetes.io/component: frr-k8s-webhook-server
     spec:
       containers:
       - args:
