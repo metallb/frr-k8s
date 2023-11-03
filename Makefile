@@ -1,6 +1,11 @@
 
-# Image URL to use all building/pushing image targets
-IMG_TAG ?= dev
+ifeq (,$(FRRK8S_VERSION))
+IMG_TAG="dev"
+GOBIN=$(shell go env GOPATH)/bin
+else
+IMG_TAG=v${FRRK8S_VERSION}
+endif
+
 IMG_BASE ?= quay.io/metallb/frr-k8s
 IMG ?= ${IMG_BASE}:${IMG_TAG}
 NAMESPACE ?= "frr-k8s-system"
@@ -263,4 +268,13 @@ generate-all-in-one: manifests kustomize ## Create manifests
 
 .PHONY: helm-docs
 helm-docs:
-	docker run --rm -v $(git rev-parse --show-toplevel):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
+	docker run --rm -v $$(pwd):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
+
+.PHONY: bumpversion
+bumpversion:
+	hack/release/pre_bump.sh
+	hack/release/bumpversion.sh
+
+.PHONY: cutrelease
+cutrelease: bumpversion generate-all-in-one helm-docs
+	hack/release/release.sh

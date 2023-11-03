@@ -69,7 +69,7 @@ jobs:
           make manifests
           make generate-all-in-one
           make checkuncommitted
-      
+
       - name: Helm doc generate
         uses: docker://jnorwood/helm-docs:v1.10.0
 
@@ -90,7 +90,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: quay.io/metallb/frr-k8s:dev-amd64
+          tags: quay.io/metallb/frr-k8s:dev
           file: Dockerfile
           outputs: type=docker,dest=/tmp/frrk8s.tar
           cache-from: type=gha
@@ -140,7 +140,7 @@ jobs:
         run: |
           MAKE_RULE="deploy-with-prometheus"
           if [ ${{ matrix.deployment }} = "helm" ]; then MAKE_RULE="deploy-helm"; fi
-          LOGLEVEL=debug IP_FAMILY="${{ matrix.ip-family }}" IMG_TAG=dev-amd64 make $MAKE_RULE
+          LOGLEVEL=debug IP_FAMILY="${{ matrix.ip-family }}" make $MAKE_RULE
           mkdir -p /tmp/kind_logs/
 
       - name: E2E
