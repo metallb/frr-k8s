@@ -42,10 +42,10 @@ func TestConversion(t *testing.T) {
 											ASN:     65002,
 											Address: "192.0.2.2",
 											Port:    179,
-											KeepaliveTime: metav1.Duration{
+											KeepaliveTime: &metav1.Duration{
 												Duration: 20 * time.Second,
 											},
-											HoldTime: metav1.Duration{
+											HoldTime: &metav1.Duration{
 												Duration: 40 * time.Second,
 											},
 										},
@@ -71,8 +71,8 @@ func TestConversion(t *testing.T) {
 								ASN:           65002,
 								Addr:          "192.0.2.2",
 								Port:          179,
-								KeepaliveTime: 20,
-								HoldTime:      40,
+								KeepaliveTime: ptr.To[uint64](20),
+								HoldTime:      ptr.To[uint64](40),
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -2133,6 +2133,62 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "HoldTime without KeepaliveTime",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:      65002,
+											Address:  "192.0.2.2",
+											Port:     179,
+											HoldTime: &metav1.Duration{Duration: 120 * time.Second},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: one of KeepaliveTime/HoldTime specified, both must be set or none`),
+		},
+		{
+			name: "KeepaliveTime without HoldTime",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:           65002,
+											Address:       "192.0.2.2",
+											Port:          179,
+											KeepaliveTime: &metav1.Duration{Duration: 120 * time.Second},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: one of KeepaliveTime/HoldTime specified, both must be set or none`),
+		},
+		{
 			name: "HoldTime bigger than keepalive time",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
@@ -2147,10 +2203,10 @@ func TestConversion(t *testing.T) {
 											ASN:     65002,
 											Address: "192.0.2.2",
 											Port:    179,
-											KeepaliveTime: metav1.Duration{
+											KeepaliveTime: &metav1.Duration{
 												Duration: 50 * time.Second,
 											},
-											HoldTime: metav1.Duration{
+											HoldTime: &metav1.Duration{
 												Duration: 40 * time.Second,
 											},
 										},

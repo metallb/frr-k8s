@@ -156,12 +156,12 @@ spec:
                                 description: To set if the BGPPeer is multi-hops away.
                                 type: boolean
                               holdTime:
-                                default: 90s
                                 description: Requested BGP hold time, per RFC4271.
+                                  Defaults to 180s.
                                 type: string
                               keepaliveTime:
-                                default: 30s
                                 description: Requested BGP keepalive time, per RFC4271.
+                                  Defaults to 60s.
                                 type: string
                               password:
                                 description: passwordSecret is name of the authentication

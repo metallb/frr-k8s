@@ -38,7 +38,7 @@ router bgp 65000
 
   neighbor 2001:db8::1 remote-as 65001
   neighbor 2001:db8::1 port 4567
-  neighbor 2001:db8::1 timers 0 0
+  
   
   
   neighbor 2001:db8::1 disable-connected-check

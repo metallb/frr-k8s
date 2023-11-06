@@ -17,6 +17,7 @@ import (
 	"github.com/metallb/frrk8s/internal/ipfamily"
 	"github.com/metallb/frrk8s/internal/logging"
 	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/utils/ptr"
 )
 
 const testData = "testdata/"
@@ -150,11 +151,12 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 				MyASN: 65000,
 				Neighbors: []*NeighborConfig{
 					{
-						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
-						Addr:     "192.168.1.2",
-						Port:     4567,
-
+						IPFamily:      ipfamily.IPv4,
+						ASN:           65001,
+						Addr:          "192.168.1.2",
+						Port:          4567,
+						HoldTime:      ptr.To[uint64](80),
+						KeepaliveTime: ptr.To[uint64](40),
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{

@@ -22,6 +22,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 )
 
@@ -399,8 +400,16 @@ func (in *LocalPrefPrefixes) DeepCopy() *LocalPrefPrefixes {
 func (in *Neighbor) DeepCopyInto(out *Neighbor) {
 	*out = *in
 	out.PasswordSecret = in.PasswordSecret
-	out.HoldTime = in.HoldTime
-	out.KeepaliveTime = in.KeepaliveTime
+	if in.HoldTime != nil {
+		in, out := &in.HoldTime, &out.HoldTime
+		*out = new(v1.Duration)
+		**out = **in
+	}
+	if in.KeepaliveTime != nil {
+		in, out := &in.KeepaliveTime, &out.KeepaliveTime
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	in.ToAdvertise.DeepCopyInto(&out.ToAdvertise)
 	in.ToReceive.DeepCopyInto(&out.ToReceive)
 }
