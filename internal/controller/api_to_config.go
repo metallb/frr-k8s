@@ -456,23 +456,23 @@ func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPre
 }
 
 func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {
-	return &frr.BFDProfile{
+	res := &frr.BFDProfile{
 		Name:             bfdProfile.Name,
-		ReceiveInterval:  pointerForValue(bfdProfile.ReceiveInterval),
-		TransmitInterval: pointerForValue(bfdProfile.TransmitInterval),
-		DetectMultiplier: pointerForValue(bfdProfile.DetectMultiplier),
-		EchoInterval:     pointerForValue(bfdProfile.EchoInterval),
-		EchoMode:         bfdProfile.EchoMode,
-		PassiveMode:      bfdProfile.PassiveMode,
-		MinimumTTL:       pointerForValue(bfdProfile.MinimumTTL),
+		ReceiveInterval:  bfdProfile.ReceiveInterval,
+		TransmitInterval: bfdProfile.TransmitInterval,
+		DetectMultiplier: bfdProfile.DetectMultiplier,
+		EchoInterval:     bfdProfile.EchoInterval,
+		MinimumTTL:       bfdProfile.MinimumTTL,
 	}
-}
 
-func pointerForValue(value uint32) *uint32 {
-	if value != 0 {
-		return &value
+	if bfdProfile.EchoMode != nil {
+		res.EchoMode = *bfdProfile.EchoMode
 	}
-	return nil
+	if bfdProfile.PassiveMode != nil {
+		res.PassiveMode = *bfdProfile.PassiveMode
+	}
+
+	return res
 }
 
 func sortMap[T any](toSort map[string]*T) []T {

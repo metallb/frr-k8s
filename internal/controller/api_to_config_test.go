@@ -1915,8 +1915,8 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 							},
 						},
@@ -1985,8 +1985,8 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 							},
 						},
@@ -2026,8 +2026,8 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 							},
 						},
@@ -2047,18 +2047,18 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 								{
 									Name:             "bfd3",
-									ReceiveInterval:  42,
-									TransmitInterval: 44,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](44),
 								},
 							},
 						},
@@ -2078,13 +2078,13 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 								{
 									Name:             "bfd2",
-									ReceiveInterval:  42,
-									TransmitInterval: 44,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](44),
 								},
 							},
 						},
@@ -2096,13 +2096,13 @@ func TestConversion(t *testing.T) {
 							BFDProfiles: []v1beta1.BFDProfile{
 								{
 									Name:             "bfd1",
-									ReceiveInterval:  42,
-									TransmitInterval: 43,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](43),
 								},
 								{
 									Name:             "bfd3",
-									ReceiveInterval:  42,
-									TransmitInterval: 45,
+									ReceiveInterval:  ptr.To[uint32](42),
+									TransmitInterval: ptr.To[uint32](45),
 								},
 							},
 						},

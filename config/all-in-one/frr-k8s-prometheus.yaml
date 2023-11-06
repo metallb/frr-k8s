@@ -58,7 +58,6 @@ spec:
                     items:
                       properties:
                         detectMultiplier:
-                          default: 3
                           description: Configures the detection multiplier to determine
                             packet loss. The remote transmission interval will be
                             multiplied by this value to determine the connection loss
@@ -68,7 +67,6 @@ spec:
                           minimum: 2
                           type: integer
                         echoInterval:
-                          default: 50
                           description: Configures the minimal echo receive transmission
                             interval that this system is capable of handling in milliseconds.
                             Defaults to 50ms
@@ -82,7 +80,6 @@ spec:
                             multi hops setups.
                           type: boolean
                         minimumTtl:
-                          default: 254
                           description: 'For multi hop sessions only: configure the
                             minimum expected TTL for an incoming BFD control packet.'
                           format: int32
@@ -99,7 +96,6 @@ spec:
                             for control packets from peer before it begins replying.'
                           type: boolean
                         receiveInterval:
-                          default: 300
                           description: The minimum interval that this system is capable
                             of receiving control packets in milliseconds. Defaults
                             to 300ms.
@@ -108,7 +104,6 @@ spec:
                           minimum: 10
                           type: integer
                         transmitInterval:
-                          default: 300
                           description: The minimum transmission interval (less jitter)
                             that this system wants to use to send BFD control packets
                             in milliseconds. Defaults to 300ms
