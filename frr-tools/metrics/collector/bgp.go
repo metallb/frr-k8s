@@ -7,10 +7,10 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/metallb/frrk8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/metallb/frrk8s/frr-tools/metrics/vtysh"
+	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
 )
 
 var labels = []string{"peer", "vrf"}

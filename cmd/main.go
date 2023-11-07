@@ -43,11 +43,11 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"github.com/metallb/frrk8s/internal/controller"
-	"github.com/metallb/frrk8s/internal/frr"
-	"github.com/metallb/frrk8s/internal/logging"
-	"github.com/metallb/frrk8s/internal/version"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/controller"
+	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/version"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	//+kubebuilder:scaffold:imports
 )

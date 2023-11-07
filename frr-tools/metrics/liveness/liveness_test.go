@@ -8,7 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/metallb/frrk8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 func TestLiveness(t *testing.T) {

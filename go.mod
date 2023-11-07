@@ -1,4 +1,4 @@
-module github.com/metallb/frrk8s
+module github.com/metallb/frr-k8s
 
 go 1.20
 

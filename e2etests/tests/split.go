@@ -5,7 +5,7 @@ package tests
 import (
 	"fmt"
 
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

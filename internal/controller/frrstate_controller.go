@@ -34,8 +34,8 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"github.com/metallb/frrk8s/internal/frr"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/frr"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

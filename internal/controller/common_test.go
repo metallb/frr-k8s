@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	"github.com/go-kit/log"
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"

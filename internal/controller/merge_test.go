@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/metallb/frrk8s/internal/frr"
-	"github.com/metallb/frrk8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/ipfamily"
 )
 
 func TestMergeRouters(t *testing.T) {

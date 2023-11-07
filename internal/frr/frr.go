@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/metallb/frrk8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 type ConfigHandler interface {

@@ -30,9 +30,9 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"github.com/metallb/frrk8s/internal/frr"
-	"github.com/metallb/frrk8s/internal/ipfamily"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/ipfamily"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"

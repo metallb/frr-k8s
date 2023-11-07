@@ -3,7 +3,7 @@ module github.com/metallb/frrk8stests
 go 1.20
 
 replace (
-	github.com/metallb/frrk8s => ../
+	github.com/metallb/frr-k8s => ../
 	github.com/onsi/ginkgo/v2 => github.com/onsi/ginkgo/v2 v2.13.0
 	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20231018084006-477ed4165c47
 	go.universe.tf/metallb => github.com/metallb/metallb v0.1.1-0.20231018084006-477ed4165c47
@@ -37,7 +37,7 @@ replace (
 )
 
 require (
-	github.com/metallb/frrk8s v0.0.0-00010101000000-000000000000
+	github.com/metallb/frr-k8s v0.0.0-00010101000000-000000000000
 	github.com/onsi/ginkgo/v2 v2.13.0
 	github.com/onsi/gomega v1.28.1
 	github.com/openshift-kni/k8sreporter v1.0.4
