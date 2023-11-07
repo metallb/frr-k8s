@@ -40,8 +40,8 @@ func TestConversion(t *testing.T) {
 									Neighbors: []v1beta1.Neighbor{
 										{
 											ASN:     65002,
+											Port:    ptr.To[uint16](179),
 											Address: "192.0.2.2",
-											Port:    179,
 											KeepaliveTime: &metav1.Duration{
 												Duration: 20 * time.Second,
 											},
@@ -69,8 +69,8 @@ func TestConversion(t *testing.T) {
 								IPFamily:      ipfamily.IPv4,
 								Name:          "65002@192.0.2.2",
 								ASN:           65002,
+								Port:          ptr.To[uint16](179),
 								Addr:          "192.0.2.2",
-								Port:          179,
 								KeepaliveTime: ptr.To[uint64](20),
 								HoldTime:      ptr.To[uint64](40),
 								Outgoing: frr.AllowedOut{
@@ -106,12 +106,10 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65011,
 											Address: "192.0.2.6",
-											Port:    179,
 										},
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 										},
 									},
 									VRF:      "",
@@ -124,7 +122,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											Port:    179,
 										},
 									},
 									VRF:      "vrf2",
@@ -147,7 +144,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65011@192.0.2.6",
 								ASN:      65011,
 								Addr:     "192.0.2.6",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -162,7 +158,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -186,7 +181,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65014@2001:db8::4",
 								ASN:      65014,
 								Addr:     "2001:db8::4",
-								Port:     179,
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -221,7 +215,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65021,
 											Address: "192.0.2.11",
-											Port:    179,
 										},
 									},
 									VRF:      "",
@@ -244,7 +237,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65021@192.0.2.11",
 								ASN:      65021,
 								Addr:     "192.0.2.11",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -289,7 +281,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65031,
 											Address: "192.0.2.16",
-											Port:    179,
 										},
 									},
 									VRF:      "vrf1",
@@ -312,7 +303,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65031@192.0.2.16",
 								ASN:      65031,
 								Addr:     "192.0.2.16",
-								Port:     179,
 								VRFName:  "vrf1",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -347,7 +337,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24"},
@@ -375,7 +364,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -413,7 +401,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
@@ -424,7 +411,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
@@ -451,7 +437,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -475,7 +460,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.22",
 								ASN:      65041,
 								Addr:     "192.0.2.22",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -526,7 +510,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
@@ -569,7 +552,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
@@ -610,7 +592,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -645,7 +626,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.22",
 								ASN:      65041,
 								Addr:     "192.0.2.22",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -699,7 +679,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "19@.0.2.@1",
-											Port:    179,
 										},
 									},
 								},
@@ -726,7 +705,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
@@ -770,7 +748,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
@@ -814,7 +791,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
@@ -858,7 +834,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Mode: v1beta1.AllowAll,
@@ -886,7 +861,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -918,7 +892,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Prefixes: []v1beta1.PrefixSelector{
@@ -951,7 +924,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -989,7 +961,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Prefixes: []v1beta1.PrefixSelector{
@@ -1022,7 +993,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      65041,
 								Addr:     "192.0.2.21",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1060,7 +1030,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Prefixes: []v1beta1.PrefixSelector{
@@ -1097,7 +1066,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
@@ -1140,7 +1108,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Mode: v1beta1.AllowRestricted,
@@ -1171,7 +1138,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1226,7 +1192,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Mode: v1beta1.AllowRestricted,
@@ -1257,7 +1222,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToReceive: v1beta1.Receive{
 												Allowed: v1beta1.AllowedInPrefixes{
 													Mode: v1beta1.AllowRestricted,
@@ -1289,7 +1253,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1351,7 +1314,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
@@ -1385,7 +1347,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65017,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.5/32"},
@@ -1396,7 +1357,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
@@ -1422,7 +1382,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65011,
 											Address: "192.0.2.6",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.1/32", "192.0.3.2/32"},
@@ -1433,7 +1392,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.20/32", "192.0.3.21/32"},
@@ -1468,7 +1426,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
 												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"2001:db9::/96"},
@@ -1497,7 +1454,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65011@192.0.2.6",
 								ASN:      65011,
 								Addr:     "192.0.2.6",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1521,7 +1477,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
 										{
@@ -1568,7 +1523,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65017@192.0.2.7",
 								ASN:      65017,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
@@ -1589,7 +1543,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65014@2001:db8::4",
 								ASN:      65014,
 								Addr:     "2001:db8::4",
-								Port:     179,
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{
@@ -1638,7 +1591,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											PasswordSecret: v1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
@@ -1654,12 +1606,10 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65017,
 											Address: "192.0.2.7",
-											Port:    179,
 										},
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											Port:    179,
 											PasswordSecret: v1.SecretReference{
 												Name:      "secret2",
 												Namespace: "frr-k8s-system",
@@ -1698,7 +1648,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Password: "password1",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -1723,7 +1672,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65017@192.0.2.7",
 								ASN:      65017,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -1739,7 +1687,6 @@ func TestConversion(t *testing.T) {
 								Name:     "65014@2001:db8::4",
 								ASN:      65014,
 								Addr:     "2001:db8::4",
-								Port:     179,
 								VRFName:  "vrf2",
 								Password: "password2",
 								Outgoing: frr.AllowedOut{
@@ -1775,7 +1722,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											Port:    179,
 											PasswordSecret: v1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
@@ -1906,7 +1852,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
-											Port:       179,
 											BFDProfile: "bfd1",
 										},
 									},
@@ -1937,7 +1882,6 @@ func TestConversion(t *testing.T) {
 								Name:       "65041@192.0.2.21",
 								ASN:        65041,
 								Addr:       "192.0.2.21",
-								Port:       179,
 								BFDProfile: "bfd1",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -1976,7 +1920,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
-											Port:       179,
 											BFDProfile: "bfd2",
 										},
 									},
@@ -2011,7 +1954,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
-											Port:       179,
 											BFDProfile: "bfd2",
 										},
 									},
@@ -2146,7 +2088,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:      65002,
 											Address:  "192.0.2.2",
-											Port:     179,
 											HoldTime: &metav1.Duration{Duration: 120 * time.Second},
 										},
 									},
@@ -2174,7 +2115,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:           65002,
 											Address:       "192.0.2.2",
-											Port:          179,
 											KeepaliveTime: &metav1.Duration{Duration: 120 * time.Second},
 										},
 									},
@@ -2202,7 +2142,6 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65002,
 											Address: "192.0.2.2",
-											Port:    179,
 											KeepaliveTime: &metav1.Duration{
 												Duration: 50 * time.Second,
 											},

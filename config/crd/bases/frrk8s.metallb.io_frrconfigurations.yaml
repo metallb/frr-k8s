@@ -166,8 +166,8 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                               port:
-                                default: 179
                                 description: Port to dial when establishing the session.
+                                  Defaults to 179.
                                 maximum: 16384
                                 minimum: 0
                                 type: integer

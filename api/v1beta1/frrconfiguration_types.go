@@ -86,11 +86,11 @@ type Neighbor struct {
 	Address string `json:"address"`
 
 	// Port to dial when establishing the session.
+	// Defaults to 179.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=16384
-	// +kubebuilder:default:=179
-	Port uint16 `json:"port,omitempty"`
+	Port *uint16 `json:"port,omitempty"`
 
 	// passwordSecret is name of the authentication secret for the neighbor.
 	// the secret must be of type "kubernetes.io/basic-auth", and created in the

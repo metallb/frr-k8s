@@ -533,7 +533,6 @@ var _ = Describe("Frrk8s controller", func() {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Password: "password2",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
@@ -569,7 +568,6 @@ var _ = Describe("Frrk8s controller", func() {
 								Name:     "65012@192.0.2.7",
 								ASN:      65012,
 								Addr:     "192.0.2.7",
-								Port:     179,
 								Password: "password3",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},

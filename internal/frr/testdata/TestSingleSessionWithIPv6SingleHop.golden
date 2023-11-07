@@ -37,7 +37,7 @@ router bgp 65000
   no bgp default ipv4-unicast
 
   neighbor 2001:db8::1 remote-as 65001
-  neighbor 2001:db8::1 port 4567
+  
   
   
   

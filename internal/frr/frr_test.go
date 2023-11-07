@@ -112,7 +112,7 @@ func TestSingleSession(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.2",
-						Port:     4567,
+						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
@@ -154,7 +154,6 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						IPFamily:      ipfamily.IPv4,
 						ASN:           65001,
 						Addr:          "192.168.1.2",
-						Port:          4567,
 						HoldTime:      ptr.To[uint64](80),
 						KeepaliveTime: ptr.To[uint64](40),
 						Outgoing: AllowedOut{
@@ -228,7 +227,6 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.2",
-						Port:     4567,
 						Incoming: AllowedIn{
 							All: true,
 						},
@@ -236,7 +234,6 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.3",
-						Port:     4567,
 						Incoming: AllowedIn{
 							All: true,
 						},
@@ -268,7 +265,6 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.2",
-						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
 								{
@@ -281,7 +277,6 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.3",
-						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
 								{
@@ -322,7 +317,6 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.2",
-						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
 								{
@@ -355,7 +349,6 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65002,
 						Addr:     "192.168.1.3",
-						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
 								{
@@ -384,7 +377,6 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.4",
-						Port:     4567,
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
 								{
@@ -443,7 +435,6 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 						IPFamily:     ipfamily.IPv4,
 						ASN:          65001,
 						Addr:         "192.168.1.2",
-						Port:         4567,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
@@ -489,7 +480,6 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 						IPFamily:     ipfamily.IPv6,
 						ASN:          65001,
 						Addr:         "2001:db8::1",
-						Port:         4567,
 						EBGPMultiHop: false, // Single hop
 						Outgoing: AllowedOut{
 							PrefixesV6: []OutgoingFilter{
@@ -531,7 +521,6 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.168.1.2",
-						Port:     4567,
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
@@ -545,7 +534,6 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 						IPFamily:     ipfamily.IPv6,
 						ASN:          65002,
 						Addr:         "2001:db8::1",
-						Port:         4568,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV6: []OutgoingFilter{
@@ -588,7 +576,6 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						IPFamily:     ipfamily.IPv4,
 						ASN:          65001,
 						Addr:         "192.168.1.2",
-						Port:         4567,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
@@ -603,7 +590,6 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						IPFamily:     ipfamily.IPv6,
 						ASN:          65002,
 						Addr:         "2001:db8::1",
-						Port:         4568,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV6: []OutgoingFilter{
@@ -626,7 +612,6 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
 						Addr:     "192.170.1.2",
-						Port:     4567,
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
@@ -640,7 +625,6 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						IPFamily:     ipfamily.IPv6,
 						ASN:          65002,
 						Addr:         "2001:db9::1",
-						Port:         4568,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV6: []OutgoingFilter{
@@ -683,7 +667,6 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 						IPFamily:     ipfamily.IPv4,
 						ASN:          65001,
 						Addr:         "192.168.1.2",
-						Port:         4567,
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
