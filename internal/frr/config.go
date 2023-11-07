@@ -106,6 +106,32 @@ func (a *AllowedOut) AllPrefixes() []OutgoingFilter {
 type IncomingFilter struct {
 	IPFamily ipfamily.Family
 	Prefix   string
+	LE       uint32
+	GE       uint32
+}
+
+func (i IncomingFilter) LessThan(i1 IncomingFilter) bool {
+	if i.IPFamily != i1.IPFamily {
+		return i.IPFamily < i1.IPFamily
+	}
+	if i.Prefix != i1.Prefix {
+		return i.Prefix < i1.Prefix
+	}
+	if i.LE != i1.LE {
+		return i.LE < i1.LE
+	}
+	return i.GE < i1.GE
+}
+
+func (i IncomingFilter) Matcher() string {
+	res := ""
+	if i.LE != 0 {
+		res += fmt.Sprintf(" le %d", i.LE)
+	}
+	if i.GE != 0 {
+		res += fmt.Sprintf(" ge %d", i.GE)
+	}
+	return res
 }
 
 type OutgoingFilter struct {

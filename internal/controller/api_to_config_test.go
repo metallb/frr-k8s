@@ -349,7 +349,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -415,7 +415,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -426,7 +426,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.22",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
 												},
 											},
@@ -528,7 +528,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -571,7 +571,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.22",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
 												},
 												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
@@ -728,7 +728,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -772,7 +772,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -816,7 +816,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -860,7 +860,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedInPrefixes{
 													Mode: v1beta1.AllowAll,
 												},
 											},
@@ -903,7 +903,8 @@ func TestConversion(t *testing.T) {
 				BFDProfiles: []frr.BFDProfile{},
 			},
 			err: nil,
-		}, {
+		},
+		{
 			name: "Neighbor with ToReceive some ips only",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
@@ -919,8 +920,13 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.21",
 											Port:    179,
 											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedPrefixes{
-													Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+												Allowed: v1beta1.AllowedInPrefixes{
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.2.0/24"},
+														{Prefix: "192.0.3.0/24"},
+														{Prefix: "192.0.4.0/24"},
+														{Prefix: "2001:db8::/64"},
+													},
 												},
 											},
 										},
@@ -970,6 +976,114 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "Neighbor with ToReceive some ips only and modifiers",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedInPrefixes{
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.2.0/24", LE: 32, GE: 26},
+														{Prefix: "192.0.3.0/24", LE: 32, GE: 26},
+														{Prefix: "192.0.4.0/24"},
+														{Prefix: "2001:db8::/64"},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65040,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      65041,
+								Addr:     "192.0.2.21",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									All: false,
+									PrefixesV4: []frr.IncomingFilter{
+										{IPFamily: "ipv4", Prefix: "192.0.2.0/24", LE: 32, GE: 26},
+										{IPFamily: "ipv4", Prefix: "192.0.3.0/24", LE: 32, GE: 26},
+										{IPFamily: "ipv4", Prefix: "192.0.4.0/24"},
+									},
+									PrefixesV6: []frr.IncomingFilter{
+										{IPFamily: "ipv6", Prefix: "2001:db8::/64"},
+									},
+								},
+							},
+						},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			err: nil,
+		},
+		{
+			name: "Neighbor with ToReceive some ips only and setting le and ge",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedInPrefixes{
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.2.0/24", LE: 10, GE: 12},
+														{Prefix: "192.0.3.0/24", LE: 32, GE: 12},
+														{Prefix: "192.0.4.0/24"},
+														{Prefix: "2001:db8::/64"},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      errors.New("failed to process neighbor 65041@192.0.2.21 for router 65040-: invalid prefix 192.0.2.0/24 selector: GE 12 > LE 10"),
+		},
+		{
 			name: "Multiple FRRConfigurations - Single Router and neighbor, one config for advertise the other for receiving",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
@@ -985,7 +1099,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.7",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1028,9 +1142,12 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.7",
 											Port:    179,
 											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedPrefixes{
-													Mode:     v1beta1.AllowRestricted,
-													Prefixes: []string{"192.0.100.0/24", "192.0.101.0/24"},
+												Allowed: v1beta1.AllowedInPrefixes{
+													Mode: v1beta1.AllowRestricted,
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.100.0/24"},
+														{Prefix: "192.0.101.0/24"},
+													},
 												},
 											},
 										},
@@ -1096,6 +1213,131 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "Multiple FRRConfigurations - Single Router and neighbor, merging different lengths",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedInPrefixes{
+													Mode: v1beta1.AllowRestricted,
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.100.0/24", LE: 28},
+														{Prefix: "192.0.101.0/24", LE: 32, GE: 26},
+														{Prefix: "192.0.102.0/24", LE: 32, GE: 26},
+													},
+												},
+											},
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65012,
+											Address: "192.0.2.7",
+											Port:    179,
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedInPrefixes{
+													Mode: v1beta1.AllowRestricted,
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "192.0.100.0/24", LE: 32},
+														{Prefix: "192.0.101.0/24", GE: 24},
+														{Prefix: "192.0.102.0/24", LE: 32, GE: 26},
+													},
+												},
+											},
+										},
+									},
+									VRF: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.7",
+								ASN:      65012,
+								Addr:     "192.0.2.7",
+								Port:     179,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.100.0/24",
+											LE:       28,
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.100.0/24",
+											LE:       32,
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.101.0/24",
+											GE:       24,
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.101.0/24",
+											LE:       32,
+											GE:       26,
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.102.0/24",
+											LE:       32,
+											GE:       26,
+										},
+									},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
+						IPV6Prefixes: []string{},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			err: nil,
+		},
+		{
 			name: "Multiple FRRConfigurations - Multiple Routers and Neighbors",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
@@ -1111,7 +1353,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.7",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1145,7 +1387,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.7",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.5/32"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1156,7 +1398,7 @@ func TestConversion(t *testing.T) {
 											Address: "2001:db8::4",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Mode: v1beta1.AllowAll,
 												},
 											},
@@ -1182,7 +1424,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.6",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.1/32", "192.0.3.2/32"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1193,7 +1435,7 @@ func TestConversion(t *testing.T) {
 											Address: "192.0.2.7",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.20/32", "192.0.3.21/32"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1228,7 +1470,7 @@ func TestConversion(t *testing.T) {
 											Address: "2001:db8::4",
 											Port:    179,
 											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedPrefixes{
+												Allowed: v1beta1.AllowedOutPrefixes{
 													Prefixes: []string{"2001:db9::/96"},
 													Mode:     v1beta1.AllowRestricted,
 												},
@@ -1940,6 +2182,116 @@ func TestConversion(t *testing.T) {
 			}
 			if diff := cmp.Diff(frr, test.expected); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
+			}
+		})
+	}
+}
+
+func TestFilterForSelector(t *testing.T) {
+	tests := []struct {
+		name     string
+		selector v1beta1.PrefixSelector
+		expected frr.IncomingFilter
+		mustFail bool
+	}{
+		{
+			name: "prefix only",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+			},
+			expected: frr.IncomingFilter{
+				IPFamily: ipfamily.IPv4,
+				Prefix:   "192.168.1.0/24",
+			},
+		},
+		{
+			name: "prefix with valid modifiers",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+				LE:     32,
+				GE:     25,
+			},
+			expected: frr.IncomingFilter{
+				IPFamily: ipfamily.IPv4,
+				Prefix:   "192.168.1.0/24",
+				LE:       32,
+				GE:       25,
+			},
+		},
+		{
+			name: "prefix le smaller than mask",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+				LE:     22,
+			},
+			expected: frr.IncomingFilter{},
+			mustFail: true,
+		},
+		{
+			name: "prefix le valid, ge smaller than mask",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+				LE:     32,
+				GE:     22,
+			},
+			expected: frr.IncomingFilter{},
+			mustFail: true,
+		},
+		{
+			name: "prefix le nil, ge smaller than mask",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+				GE:     22,
+			},
+			expected: frr.IncomingFilter{},
+			mustFail: true,
+		},
+		{
+			name: "prefix ge greater than le",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "192.168.1.0/24",
+				LE:     26,
+				GE:     28,
+			},
+			expected: frr.IncomingFilter{},
+			mustFail: true,
+		},
+		{
+			name: "prefix with valid modifiers, ipv6",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "fc00:f853:ccd:e799::/64",
+				LE:     128,
+				GE:     70,
+			},
+			expected: frr.IncomingFilter{
+				IPFamily: ipfamily.IPv6,
+				Prefix:   "fc00:f853:ccd:e799::/64",
+				LE:       128,
+				GE:       70,
+			},
+		},
+		{
+			name: "prefix with invalid modifiers, ipv6",
+			selector: v1beta1.PrefixSelector{
+				Prefix: "fc00:f853:ccd:e799::/64",
+				LE:     63,
+			},
+			mustFail: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			filter, err := filterForSelector(test.selector)
+			if test.mustFail && err == nil {
+				t.Fatalf("expecting error, got nil")
+			}
+			if !test.mustFail && err != nil {
+				t.Fatalf("not expecting error, got %s", err)
+			}
+
+			if diff := cmp.Diff(filter, test.expected); diff != "" {
+				t.Fatalf("filter different from expected: %s", diff)
 			}
 		})
 	}

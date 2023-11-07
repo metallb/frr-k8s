@@ -160,11 +160,8 @@ func mergeIncomingFilters(curr, toMerge []frr.IncomingFilter) []frr.IncomingFilt
 	mergedIn := map[string]*frr.IncomingFilter{}
 	for _, a := range all {
 		f := a
-		_, found := mergedIn[f.Prefix]
-		if found {
-			continue
-		}
-		mergedIn[f.Prefix] = &f
+		key := fmt.Sprintf("%s%d%d", f.Prefix, f.LE, f.GE)
+		mergedIn[key] = &f
 	}
 
 	return sortMap(mergedIn)

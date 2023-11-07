@@ -198,7 +198,6 @@ spec:
                                         - filtered
                                         type: string
                                       prefixes:
-                                        format: cidr
                                         items:
                                           type: string
                                         type: array
@@ -265,9 +264,30 @@ spec:
                                         - filtered
                                         type: string
                                       prefixes:
-                                        format: cidr
                                         items:
-                                          type: string
+                                          properties:
+                                            ge:
+                                              description: The prefix length modifier.
+                                                This selector accepts any matching
+                                                prefix with length greater or equal
+                                                the given value.
+                                              format: int32
+                                              maximum: 128
+                                              minimum: 1
+                                              type: integer
+                                            le:
+                                              description: The prefix length modifier.
+                                                This selector accepts any matching
+                                                prefix with length less or equal the
+                                                given value.
+                                              format: int32
+                                              maximum: 128
+                                              minimum: 1
+                                              type: integer
+                                            prefix:
+                                              format: cidr
+                                              type: string
+                                          type: object
                                         type: array
                                     type: object
                                 type: object
