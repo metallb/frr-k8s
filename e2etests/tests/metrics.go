@@ -30,6 +30,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	admissionapi "k8s.io/pod-security-admission/api"
+	"k8s.io/utils/ptr"
 )
 
 var (
@@ -312,7 +313,10 @@ var _ = ginkgo.Describe("Metrics", func() {
 		framework.ExpectNoError(err)
 
 		ginkgo.By("validating")
-		ValidatePodBFDUPMetrics(pods, frrs, promPod, ipFamily, bfdProfile.EchoMode)
+		echoFor := func(e *bool) bool {
+			return e != nil && *e
+		}
+		ValidatePodBFDUPMetrics(pods, frrs, promPod, ipFamily, echoFor(bfdProfile.EchoMode))
 
 		ginkgo.By("disabling BFD in external FRR containers")
 		for _, c := range frrs {
@@ -323,7 +327,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		}
 
 		ginkgo.By("validating session down metrics")
-		ValidatePodBFDDownMetrics(pods, frrs, promPod, ipFamily, bfdProfile.EchoMode)
+		ValidatePodBFDDownMetrics(pods, frrs, promPod, ipFamily, echoFor(bfdProfile.EchoMode))
 
 	},
 		ginkgo.Entry("IPV4 - default",
@@ -333,32 +337,27 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ginkgo.Entry("IPV4 - full params",
 			frrk8sv1beta1.BFDProfile{
 				Name:             "full1",
-				ReceiveInterval:  60,
-				TransmitInterval: 61,
-				EchoInterval:     62,
-				EchoMode:         false,
-				PassiveMode:      false,
-				MinimumTTL:       254,
+				ReceiveInterval:  ptr.To[uint32](60),
+				TransmitInterval: ptr.To[uint32](61),
+				EchoInterval:     ptr.To[uint32](62),
+				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV4 - full params- VRF",
 			frrk8sv1beta1.BFDProfile{
 				Name:             "full1",
-				ReceiveInterval:  60,
-				TransmitInterval: 61,
-				EchoInterval:     62,
-				EchoMode:         false,
-				PassiveMode:      false,
-				MinimumTTL:       254,
+				ReceiveInterval:  ptr.To[uint32](60),
+				TransmitInterval: ptr.To[uint32](61),
+				EchoInterval:     ptr.To[uint32](62),
+				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.VRFName),
 		ginkgo.Entry("IPV4 - echo mode enabled",
 			frrk8sv1beta1.BFDProfile{
 				Name:             "echo",
-				ReceiveInterval:  80,
-				TransmitInterval: 81,
-				EchoInterval:     82,
-				EchoMode:         true,
-				PassiveMode:      false,
-				MinimumTTL:       254,
+				ReceiveInterval:  ptr.To[uint32](80),
+				TransmitInterval: ptr.To[uint32](81),
+				EchoInterval:     ptr.To[uint32](82),
+				EchoMode:         ptr.To(true),
+				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV6 - default",
 			frrk8sv1beta1.BFDProfile{
@@ -367,12 +366,11 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ginkgo.Entry("IPV6 - echo mode enabled",
 			frrk8sv1beta1.BFDProfile{
 				Name:             "echo",
-				ReceiveInterval:  80,
-				TransmitInterval: 81,
-				EchoInterval:     82,
-				EchoMode:         true,
-				PassiveMode:      false,
-				MinimumTTL:       254,
+				ReceiveInterval:  ptr.To[uint32](80),
+				TransmitInterval: ptr.To[uint32](81),
+				EchoInterval:     ptr.To[uint32](82),
+				EchoMode:         ptr.To(true),
+				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv6, infra.DefaultVRFName),
 	)
 })

@@ -152,13 +152,13 @@ func checkBFDConfigPropagated(nodeConfig frrk8sv1beta1.BFDProfile, peerConfig fr
 	if peerConfig.Status != "up" {
 		return fmt.Errorf("peer status not up")
 	}
-	if peerConfig.RemoteReceiveInterval != int(nodeConfig.ReceiveInterval) {
+	if peerConfig.RemoteReceiveInterval != int(*nodeConfig.ReceiveInterval) {
 		return fmt.Errorf("remoteReceiveInterval: expecting %d, got %d", nodeConfig.ReceiveInterval, peerConfig.RemoteReceiveInterval)
 	}
-	if peerConfig.RemoteTransmitInterval != int(nodeConfig.TransmitInterval) {
+	if peerConfig.RemoteTransmitInterval != int(*nodeConfig.TransmitInterval) {
 		return fmt.Errorf("remoteTransmitInterval: expecting %d, got %d", nodeConfig.TransmitInterval, peerConfig.RemoteTransmitInterval)
 	}
-	if peerConfig.RemoteEchoReceiveInterval != int(nodeConfig.EchoInterval) {
+	if peerConfig.RemoteEchoReceiveInterval != int(*nodeConfig.EchoInterval) {
 		return fmt.Errorf("echoInterval: expecting %d, got %d", nodeConfig.EchoInterval, peerConfig.RemoteEchoReceiveInterval)
 	}
 	return nil

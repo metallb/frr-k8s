@@ -46,7 +46,7 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersCo
 				Neigh: frrk8sv1beta1.Neighbor{
 					ASN:          f.RouterConfig.ASN,
 					Address:      address,
-					Port:         f.RouterConfig.BGPPort,
+					Port:         &f.RouterConfig.BGPPort,
 					EBGPMultiHop: ebgpMultihop,
 				},
 				FRR: *f,
