@@ -184,7 +184,10 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 }
 
 func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (frr.AllowedOut, error) {
-	advsV4, advsV6 := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
+	advsV4, advsV6, err := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
 	communities, err := communityPrefixesToMap(toAdvertise.PrefixesWithCommunity)
 	if err != nil {
 		return frr.AllowedOut{}, err
@@ -216,8 +219,9 @@ func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes 
 	return res, nil
 }
 
-// prefixesToMap returns two maps of prefix->OutgoingFIlter (ie family, advertisement, communities), one for each family.
-func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter) {
+// prefixesToMap returns two maps of prefix->OutgoingFilter (ie family, advertisement, communities), one for each family.
+// The ipv4Prefixes and ipv6Prefixes represent the "global" allowed prefixes which are the prefixes defined on the router.
+func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter, error) {
 	resV4 := map[string]*frr.OutgoingFilter{}
 	resV6 := map[string]*frr.OutgoingFilter{}
 	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
@@ -227,20 +231,27 @@ func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []s
 		for _, p := range ipv6Prefixes {
 			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv6}
 		}
-		return resV4, resV6
+		return resV4, resV6, nil
 	}
-	// TODO: add a validation somewhere that checks that the prefixes are present in the
-	// global per router list.
+
+	allowedV4 := sets.New(ipv4Prefixes...)
+	allowedV6 := sets.New(ipv6Prefixes...)
 	for _, p := range toAdvertise.Allowed.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {
 		case ipfamily.IPv4:
+			if !allowedV4.Has(p) {
+				return nil, nil, fmt.Errorf("prefix %s is not an allowed prefix", p)
+			}
 			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		case ipfamily.IPv6:
+			if !allowedV6.Has(p) {
+				return nil, nil, fmt.Errorf("prefix %s is not an allowed prefix", p)
+			}
 			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		}
 	}
-	return resV4, resV6
+	return resV4, resV6, nil
 }
 
 // setCommunitiesToAdvertisements takes the given communityPrefixes and fills the relevant fields to the advertisements contained in the advs map.

@@ -573,7 +573,7 @@ func TestConversion(t *testing.T) {
 											},
 										},
 									},
-									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24", "2001:db8::/64"},
 								},
 							},
 						},
@@ -642,6 +642,10 @@ func TestConversion(t *testing.T) {
 											Prefix:      "192.0.4.0/24",
 											Communities: []string{"10:100"},
 										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.6.0/24",
+										},
 									},
 									PrefixesV6: []frr.OutgoingFilter{
 										{
@@ -657,7 +661,7 @@ func TestConversion(t *testing.T) {
 								},
 							},
 						},
-						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
 						IPV6Prefixes: []string{"2001:db8::/64"},
 					},
 				},
@@ -690,6 +694,39 @@ func TestConversion(t *testing.T) {
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
 			err:      fmt.Errorf("failed to find ipfamily"),
+		},
+		{
+			name: "One neighbor, trying to advertise a prefix not in router",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("prefix %s is not an allowed prefix", "192.0.3.0/24"),
 		},
 		{
 			name: "One neighbor, trying to set community on an unallowed prefix",
