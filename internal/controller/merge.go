@@ -201,7 +201,7 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("multiple asns specified for %s", neighborKey)
 	}
 
-	if n1.Port != n2.Port {
+	if !ptrsEqual(n1.Port, n2.Port, 179) {
 		return fmt.Errorf("multiple ports specified for %s", neighborKey)
 	}
 
@@ -230,4 +230,20 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 	}
 
 	return nil
+}
+
+func ptrsEqual[T comparable](p1, p2 *T, def T) bool {
+	if p1 == nil && p2 == nil {
+		return true
+	}
+
+	if p1 == nil {
+		return *p2 == def
+	}
+
+	if p2 == nil {
+		return *p1 == def
+	}
+
+	return *p1 == *p2
 }

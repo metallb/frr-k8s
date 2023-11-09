@@ -31,7 +31,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.20",
 						ASN:      65040,
 						Addr:     "192.0.1.20",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -69,7 +68,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.21",
 						ASN:      65040,
 						Addr:     "192.0.1.21",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -107,7 +105,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.22",
 						ASN:      65040,
 						Addr:     "192.0.1.22",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -156,7 +153,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.20",
 						ASN:      65040,
 						Addr:     "192.0.1.20",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -205,7 +201,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.21",
 						ASN:      65040,
 						Addr:     "192.0.1.21",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -254,7 +249,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.23",
 						ASN:      65040,
 						Addr:     "192.0.1.23",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -312,7 +306,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.20",
 						ASN:      65040,
 						Addr:     "192.0.1.20",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -363,7 +356,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.21",
 						ASN:      65040,
 						Addr:     "192.0.1.21",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -414,7 +406,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.22",
 						ASN:      65040,
 						Addr:     "192.0.1.22",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -452,7 +443,6 @@ func TestMergeRouters(t *testing.T) {
 						Name:     "65040@192.0.1.23",
 						ASN:      65040,
 						Addr:     "192.0.1.23",
-						Port:     179,
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
 								{
@@ -570,7 +560,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -610,7 +599,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -661,7 +649,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -718,7 +705,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -756,7 +742,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.21",
 					ASN:      65040,
 					Addr:     "192.0.1.21",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -794,7 +779,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.22",
 					ASN:      65040,
 					Addr:     "192.0.1.22",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -834,7 +818,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -883,7 +866,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.21",
 					ASN:      65040,
 					Addr:     "192.0.1.21",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -932,7 +914,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.23",
 					ASN:      65040,
 					Addr:     "192.0.1.23",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -983,7 +964,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -1034,7 +1014,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.21",
 					ASN:      65040,
 					Addr:     "192.0.1.21",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -1085,7 +1064,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.22",
 					ASN:      65040,
 					Addr:     "192.0.1.22",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -1123,7 +1101,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.23",
 					ASN:      65040,
 					Addr:     "192.0.1.23",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -1178,7 +1155,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Incoming: frr.AllowedIn{
 						All:        true,
 						PrefixesV4: []frr.IncomingFilter{},
@@ -1192,7 +1168,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Incoming: frr.AllowedIn{
 						All: false,
 						PrefixesV4: []frr.IncomingFilter{
@@ -1211,7 +1186,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{},
 						PrefixesV6: []frr.OutgoingFilter{},
@@ -1233,7 +1207,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Incoming: frr.AllowedIn{
 						All: false,
 						PrefixesV4: []frr.IncomingFilter{
@@ -1252,7 +1225,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Incoming: frr.AllowedIn{
 						All:        true,
 						PrefixesV4: []frr.IncomingFilter{},
@@ -1266,7 +1238,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{},
 						PrefixesV6: []frr.OutgoingFilter{},
@@ -1288,7 +1259,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{
@@ -1307,7 +1277,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Port:     179,
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
 							{

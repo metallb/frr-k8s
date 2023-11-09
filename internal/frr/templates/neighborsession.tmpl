@@ -6,7 +6,9 @@
   {{ if .neighbor.Port -}}
   neighbor {{.neighbor.Addr}} port {{.neighbor.Port}}
   {{- end }}
+  {{ if and .neighbor.KeepaliveTime .neighbor.HoldTime }}
   neighbor {{.neighbor.Addr}} timers {{.neighbor.KeepaliveTime}} {{.neighbor.HoldTime}}
+  {{- end }}
   {{ if .neighbor.Password -}}
   neighbor {{.neighbor.Addr}} password {{.neighbor.Password}}
   {{- end }}

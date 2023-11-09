@@ -15,6 +15,7 @@ import (
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -143,24 +144,10 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, rout
 		BFDProfile:   n.BFDProfile,
 		VRFName:      routerVRF,
 	}
-
-	holdTime := n.HoldTime.Duration
-	err = validateHoldTime(holdTime)
+	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n.ASN, n.Address), err)
 	}
-	keepaliveTime := n.KeepaliveTime.Duration
-	if keepaliveTime == 0 {
-		keepaliveTime = holdTime / 3
-	}
-
-	// keepalive must be lower than holdtime
-	if keepaliveTime > holdTime {
-		return nil, fmt.Errorf("invalid keepaliveTime %q", n.KeepaliveTime)
-	}
-
-	res.HoldTime = uint64(holdTime / time.Second)
-	res.KeepaliveTime = uint64(keepaliveTime / time.Second)
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
 	if err != nil {
@@ -456,23 +443,23 @@ func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPre
 }
 
 func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {
-	return &frr.BFDProfile{
+	res := &frr.BFDProfile{
 		Name:             bfdProfile.Name,
-		ReceiveInterval:  pointerForValue(bfdProfile.ReceiveInterval),
-		TransmitInterval: pointerForValue(bfdProfile.TransmitInterval),
-		DetectMultiplier: pointerForValue(bfdProfile.DetectMultiplier),
-		EchoInterval:     pointerForValue(bfdProfile.EchoInterval),
-		EchoMode:         bfdProfile.EchoMode,
-		PassiveMode:      bfdProfile.PassiveMode,
-		MinimumTTL:       pointerForValue(bfdProfile.MinimumTTL),
+		ReceiveInterval:  bfdProfile.ReceiveInterval,
+		TransmitInterval: bfdProfile.TransmitInterval,
+		DetectMultiplier: bfdProfile.DetectMultiplier,
+		EchoInterval:     bfdProfile.EchoInterval,
+		MinimumTTL:       bfdProfile.MinimumTTL,
 	}
-}
 
-func pointerForValue(value uint32) *uint32 {
-	if value != 0 {
-		return &value
+	if bfdProfile.EchoMode != nil {
+		res.EchoMode = *bfdProfile.EchoMode
 	}
-	return nil
+	if bfdProfile.PassiveMode != nil {
+		res.PassiveMode = *bfdProfile.PassiveMode
+	}
+
+	return res
 }
 
 func sortMap[T any](toSort map[string]*T) []T {
@@ -516,10 +503,29 @@ func joinRawConfigs(raw []namedRawConfig) string {
 	return res.String()
 }
 
-func validateHoldTime(ht time.Duration) error {
+func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
+	if ht == nil && ka != nil || ht != nil && ka == nil {
+		return nil, nil, fmt.Errorf("one of KeepaliveTime/HoldTime specified, both must be set or none")
+	}
+
+	if ht == nil && ka == nil {
+		return nil, nil, nil
+	}
+
+	holdTime := ht.Duration
+	keepaliveTime := ka.Duration
+
 	rounded := time.Duration(int(ht.Seconds())) * time.Second
 	if rounded != 0 && rounded < 3*time.Second {
-		return fmt.Errorf("invalid hold time %q: must be 0 or >=3s", ht)
+		return nil, nil, fmt.Errorf("invalid hold time %q: must be 0 or >=3s", ht)
 	}
-	return nil
+
+	if keepaliveTime > holdTime {
+		return nil, nil, fmt.Errorf("invalid keepaliveTime %q, must be lower than holdTime %q", ka, ht)
+	}
+
+	htSeconds := uint64(holdTime / time.Second)
+	kaSeconds := uint64(keepaliveTime / time.Second)
+
+	return &htSeconds, &kaSeconds, nil
 }

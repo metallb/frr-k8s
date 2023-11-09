@@ -86,11 +86,11 @@ type Neighbor struct {
 	Address string `json:"address"`
 
 	// Port to dial when establishing the session.
+	// Defaults to 179.
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=16384
-	// +kubebuilder:default:=179
-	Port uint16 `json:"port,omitempty"`
+	Port *uint16 `json:"port,omitempty"`
 
 	// passwordSecret is name of the authentication secret for the neighbor.
 	// the secret must be of type "kubernetes.io/basic-auth", and created in the
@@ -100,14 +100,14 @@ type Neighbor struct {
 	PasswordSecret v1.SecretReference `json:"password,omitempty"`
 
 	// Requested BGP hold time, per RFC4271.
-	// +kubebuilder:default:="90s"
+	// Defaults to 180s.
 	// +optional
-	HoldTime metav1.Duration `json:"holdTime,omitempty"`
+	HoldTime *metav1.Duration `json:"holdTime,omitempty"`
 
 	// Requested BGP keepalive time, per RFC4271.
-	// +kubebuilder:default:="30s"
+	// Defaults to 60s.
 	// +optional
-	KeepaliveTime metav1.Duration `json:"keepaliveTime,omitempty"`
+	KeepaliveTime *metav1.Duration `json:"keepaliveTime,omitempty"`
 
 	// To set if the BGPPeer is multi-hops away.
 	// +optional
@@ -212,56 +212,51 @@ type BFDProfile struct {
 	// Defaults to 300ms.
 	// +kubebuilder:validation:Maximum:=60000
 	// +kubebuilder:validation:Minimum:=10
-	// +kubebuilder:default:=300
 	// +optional
-	ReceiveInterval uint32 `json:"receiveInterval,omitempty"`
+	ReceiveInterval *uint32 `json:"receiveInterval,omitempty"`
 
 	// The minimum transmission interval (less jitter)
 	// that this system wants to use to send BFD control packets in
 	// milliseconds. Defaults to 300ms
 	// +kubebuilder:validation:Maximum:=60000
 	// +kubebuilder:validation:Minimum:=10
-	// +kubebuilder:default:=300
 	// +optional
-	TransmitInterval uint32 `json:"transmitInterval,omitempty"`
+	TransmitInterval *uint32 `json:"transmitInterval,omitempty"`
 
 	// Configures the detection multiplier to determine
 	// packet loss. The remote transmission interval will be multiplied
 	// by this value to determine the connection loss detection timer.
 	// +kubebuilder:validation:Maximum:=255
 	// +kubebuilder:validation:Minimum:=2
-	// +kubebuilder:default:=3
 	// +optional
-	DetectMultiplier uint32 `json:"detectMultiplier,omitempty"`
+	DetectMultiplier *uint32 `json:"detectMultiplier,omitempty"`
 
 	// Configures the minimal echo receive transmission
 	// interval that this system is capable of handling in milliseconds.
 	// Defaults to 50ms
 	// +kubebuilder:validation:Maximum:=60000
 	// +kubebuilder:validation:Minimum:=10
-	// +kubebuilder:default:=50
 	// +optional
-	EchoInterval uint32 `json:"echoInterval,omitempty"`
+	EchoInterval *uint32 `json:"echoInterval,omitempty"`
 
 	// Enables or disables the echo transmission mode.
 	// This mode is disabled by default, and not supported on multi
 	// hops setups.
 	// +optional
-	EchoMode bool `json:"echoMode,omitempty"`
+	EchoMode *bool `json:"echoMode,omitempty"`
 
 	// Mark session as passive: a passive session will not
 	// attempt to start the connection and will wait for control packets
 	// from peer before it begins replying.
 	// +optional
-	PassiveMode bool `json:"passiveMode,omitempty"`
+	PassiveMode *bool `json:"passiveMode,omitempty"`
 
 	// For multi hop sessions only: configure the minimum
 	// expected TTL for an incoming BFD control packet.
 	// +kubebuilder:validation:Maximum:=254
 	// +kubebuilder:validation:Minimum:=1
-	// +kubebuilder:default:=254
 	// +optional
-	MinimumTTL uint32 `json:"minimumTtl,omitempty"`
+	MinimumTTL *uint32 `json:"minimumTtl,omitempty"`
 }
 
 // FRRConfigurationStatus defines the observed state of FRRConfiguration.

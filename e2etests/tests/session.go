@@ -75,11 +75,11 @@ var _ = ginkgo.Describe("Advertisement", func() {
 									{
 										ASN:     1234,
 										Address: "192.168.1.1",
-										HoldTime: metav1.Duration{
-											Duration: 120 * time.Second,
+										HoldTime: &metav1.Duration{
+											Duration: 100 * time.Second,
 										},
-										KeepaliveTime: metav1.Duration{
-											Duration: 40 * time.Second,
+										KeepaliveTime: &metav1.Duration{
+											Duration: 20 * time.Second,
 										},
 									},
 								},
@@ -104,11 +104,11 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					if len(neighbors) != 1 {
 						return fmt.Errorf("expected 1 neighbor, got %d", len(neighbors))
 					}
-					if neighbors[0].ConfiguredHoldTime != 120000 {
-						return fmt.Errorf("expected hold time to be 120000, got %d", neighbors[0].ConfiguredHoldTime)
+					if neighbors[0].ConfiguredHoldTime != 100000 {
+						return fmt.Errorf("expected hold time to be 100000, got %d", neighbors[0].ConfiguredHoldTime)
 					}
-					if neighbors[0].ConfiguredKeepAliveTime != 40000 {
-						return fmt.Errorf("expected hold time to be 40000, got %d", neighbors[0].ConfiguredKeepAliveTime)
+					if neighbors[0].ConfiguredKeepAliveTime != 20000 {
+						return fmt.Errorf("expected hold time to be 20000, got %d", neighbors[0].ConfiguredKeepAliveTime)
 					}
 					return nil
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())

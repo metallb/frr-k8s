@@ -25,6 +25,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
 	admissionapi "k8s.io/pod-security-admission/api"
+	"k8s.io/utils/ptr"
 )
 
 var _ = ginkgo.Describe("BFD", func() {
@@ -67,21 +68,18 @@ var _ = ginkgo.Describe("BFD", func() {
 	}
 	fullProfile := frrk8sv1beta1.BFDProfile{
 		Name:             "full1",
-		ReceiveInterval:  60,
-		TransmitInterval: 61,
-		EchoInterval:     62,
-		EchoMode:         false,
-		PassiveMode:      false,
-		MinimumTTL:       254,
+		ReceiveInterval:  ptr.To[uint32](60),
+		TransmitInterval: ptr.To[uint32](61),
+		EchoInterval:     ptr.To[uint32](62),
+		MinimumTTL:       ptr.To[uint32](254),
 	}
 	withEchoMode := frrk8sv1beta1.BFDProfile{
 		Name:             "echo",
-		ReceiveInterval:  80,
-		TransmitInterval: 81,
-		EchoInterval:     82,
-		EchoMode:         true,
-		PassiveMode:      false,
-		MinimumTTL:       254,
+		ReceiveInterval:  ptr.To[uint32](80),
+		TransmitInterval: ptr.To[uint32](81),
+		EchoInterval:     ptr.To[uint32](82),
+		EchoMode:         ptr.To(true),
+		MinimumTTL:       ptr.To[uint32](254),
 	}
 
 	ginkgo.DescribeTable("should work with the given bfd profile", func(bfdProfileDefault frrk8sv1beta1.BFDProfile, bfdProfileRed frrk8sv1beta1.BFDProfile, pairingFamily ipfamily.Family) {
@@ -196,16 +194,16 @@ func bfdProfileWithDefaults(profile frrk8sv1beta1.BFDProfile, multiHop bool) frr
 	res.PassiveMode = profile.PassiveMode
 
 	if multiHop {
-		res.EchoMode = false
-		res.EchoInterval = 50
+		res.EchoMode = ptr.To(false)
+		res.EchoInterval = ptr.To[uint32](50)
 	}
 
 	return res
 }
 
-func valueWithDefault(v uint32, def uint32) uint32 {
-	if v != 0 {
+func valueWithDefault(v *uint32, def uint32) *uint32 {
+	if v != nil {
 		return v
 	}
-	return def
+	return &def
 }

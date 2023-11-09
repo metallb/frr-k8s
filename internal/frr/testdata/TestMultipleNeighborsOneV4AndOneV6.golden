@@ -64,14 +64,14 @@ router bgp 65000
   no bgp default ipv4-unicast
 
   neighbor 192.168.1.2 remote-as 65001
-  neighbor 192.168.1.2 port 4567
-  neighbor 192.168.1.2 timers 0 0
+  
+  
   
   
   neighbor 2001:db8::1 remote-as 65002
   neighbor 2001:db8::1 ebgp-multihop
-  neighbor 2001:db8::1 port 4568
-  neighbor 2001:db8::1 timers 0 0
+  
+  
   
   
 
