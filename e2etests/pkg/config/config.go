@@ -5,7 +5,7 @@ package config
 import (
 	"context"
 
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/k8s"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"

@@ -5,7 +5,7 @@ package vtysh
 import (
 	"os/exec"
 
-	"github.com/metallb/frrk8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/frr"
 )
 
 type Cli func(args string) (string, error)

@@ -6,7 +6,7 @@ domain: frr.metallb.io
 layout:
 - go.kubebuilder.io/v4
 projectName: frr-k8s
-repo: github.com/metallb/frrk8s
+repo: github.com/metallb/frr-k8s
 resources:
 - api:
     crdVersion: v1alpha1
@@ -15,6 +15,6 @@ resources:
   domain: frr.metallb.io
   group: k8sfrr
   kind: FRRConfiguration
-  path: github.com/metallb/frrk8s/api/v1
+  path: github.com/metallb/frr-k8s/api/v1
   version: v1
 version: "3"

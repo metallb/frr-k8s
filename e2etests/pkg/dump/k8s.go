@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/openshift-kni/k8sreporter"
 	"k8s.io/apimachinery/pkg/runtime"
 )

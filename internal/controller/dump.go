@@ -6,8 +6,8 @@ import (
 	"encoding/json"
 
 	"github.com/davecgh/go-spew/spew"
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"github.com/metallb/frrk8s/internal/frr"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/frr"
 )
 
 func dumpK8sConfigs(c frrk8sv1beta1.FRRConfigurationList) string {

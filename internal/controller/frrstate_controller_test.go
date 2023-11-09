@@ -25,8 +25,8 @@ import (
 	. "github.com/onsi/gomega"
 	"github.com/onsi/gomega/gstruct"
 
-	frrk8sv1beta1 "github.com/metallb/frrk8s/api/v1beta1"
-	"github.com/metallb/frrk8s/internal/frr"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/frr"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 )
 

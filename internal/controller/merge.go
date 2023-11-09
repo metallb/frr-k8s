@@ -5,7 +5,7 @@ package controller
 import (
 	"fmt"
 
-	"github.com/metallb/frrk8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/frr"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 

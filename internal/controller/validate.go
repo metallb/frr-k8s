@@ -3,7 +3,7 @@
 package controller
 
 import (
-	v1beta1 "github.com/metallb/frrk8s/api/v1beta1"
+	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

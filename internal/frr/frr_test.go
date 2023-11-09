@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
-	"github.com/metallb/frrk8s/internal/ipfamily"
-	"github.com/metallb/frrk8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"k8s.io/apimachinery/pkg/util/wait"
 )
 
