@@ -4,20 +4,20 @@ metadata:
   name: {{ template "frrk8s.fullname" . }}-webhook-server
   labels:
     {{- include "frrk8s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frrk8s-webhook-server
+    app.kubernetes.io/component: frr-k8s-webhook-server
     {{- range $key, $value := .Values.frrk8s.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:
   selector:
     matchLabels:
-      app.kubernetes.io/component: frrk8s-webhook-server
+      app.kubernetes.io/component: frr-k8s-webhook-server
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
-        app.kubernetes.io/component: frrk8s-webhook-server
+        app.kubernetes.io/component: frr-k8s-webhook-server
     spec:
       {{- if .Values.frrk8s.runtimeClassName }}
       runtimeClassName: {{ .Values.frrk8s.runtimeClassName }}
@@ -121,7 +121,7 @@ spec:
   - port: 443
     targetPort: 9443
   selector:
-    app.kubernetes.io/component: frrk8s-webhook-server
+    app.kubernetes.io/component: frr-k8s-webhook-server
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
