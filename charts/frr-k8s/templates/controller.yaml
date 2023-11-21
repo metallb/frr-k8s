@@ -149,6 +149,11 @@ spec:
           emptyDir: {}
         - name: metrics
           emptyDir: {}
+      {{- if .Values.prometheus.metricsTLSSecret }}
+        - name: metrics-certs
+          secret:
+            secretName: {{ .Values.prometheus.metricsTLSSecret }}
+      {{- end }}
       initContainers:
         # Copies the initial config files with the right permissions to the shared volume.
         - name: cp-frr-files
