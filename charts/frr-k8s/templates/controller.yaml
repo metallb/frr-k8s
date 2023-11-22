@@ -6,7 +6,7 @@ metadata:
   name: {{ template "frrk8s.fullname" . }}-frr-startup
   labels:
     {{- include "frrk8s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frrk8s
+    app.kubernetes.io/component: frr-k8s
 data:
   daemons: |
     # This file tells the frr package which daemons to start.
@@ -106,7 +106,7 @@ metadata:
   name: {{ template "frrk8s.fullname" . }}
   labels:
     {{- include "frrk8s.labels" . | nindent 4 }}
-    app.kubernetes.io/component: frrk8s
+    app.kubernetes.io/component: frr-k8s
     {{- range $key, $value := .Values.frrk8s.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
@@ -117,12 +117,12 @@ spec:
   selector:
     matchLabels:
       {{- include "frrk8s.selectorLabels" . | nindent 6 }}
-      app.kubernetes.io/component: frrk8s
+      app.kubernetes.io/component: frr-k8s
   template:
     metadata:
       labels:
         {{- include "frrk8s.selectorLabels" . | nindent 8 }}
-        app.kubernetes.io/component: frrk8s
+        app.kubernetes.io/component: frr-k8s
         {{- range $key, $value := .Values.frrk8s.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
@@ -149,6 +149,11 @@ spec:
           emptyDir: {}
         - name: metrics
           emptyDir: {}
+      {{- if .Values.prometheus.metricsTLSSecret }}
+        - name: metrics-certs
+          secret:
+            secretName: {{ .Values.prometheus.metricsTLSSecret }}
+      {{- end }}
       initContainers:
         # Copies the initial config files with the right permissions to the shared volume.
         - name: cp-frr-files
