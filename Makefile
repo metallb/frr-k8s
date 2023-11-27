@@ -116,6 +116,7 @@ GINKGO ?= $(LOCALBIN)/ginkgo
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 HELM ?= $(LOCALBIN)/helm
 KUBECONFIG_PATH ?= $(LOCALBIN)/kubeconfig
+APIDOCSGEN ?= $(LOCALBIN)/crd-ref-docs
 export KUBECONFIG=$(KUBECONFIG_PATH)
 
 ## Tool Versions
@@ -127,6 +128,7 @@ KIND_VERSION ?= v0.19.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
 HELM_DOCS_VERSION ?= v1.10.0
+APIDOCSGEN_VERSION ?= v0.0.10
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
@@ -221,6 +223,12 @@ $(GINKGO): $(LOCALBIN)
 	test -s $(LOCALBIN)/ginkgo && $(LOCALBIN)/ginkgo version | grep -q $(GINKGO_VERSION) || \
 	GOBIN=$(LOCALBIN) go install github.com/onsi/ginkgo/v2/ginkgo@$(GINKGO_VERSION)
 
+.PHONY:
+crd-ref-docs: $(APIDOCSGEN) ## Download the api-doc-gen tool locally if necessary.
+$(APIDOCSGEN): $(LOCALBIN)
+	test -s $(LOCALBIN)/crd-ref-docs || \
+	GOBIN=$(LOCALBIN) go install github.com/elastic/crd-ref-docs@$(APIDOCSGEN_VERSION)
+
 .PHONY: e2etests
 e2etests: ginkgo
 	$(GINKGO) -v $(GINKGO_ARGS) --timeout=3h ./e2etests -- $(TEST_ARGS)
@@ -269,6 +277,10 @@ generate-all-in-one: manifests kustomize ## Create manifests
 .PHONY: helm-docs
 helm-docs:
 	docker run --rm -v $$(pwd):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
+
+.PHONY: api-docs
+api-docs: crd-ref-docs
+	$(APIDOCSGEN) --config hack/crd-ref-docs.yaml --max-depth 10 --source-path "./api" --renderer=markdown --output-path ./API-DOCS.md
 
 .PHONY: bumpversion
 bumpversion:
