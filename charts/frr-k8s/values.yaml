@@ -55,7 +55,7 @@ prometheus:
   # Prometheus Operator ServiceMonitors.
   serviceMonitor:
     # enable support for Prometheus Operator
-    enabled: true
+    enabled: false
 
     additionalLabels: {}
     # optional additional annotations for the controller serviceMonitor
@@ -85,35 +85,6 @@ prometheus:
     #   target_label: nodename
     #   replacement: $1
     #   action: replace
-
-#  # Prometheus Operator alertmanager alerts
-#  prometheusRule:
-#    # enable alertmanager alerts
-#    enabled: false
-#
-#    # optional additionnal labels for prometheusRules
-#    additionalLabels: {}
-#
-#    # optional annotations for prometheusRules
-#    annotations: {}
-#
-#
-#    addressPoolUsage:
-#      enabled: true
-#      thresholds:
-#        - percent: 75
-#          labels:
-#            severity: warning
-#        - percent: 85
-#          labels:
-#            severity: warning
-#        - percent: 95
-#          labels:
-#            severity: alert
-#
-#
-#    extraAlerts: []
-
 
 # controller contains configuration specific to the FRRK8s controller
 # daemonset.
