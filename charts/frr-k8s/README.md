@@ -81,7 +81,7 @@ Kubernetes: `>= 1.19.0-0`
 | prometheus.serviceAccount | string | `""` |  |
 | prometheus.serviceMonitor.additionalLabels | object | `{}` |  |
 | prometheus.serviceMonitor.annotations | object | `{}` |  |
-| prometheus.serviceMonitor.enabled | bool | `true` |  |
+| prometheus.serviceMonitor.enabled | bool | `false` |  |
 | prometheus.serviceMonitor.interval | string | `nil` |  |
 | prometheus.serviceMonitor.jobLabel | string | `"app.kubernetes.io/name"` |  |
 | prometheus.serviceMonitor.metricRelabelings | list | `[]` |  |
