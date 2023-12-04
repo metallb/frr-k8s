@@ -17,6 +17,8 @@ import (
 	"go.universe.tf/e2etest/pkg/executor"
 	"go.universe.tf/e2etest/pkg/frr"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
+	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -114,5 +116,65 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			}
 		})
+
+		ginkgo.DescribeTable("Establishes sessions with cleartext password", func(family ipfamily.Family) {
+			frrs := config.ContainersForVRF(infra.FRRContainers, "")
+			neighbors := []frrk8sv1beta1.Neighbor{}
+
+			for _, f := range frrs {
+				addresses := f.AddressesForFamily(family)
+				ebgpMultihop := false
+				if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
+					ebgpMultihop = true
+				}
+
+				for _, address := range addresses {
+					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+						ASN:          f.RouterConfig.ASN,
+						Address:      address,
+						Password:     f.RouterConfig.Password,
+						Port:         &f.RouterConfig.BGPPort,
+						EBGPMultiHop: ebgpMultihop,
+					})
+				}
+			}
+
+			config := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       infra.FRRK8sASN,
+								VRF:       "",
+								Neighbors: neighbors,
+							},
+						},
+					},
+				},
+			}
+
+			ginkgo.By("pairing with nodes")
+			for _, c := range frrs {
+				err := frrcontainer.PairWithNodes(cs, c, family)
+				framework.ExpectNoError(err)
+			}
+
+			err := updater.Update([]corev1.Secret{}, config)
+			framework.ExpectNoError(err)
+
+			nodes, err := k8s.Nodes(cs)
+			framework.ExpectNoError(err)
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, family)
+			}
+		},
+			ginkgo.Entry("IPV4", ipfamily.IPv4),
+			ginkgo.Entry("IPV6", ipfamily.IPv6),
+		)
 	})
 })
