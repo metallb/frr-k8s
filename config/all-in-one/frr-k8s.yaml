@@ -171,7 +171,7 @@ spec:
                                 description: KeepaliveTime is the requested BGP keepalive
                                   time, per RFC4271. Defaults to 60s.
                                 type: string
-                              password:
+                              passwordSecret:
                                 description: PasswordSecret is name of the authentication
                                   secret for the neighbor. the secret must be of type
                                   "kubernetes.io/basic-auth", and created in the same

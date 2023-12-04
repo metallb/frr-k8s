@@ -104,7 +104,7 @@ type Neighbor struct {
 	// same namespace as the frr-k8s daemon. The password is stored in the
 	// secret as the key "password".
 	// +optional
-	PasswordSecret v1.SecretReference `json:"password,omitempty"`
+	PasswordSecret v1.SecretReference `json:"passwordSecret,omitempty"`
 
 	// HoldTime is the requested BGP hold time, per RFC4271.
 	// Defaults to 180s.
