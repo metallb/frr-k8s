@@ -229,7 +229,8 @@ _Appears in:_
 | `asn` _integer_ | ASN is the AS number to use for the local end of the session. |
 | `address` _string_ | Address is the IP address to establish the session with. |
 | `port` _integer_ | Port is the port to dial when establishing the session. Defaults to 179. |
-| `passwordSecret` _[SecretReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretreference-v1-core)_ | PasswordSecret is name of the authentication secret for the neighbor. the secret must be of type "kubernetes.io/basic-auth", and created in the same namespace as the frr-k8s daemon. The password is stored in the secret as the key "password". |
+| `password` _string_ | Password to be used for establishing the BGP session. Password and PasswordSecret are mutually exclusive. |
+| `passwordSecret` _[SecretReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretreference-v1-core)_ | PasswordSecret is name of the authentication secret for the neighbor. the secret must be of type "kubernetes.io/basic-auth", and created in the same namespace as the frr-k8s daemon. The password is stored in the secret as the key "password". Password and PasswordSecret are mutually exclusive. |
 | `holdTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | HoldTime is the requested BGP hold time, per RFC4271. Defaults to 180s. |
 | `keepaliveTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | KeepaliveTime is the requested BGP keepalive time, per RFC4271. Defaults to 60s. |
 | `ebgpMultiHop` _boolean_ | EBGPMultiHop indicates if the BGPPeer is multi-hops away. |
