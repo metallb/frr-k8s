@@ -99,10 +99,16 @@ type Neighbor struct {
 	// +kubebuilder:validation:Maximum=16384
 	Port *uint16 `json:"port,omitempty"`
 
+	// Password to be used for establishing the BGP session.
+	// Password and PasswordSecret are mutually exclusive.
+	// +optional
+	Password string `json:"password,omitempty"`
+
 	// PasswordSecret is name of the authentication secret for the neighbor.
 	// the secret must be of type "kubernetes.io/basic-auth", and created in the
 	// same namespace as the frr-k8s daemon. The password is stored in the
 	// secret as the key "password".
+	// Password and PasswordSecret are mutually exclusive.
 	// +optional
 	PasswordSecret v1.SecretReference `json:"passwordSecret,omitempty"`
 
