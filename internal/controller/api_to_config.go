@@ -165,9 +165,18 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, rout
 }
 
 func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
+	if n.Password != "" && n.PasswordSecret.Name != "" {
+		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n.ASN, n.Address))
+	}
+
+	if n.Password != "" {
+		return n.Password, nil
+	}
+
 	if n.PasswordSecret.Name == "" {
 		return "", nil
 	}
+
 	secret, ok := passwordSecrets[n.PasswordSecret.Name]
 	if !ok {
 		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n.ASN, n.Address))}

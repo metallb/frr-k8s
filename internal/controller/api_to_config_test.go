@@ -1633,6 +1633,11 @@ func TestConversion(t *testing.T) {
 												Namespace: "frr-k8s-system",
 											},
 										},
+										{
+											ASN:      65012,
+											Address:  "192.0.2.8",
+											Password: "cleartext-password",
+										},
 									},
 									VRF: "",
 								},
@@ -1686,6 +1691,21 @@ func TestConversion(t *testing.T) {
 								ASN:      65012,
 								Addr:     "192.0.2.7",
 								Password: "password1",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+							},
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.8",
+								ASN:      65012,
+								Addr:     "192.0.2.8",
+								Password: "cleartext-password",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},
@@ -1782,6 +1802,45 @@ func TestConversion(t *testing.T) {
 			},
 			expected: nil,
 			err:      errors.New("failed to process neighbor 65012@192.0.2.7 for router 65010-: secret ref not found for neighbor 65012@192.0.2.7"),
+		},
+		{
+			name: "Specifying both cleartext password and secret ref",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:      65012,
+											Address:  "192.0.2.7",
+											Password: "cleartext-password",
+											PasswordSecret: v1.SecretReference{
+												Name:      "secret1",
+												Namespace: "frr-k8s-system",
+											},
+										},
+									},
+									VRF: "",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{
+				"secret1": {
+					Type: v1.SecretTypeBasicAuth,
+					Data: map[string][]byte{
+						"password": []byte("password"),
+					},
+				},
+			},
+			expected: nil,
+			err:      errors.New("failed to process neighbor 65012@192.0.2.7 for router 65010-: neighbor 65012@192.0.2.7 specifies both cleartext password and secret ref"),
 		},
 		{
 			name: "Single Router and injection",
