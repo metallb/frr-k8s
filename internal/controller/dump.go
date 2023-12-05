@@ -13,7 +13,7 @@ import (
 func dumpK8sConfigs(c frrk8sv1beta1.FRRConfigurationList) string {
 	res := ""
 	for _, cfg := range c.Items {
-		res = res + "\n" + dumpResource(cfg)
+		res = res + "\n" + dumpResource(sanitizedConfig(cfg))
 	}
 	return res
 }
@@ -42,4 +42,16 @@ func dumpResource(i interface{}) string {
 		return spew.Sdump(i)
 	}
 	return string(toDump)
+}
+
+func sanitizedConfig(c frrk8sv1beta1.FRRConfiguration) frrk8sv1beta1.FRRConfiguration {
+	res := c.DeepCopy()
+	for _, router := range res.Spec.BGP.Routers {
+		for i := range router.Neighbors {
+			router.Neighbors[i].Password = "<retracted>"
+		}
+	}
+	delete(res.Annotations, "kubectl.kubernetes.io/last-applied-configuration")
+
+	return *res
 }
