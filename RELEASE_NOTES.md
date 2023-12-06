@@ -1,5 +1,11 @@
 # FRRK8s Release Notes
 
+## Next release
+
+### Chores
+
+- Enforce adding release notes in CI ([PR #79](https://github.com/metallb/frr-k8s/pull/79))
+
 ## Release v0.0.3
 
 Support establishing BGP sessions with cleartext passwords ([PR #80](https://github.com/metallb/frr-k8s/pull/80)).
