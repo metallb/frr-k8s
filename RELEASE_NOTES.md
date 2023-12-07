@@ -9,6 +9,7 @@
 ### Chores
 
 - Enforce adding release notes in CI ([PR #79](https://github.com/metallb/frr-k8s/pull/79))
+- helm: Fix metricRelabelings templating ([PR #83](https://github.com/metallb/frr-k8s/pull/83))
 
 ## Release v0.0.3
 
