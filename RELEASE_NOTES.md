@@ -2,6 +2,10 @@
 
 ## Next release
 
+### Bug fixes
+
+- Merging neighbors always failed when holdtime and keepalivetime were set ([PR #86](https://github.com/metallb/frr-k8s/pull/86)).
+
 ### Chores
 
 - Enforce adding release notes in CI ([PR #79](https://github.com/metallb/frr-k8s/pull/79))

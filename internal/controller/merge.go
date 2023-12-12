@@ -4,6 +4,7 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/metallb/frr-k8s/internal/frr"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -221,11 +222,11 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("conflicting ebgp-multihop specified for %s", neighborKey)
 	}
 
-	if n1.HoldTime != n2.HoldTime {
+	if !ptrsEqual(n1.HoldTime, n2.HoldTime, uint64(180*time.Second)) {
 		return fmt.Errorf("multiple hold times specified for %s", neighborKey)
 	}
 
-	if n1.KeepaliveTime != n2.KeepaliveTime {
+	if !ptrsEqual(n1.KeepaliveTime, n2.KeepaliveTime, uint64(60*time.Second)) {
 		return fmt.Errorf("multiple keepalive times specified for %s", neighborKey)
 	}
 
