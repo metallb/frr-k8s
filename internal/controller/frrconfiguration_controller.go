@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"net"
 	"sync"
 
 	corev1 "k8s.io/api/core/v1"
@@ -53,6 +54,7 @@ type FRRConfigurationReconciler struct {
 	ReloadStatus       func()
 	conversionResult   string
 	conversionResMutex sync.Mutex
+	AlwaysBlockCIDRS   []net.IPNet
 }
 
 func (r *FRRConfigurationReconciler) ConversionResult() string {
@@ -129,7 +131,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		FRRConfigs:      cfgs,
 		PasswordSecrets: secrets,
 	}
-	config, err := apiToFRR(resources)
+	config, err := apiToFRR(resources, r.AlwaysBlockCIDRS)
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
@@ -155,7 +157,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
-	config, err := apiToFRR(ClusterResources{})
+	config, err := apiToFRR(ClusterResources{}, []net.IPNet{})
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
 		panic("failed to translate empty config")
