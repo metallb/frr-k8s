@@ -695,3 +695,74 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 
 	testCheckConfigFile(t)
 }
+
+func TestSingleSessionWithAlwaysBlock(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.2",
+						Incoming: AllowedIn{
+							All: true,
+						},
+						AlwaysBlock: []IncomingFilter{
+							{
+								IPFamily: ipfamily.IPv4,
+								Prefix:   "192.168.1.0/24",
+								LE:       uint32(24),
+							},
+							{
+								IPFamily: ipfamily.IPv6,
+								Prefix:   "fc00:f853:ccd:e800::/64",
+								LE:       uint32(64),
+							},
+						},
+					},
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      65001,
+						Addr:     "192.168.1.6",
+						Incoming: AllowedIn{
+							PrefixesV4: []IncomingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.168.2.0/24",
+								},
+							},
+						},
+						AlwaysBlock: []IncomingFilter{
+							{
+								IPFamily: ipfamily.IPv4,
+								Prefix:   "192.168.1.0/24",
+								LE:       uint32(24),
+							},
+							{
+								IPFamily: ipfamily.IPv6,
+								Prefix:   "fc00:f853:ccd:e800::/64",
+								LE:       uint32(64),
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
