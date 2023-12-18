@@ -147,6 +147,8 @@ frrk8s:
     enabled: true
     failureThreshold: 30
     periodSeconds: 5
+  ## A comma separated list of cidrs we want always to block for incoming routes
+  alwaysBlock: ""
   # frr contains configuration specific to the FRR container,
   frr:
     image:

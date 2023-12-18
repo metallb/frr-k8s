@@ -19,7 +19,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -76,6 +78,7 @@ func main() {
 		certServiceName     string
 		webhookMode         string
 		pprofAddr           string
+		alwaysBlockCIDRs    string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -88,6 +91,7 @@ func main() {
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
+	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
 
 	opts := zap.Options{
 		Development: true,
@@ -174,13 +178,20 @@ func main() {
 		}
 		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
 
+		alwaysBlock, err := parseCIDRs(alwaysBlockCIDRs)
+		if err != nil {
+			setupLog.Error(err, "failed to parse the always-block parameter", "always-block", alwaysBlockCIDRs)
+			os.Exit(1)
+		}
+
 		configReconciler := &controller.FRRConfigurationReconciler{
-			Client:       mgr.GetClient(),
-			Scheme:       mgr.GetScheme(),
-			FRRHandler:   frrInstance,
-			Logger:       logger,
-			NodeName:     nodeName,
-			ReloadStatus: reloadStatus,
+			Client:           mgr.GetClient(),
+			Scheme:           mgr.GetScheme(),
+			FRRHandler:       frrInstance,
+			Logger:           logger,
+			NodeName:         nodeName,
+			ReloadStatus:     reloadStatus,
+			AlwaysBlockCIDRS: alwaysBlock,
 		}
 		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
@@ -262,4 +273,21 @@ func setupWebhook(mgr manager.Manager, namespace string, logger log.Logger) erro
 	}
 
 	return nil
+}
+
+func parseCIDRs(cidrs string) ([]net.IPNet, error) {
+	elems := strings.Split(cidrs, ",")
+	if len(elems) == 0 {
+		return nil, nil
+	}
+	res := make([]net.IPNet, 0, len(elems))
+	for _, e := range elems {
+		trimmed := strings.Trim(e, " ")
+		_, cidr, err := net.ParseCIDR(trimmed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse cidr %s: %w", e, err)
+		}
+		res = append(res, *cidr)
+	}
+	return res, nil
 }

@@ -75,6 +75,7 @@ type NeighborConfig struct {
 	VRFName       string
 	Incoming      AllowedIn
 	Outgoing      AllowedOut
+	AlwaysBlock   []IncomingFilter
 }
 
 func (n *NeighborConfig) ID() string {
@@ -174,6 +175,9 @@ func templateConfig(data interface{}) (string, error) {
 			},
 			"allowedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)
+			},
+			"deniedIncomingList": func(neighbor *NeighborConfig) string {
+				return fmt.Sprintf("%s-denied-inpl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
 			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN, asn uint32, eBGPMultiHop bool) bool {
 				// return true only for IPv6 eBGP sessions

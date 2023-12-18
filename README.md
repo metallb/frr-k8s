@@ -176,7 +176,7 @@ spec:
               - prefix: 192.168.1.0/24
               - prefix: 192.169.2.0/24
                 ge: 25
-                le: 28   
+                le: 28
 ```
 
 le / ge specify prefix length. The prefix will be applied if the prefix length is less than or equal to the le prefix length
@@ -195,7 +195,7 @@ spec:
           port: 179
           toReceive:
             allowed:
-              mode: all 
+              mode: all
 ```
 
 ### Adding a raw configuration
@@ -313,6 +313,10 @@ This includes:
 - `runningConfig`: the current FRR running config, which is the configuration the FRR instance is currently running with.
 - `lastReloadResult`: the status of the last configuration update operation by FRR, contains "success" or an error.
 - `lastConversionResult`: the status of the last translation between the `FRRConfiguration`s resources and FRR's configuration, contains "success" or an error.
+
+## Blocking prefixes that may break the cluster
+
+The controller accepts a --always-block parameter that accepts a list of comma separated cidrs. When enabled, FRR-K8s will instruct the FRR instance to always refuse those prefixes. It is useful to reject prefixes that might harm the cluster, overriding routes to ClusterIPs or the IPs of the Pods.
 
 ## MetalLB Integration
 

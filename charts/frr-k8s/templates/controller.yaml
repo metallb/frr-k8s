@@ -198,6 +198,9 @@ spec:
         - --log-level={{ . }}
         {{- end }}
         - --health-probe-bind-address={{.Values.prometheus.metricsBindAddress}}:{{ .Values.frrk8s.healthPort }}
+        {{- if .Values.frrk8s.alwaysBlock }}
+        - --always-block={{ .Values.frrk8s.alwaysBlock }}
+        {{- end }}
         env:
         - name: FRR_CONFIG_FILE
           value: /etc/frr_reloader/frr.conf
