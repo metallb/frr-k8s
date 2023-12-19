@@ -163,7 +163,7 @@ func main() {
 
 		if enableWebhook {
 			setupLog.Info("Starting webhooks")
-			err := setupWebhook(mgr, namespace, logger)
+			err := setupWebhook(mgr, logger)
 			if err != nil {
 				setupLog.Error(err, "unable to create", "webhooks")
 				os.Exit(1)
@@ -259,10 +259,9 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager, namespace string, logger log.Logger) error {
+func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
-	frrk8sv1beta1.Namespace = namespace
 	frrk8sv1beta1.Logger = logger
 	frrk8sv1beta1.WebhookClient = mgr.GetAPIReader()
 	frrk8sv1beta1.Validate = controller.Validate

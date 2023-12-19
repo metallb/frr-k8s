@@ -200,6 +200,32 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			err = updater.Update([]corev1.Secret{}, cfg2)
 			framework.ExpectError(err)
 			Expect(err.Error()).To(ContainSubstring("different asns"))
+
+			ginkgo.By("Attempting to create a third config in a different namespace on the first node with a different ASN")
+			cfg3 := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "webhook-cfg3",
+					Namespace: "default",
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: 200,
+								VRF: "",
+							},
+						},
+					},
+					NodeSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
+						},
+					},
+				},
+			}
+			err = updater.Update([]corev1.Secret{}, cfg3)
+			framework.ExpectError(err)
+			Expect(err.Error()).To(ContainSubstring("different asns"))
 		})
 
 		ginkgo.It("Should not reject a resource with a missing secret ref", func() {
