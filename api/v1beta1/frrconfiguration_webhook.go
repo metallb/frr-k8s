@@ -22,7 +22,6 @@ var (
 	Logger        log.Logger
 	WebhookClient client.Reader
 	Validate      func(resources ...client.ObjectList) error
-	Namespace     string
 )
 
 func (frrConfig *FRRConfiguration) SetupWebhookWithManager(mgr ctrl.Manager) error {
@@ -124,7 +123,7 @@ func validateConfig(frrConfig *FRRConfiguration) error {
 
 var getFRRConfigurations = func() (*FRRConfigurationList, error) {
 	frrConfigurationsList := &FRRConfigurationList{}
-	err := WebhookClient.List(context.Background(), frrConfigurationsList, &client.ListOptions{Namespace: Namespace})
+	err := WebhookClient.List(context.Background(), frrConfigurationsList)
 	if err != nil {
 		return nil, errors.Wrapf(err, "Failed to get existing FRRConfiguration objects")
 	}

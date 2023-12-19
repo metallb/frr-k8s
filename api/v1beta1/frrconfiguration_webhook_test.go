@@ -14,7 +14,6 @@ import (
 const TestNamespace = "test-namespace"
 
 func TestValidateFRRConfiguration(t *testing.T) {
-	Namespace = TestNamespace
 	Logger = log.NewNopLogger()
 	existingConfig := FRRConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
