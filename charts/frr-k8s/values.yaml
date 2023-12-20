@@ -149,6 +149,8 @@ frrk8s:
     periodSeconds: 5
   ## A comma separated list of cidrs we want always to block for incoming routes
   alwaysBlock: ""
+  ## Specifies whether the cert rotator works as part of the webhook.
+  disableCertRotation: false
   # frr contains configuration specific to the FRR container,
   frr:
     image:

@@ -26,6 +26,7 @@ Kubernetes: `>= 1.19.0-0`
 | crds.validationFailurePolicy | string | `"Fail"` |  |
 | frrk8s.affinity | object | `{}` |  |
 | frrk8s.alwaysBlock | string | `""` |  |
+| frrk8s.disableCertRotation | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
 | frrk8s.frr.image.tag | string | `"8.4.2"` |  |

@@ -34,6 +34,9 @@ spec:
         - --log-level={{ . }}
         {{- end }}
         - "--webhook-mode=onlywebhook"
+        {{- if .Values.frrk8s.disableCertRotation }}
+        - "--disable-cert-rotation=true"
+        {{- end }}
         - "--namespace=$(NAMESPACE)"
         - --health-probe-bind-address={{.Values.prometheus.metricsBindAddress}}:{{ .Values.frrk8s.healthPort }}
         env:
