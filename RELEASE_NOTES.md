@@ -10,6 +10,8 @@
 
 - FRRConfigurations from namespaces different than the one the daemon is deployed on were not validated with other resoureces. ([PR 91](https://github.com/metallb/frr-k8s/pull/91))
 
+- Empty always-block flag was not parsed correctly. ([PR 95](https://github.com/metallb/frr-k8s/pull/95))
+
 ### Chores
 
 - helm: add an option to disable the webhook's cert rotation. ([PR 93](https://github.com/metallb/frr-k8s/pull/93))

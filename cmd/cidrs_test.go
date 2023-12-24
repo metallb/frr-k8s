@@ -17,6 +17,11 @@ func TestParseCIDRS(t *testing.T) {
 		mustFail bool
 	}{
 		{
+			name:     "empty",
+			cidrs:    "",
+			expected: nil,
+		},
+		{
 			name:     "simple",
 			cidrs:    "192.168.1.2/24,fc00:f853:ccd:e800::/64",
 			expected: []net.IPNet{*ipv4CIDR, *ipv6CIDR},

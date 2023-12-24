@@ -275,10 +275,11 @@ func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 }
 
 func parseCIDRs(cidrs string) ([]net.IPNet, error) {
-	elems := strings.Split(cidrs, ",")
-	if len(elems) == 0 {
+	if cidrs == "" {
 		return nil, nil
 	}
+
+	elems := strings.Split(cidrs, ",")
 	res := make([]net.IPNet, 0, len(elems))
 	for _, e := range elems {
 		trimmed := strings.Trim(e, " ")
