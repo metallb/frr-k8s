@@ -12,6 +12,8 @@
 
 - Empty always-block flag was not parsed correctly. ([PR 95](https://github.com/metallb/frr-k8s/pull/95))
 
+- helm: webhooks probes pointed to the wrong endpoints. ([PR 97](https://github.com/metallb/frr-k8s/pull/97))
+
 ### Chores
 
 - helm: add an option to disable the webhook's cert rotation. ([PR 93](https://github.com/metallb/frr-k8s/pull/93))
