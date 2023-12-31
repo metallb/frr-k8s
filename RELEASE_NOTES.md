@@ -19,6 +19,7 @@
 
 - helm: add an option to disable the webhook's cert rotation. ([PR 93](https://github.com/metallb/frr-k8s/pull/93))
 - add a new logo!
+- CI: add a MetalLB E2E lane. ([PR 99](https://github.com/metallb/frr-k8s/pull/99))
 
 ## Release v0.0.4
 
