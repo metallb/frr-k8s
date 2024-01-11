@@ -68,17 +68,18 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr         string
-		probeAddr           string
-		logLevel            string
-		nodeName            string
-		namespace           string
-		disableCertRotation bool
-		certDir             string
-		certServiceName     string
-		webhookMode         string
-		pprofAddr           string
-		alwaysBlockCIDRs    string
+		metricsAddr                   string
+		probeAddr                     string
+		logLevel                      string
+		nodeName                      string
+		namespace                     string
+		disableCertRotation           bool
+		restartOnRotatorSecretRefresh bool
+		certDir                       string
+		certServiceName               string
+		webhookMode                   string
+		pprofAddr                     string
+		alwaysBlockCIDRs              string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -88,6 +89,7 @@ func main() {
 	flag.StringVar(&namespace, "namespace", "", "The namespace this daemon is deployed in")
 	flag.StringVar(&webhookMode, "webhook-mode", "disabled", "webhook mode: can be disabled or onlywebhook if we want the controller to act as webhook endpoint only")
 	flag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
+	flag.BoolVar(&restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
@@ -149,7 +151,7 @@ func main() {
 	startListeners := make(chan struct{})
 	if enableWebhook && !disableCertRotation {
 		setupLog.Info("Starting certs generator")
-		err = setupCertRotation(startListeners, mgr, logger, namespace, certDir, certServiceName)
+		err = setupCertRotation(startListeners, mgr, logger, namespace, certDir, certServiceName, restartOnRotatorSecretRefresh)
 		if err != nil {
 			setupLog.Error(err, "unable to set up cert rotator")
 			os.Exit(1)
@@ -230,7 +232,7 @@ var (
 )
 
 func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger log.Logger,
-	namespace, certDir, certServiceName string) error {
+	namespace, certDir, certServiceName string, restartOnSecretRefresh bool) error {
 	webhooks := []rotator.WebhookInfo{
 		{
 			Name: webhookName,
@@ -244,13 +246,14 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 			Namespace: namespace,
 			Name:      webhookSecretName,
 		},
-		CertDir:        certDir,
-		CAName:         caName,
-		CAOrganization: caOrganization,
-		DNSName:        fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
-		IsReady:        notifyFinished,
-		Webhooks:       webhooks,
-		FieldOwner:     "frr-k8s",
+		CertDir:                certDir,
+		CAName:                 caName,
+		CAOrganization:         caOrganization,
+		DNSName:                fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
+		IsReady:                notifyFinished,
+		Webhooks:               webhooks,
+		FieldOwner:             "frr-k8s",
+		RestartOnSecretRefresh: restartOnSecretRefresh,
 	})
 	if err != nil {
 		level.Error(logger).Log("error", err, "unable to set up", "cert rotation")

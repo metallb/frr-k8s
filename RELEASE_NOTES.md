@@ -5,6 +5,7 @@
 ### Features
 
 - Support a --always-block parameter. The parameter accepts a list of comma separated cidrs to always block. This is useful to protect well known cidrs such as pods or clusterIPs. ([PR 88](https://github.com/metallb/frr-k8s/pull/88))
+- Support restarting the webhook pod when the rotator updates its cert secret.([PR 100](https://github.com/metallb/frr-k8s/pull/100)) 
 
 ### Bug fixes
 

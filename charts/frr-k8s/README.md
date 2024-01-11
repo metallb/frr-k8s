@@ -58,6 +58,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.readinessProbe.timeoutSeconds | int | `1` |  |
 | frrk8s.reloader.resources | object | `{}` |  |
 | frrk8s.resources | object | `{}` |  |
+| frrk8s.restartOnRotatorSecretRefresh | bool | `false` |  |
 | frrk8s.runtimeClassName | string | `""` |  |
 | frrk8s.serviceAccount.annotations | object | `{}` |  |
 | frrk8s.serviceAccount.create | bool | `true` |  |
