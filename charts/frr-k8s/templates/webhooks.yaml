@@ -37,6 +37,9 @@ spec:
         {{- if .Values.frrk8s.disableCertRotation }}
         - "--disable-cert-rotation=true"
         {{- end }}
+        {{- if .Values.frrk8s.restartOnRotatorSecretRefresh }}
+        - "--restart-on-rotator-secret-refresh=true"
+        {{- end }}
         - "--namespace=$(NAMESPACE)"
         - --health-probe-bind-address=:8081
         env:
