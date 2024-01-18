@@ -18,6 +18,7 @@
 ### Chores
 
 - helm: add an option to disable the webhook's cert rotation. ([PR 93](https://github.com/metallb/frr-k8s/pull/93))
+- add a new logo!
 
 ## Release v0.0.4
 
