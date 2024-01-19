@@ -41,14 +41,12 @@ var (
 
 type fakeFRRStatus struct {
 	lastApplied      string
-	lastDesired      string
 	lastReloadResult string
 }
 
 func (f *fakeFRRStatus) GetStatus() frr.Status {
 	return frr.Status{
 		Current:          f.lastApplied,
-		Desired:          f.lastDesired,
 		LastReloadResult: f.lastReloadResult,
 	}
 }
@@ -66,7 +64,6 @@ var _ = Describe("Frrk8s node status", func() {
 
 		It("should report the status when notified", func() {
 			fakeStatus.lastApplied = "foo"
-			fakeStatus.lastDesired = "bar"
 			fakeStatus.lastReloadResult = "baz"
 
 			updateChan <- NewStateEvent()
@@ -88,7 +85,6 @@ var _ = Describe("Frrk8s node status", func() {
 					}),
 					"Status": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 						"RunningConfig":    Equal("foo"),
-						"DesiredConfig":    Equal("bar"),
 						"LastReloadResult": Equal("baz"),
 					}),
 				}))
@@ -105,7 +101,6 @@ var _ = Describe("Frrk8s node status", func() {
 			}, 5*time.Second, time.Second).Should(
 				Equal(lastGeneration))
 
-			fakeStatus.lastDesired = "bar1"
 			fakeStatus.lastReloadResult = "error"
 			updateChan <- NewStateEvent()
 
@@ -124,7 +119,6 @@ var _ = Describe("Frrk8s node status", func() {
 					}),
 					"Status": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 						"RunningConfig":    Equal("foo"),
-						"DesiredConfig":    Equal("bar1"),
 						"LastReloadResult": Equal("error"),
 					}),
 				}))
@@ -147,7 +141,6 @@ var _ = Describe("Frrk8s node status", func() {
 					}),
 					"Status": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 						"RunningConfig":        Equal("foo"),
-						"DesiredConfig":        Equal("bar1"),
 						"LastReloadResult":     Equal("error"),
 						"LastConversionResult": Equal("aaaa"),
 					}),
@@ -157,7 +150,6 @@ var _ = Describe("Frrk8s node status", func() {
 
 		It("should obfuscate the passwords", func() {
 			fakeStatus.lastApplied = "foo\n password supersecret\n"
-			fakeStatus.lastDesired = "bar\n password supersecret\n"
 
 			updateChan <- NewStateEvent()
 
@@ -176,7 +168,6 @@ var _ = Describe("Frrk8s node status", func() {
 					}),
 					"Status": gstruct.MatchFields(gstruct.IgnoreExtras, gstruct.Fields{
 						"RunningConfig": Equal("foo\n password <retracted>\n"),
-						"DesiredConfig": Equal("bar\n password <retracted>\n"),
 					}),
 				}))
 		})
