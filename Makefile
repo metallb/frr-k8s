@@ -294,3 +294,8 @@ bumpversion:
 .PHONY: cutrelease
 cutrelease: bumpversion generate-all-in-one helm-docs
 	hack/release/release.sh
+
+.PHONY: demoenv
+demoenv: deploy
+	cd hack/demo && ./demo.sh 
+

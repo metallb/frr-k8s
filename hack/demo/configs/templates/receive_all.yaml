@@ -1,0 +1,15 @@
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: receive-all
+  namespace: frr-k8s-system
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: NEIGHBOR_IP
+        asn: 64512
+        toReceive:
+          allowed:
+            mode: all
