@@ -28,7 +28,6 @@ type StatusChanged func()
 type Status struct {
 	updateTime       string
 	Current          string
-	Desired          string
 	LastReloadResult string
 }
 
@@ -120,7 +119,6 @@ func (f *FRR) pollStatus(ctx context.Context, l log.Logger) {
 const (
 	statusFileName    = "/etc/frr_reloader/.status"
 	runningConfig     = "/etc/frr_reloader/running-config"
-	lastAppliedConfig = "/etc/frr_reloader/last-applied"
 	lastAppliedResult = "/etc/frr_reloader/last-error"
 )
 
@@ -149,11 +147,6 @@ func fetchStatus() (Status, error) {
 	}
 	res.Current = string(bytes)
 
-	bytes, err = os.ReadFile(lastAppliedConfig)
-	if err != nil && !os.IsNotExist(err) {
-		return Status{}, fmt.Errorf("failed to read last applied file: %w", err)
-	}
-	res.Desired = string(bytes)
 	return res, nil
 }
 
