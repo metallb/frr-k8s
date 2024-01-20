@@ -32,6 +32,33 @@ jobs:
         with:
           skip-upload: true
 
+  check-generated:
+    runs-on: ubuntu-22.04
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Generated
+        run: |
+          make bumplicense
+          go mod tidy
+          pushd e2etests
+          go mod tidy
+          popd
+          make manifests
+          make generate-all-in-one
+          make api-docs
+          make checkuncommitted
+
+      - name: Helm doc generate
+        uses: docker://jnorwood/helm-docs:v1.10.0
+
+      - name: Check if  docs are different
+        run: make checkuncommitted
+
   check-changelog:
     runs-on: ubuntu-22.04
     if: github.actor != 'dependabot[bot]'
@@ -86,21 +113,6 @@ jobs:
       - name: Lint
         run: |
           ENV=host make lint
-          make bumplicense
-          go mod tidy
-          pushd e2etests
-          go mod tidy
-          popd
-          make manifests
-          make generate-all-in-one
-          make api-docs
-          make checkuncommitted
-
-      - name: Helm doc generate
-        uses: docker://jnorwood/helm-docs:v1.10.0
-
-      - name: Check if  docs are different
-        run: make checkuncommitted
 
   build-test-images:
     runs-on: ubuntu-22.04
