@@ -200,7 +200,7 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 .PHONY: kubectl
 kubectl: $(KUBECTL) ## Download kubectl locally if necessary. If wrong version is installed, it will be overwritten.
 $(KUBECTL): $(LOCALBIN)
-	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl version | grep -q $(KUBECTL_VERSION) || \
+	test -s $(LOCALBIN)/kubectl && $(LOCALBIN)/kubectl -client version | grep -q $(KUBECTL_VERSION) || \
 	curl -o $(LOCALBIN)/kubectl -LO https://dl.k8s.io/release/$(KUBECTL_VERSION)/bin/$$(go env GOOS)/$$(go env GOARCH)/kubectl
 	chmod +x $(LOCALBIN)/kubectl
 
