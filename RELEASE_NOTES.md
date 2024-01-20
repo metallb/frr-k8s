@@ -24,6 +24,7 @@
 - add a new logo!
 - CI: add a MetalLB E2E lane. ([PR 99](https://github.com/metallb/frr-k8s/pull/99))
 - CI: don't run auto-generated files checks on dependabot PRs ([PR 111](https://github.com/metallb/frr-k8s/pull/111))
+- kubectl: don't download if cluster is not reacheable ([PR 112](https://github.com/metallb/frr-k8s/pull/112))
 
 ## Release v0.0.4
 
