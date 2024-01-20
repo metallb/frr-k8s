@@ -19,6 +19,7 @@
 
 - helm: add an option to disable the webhook's cert rotation. ([PR 93](https://github.com/metallb/frr-k8s/pull/93))
 - CI: don't run auto-generated files checks on dependabot PRs ([PR 109](https://github.com/metallb/frr-k8s/pull/109))
+- add a new logo!
 
 ## Release v0.0.4
 
