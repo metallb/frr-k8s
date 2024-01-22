@@ -32,6 +32,33 @@ jobs:
         with:
           skip-upload: true
 
+  check-generated:
+    runs-on: ubuntu-22.04
+    if: github.actor != 'dependabot[bot]'
+    steps:
+      - name: Checkout Source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check Generated
+        run: |
+          make bumplicense
+          go mod tidy
+          pushd e2etests
+          go mod tidy
+          popd
+          make manifests
+          make generate-all-in-one
+          make api-docs
+          make checkuncommitted
+
+      - name: Helm doc generate
+        uses: docker://jnorwood/helm-docs:v1.10.0
+
+      - name: Check if  docs are different
+        run: make checkuncommitted
+
   check-changelog:
     runs-on: ubuntu-22.04
     if: github.actor != 'dependabot[bot]'
@@ -86,21 +113,6 @@ jobs:
       - name: Lint
         run: |
           ENV=host make lint
-          make bumplicense
-          go mod tidy
-          pushd e2etests
-          go mod tidy
-          popd
-          make manifests
-          make generate-all-in-one
-          make api-docs
-          make checkuncommitted
-
-      - name: Helm doc generate
-        uses: docker://jnorwood/helm-docs:v1.10.0
-
-      - name: Check if  docs are different
-        run: make checkuncommitted
 
   build-test-images:
     runs-on: ubuntu-22.04
@@ -181,6 +193,95 @@ jobs:
         if: ${{ failure() }}
         run:
           make kind-export-logs
+
+      - name: Collect Logs
+        if: ${{ failure() }}
+        uses: ./.github/workflows/composite/collectlogs
+        with:
+          artifact-name: kind-logs-${{ matrix.ip-family }}-${{ matrix.deployment }}
+
+  metallb_e2e:
+    runs-on: ubuntu-22.04
+    needs:
+      - unit-tests
+      - build-test-images
+      - commitlint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install linux-modules-extra-$(uname -r) python3-pip arping ndisc6
+
+      - name: Download frr-k8s images
+        uses: actions/download-artifact@v3
+        with:
+          path: image
+
+      - name: Load image
+        working-directory: image
+        run: |
+          docker load -i image-tar-frrk8s/frrk8s.tar
+
+      - name: Deploy frr-k8s
+        run: |
+          helm_args="\
+          --set prometheus.serviceMonitor.metricRelabelings[0].sourceLabels=\{__name__\} \
+          --set prometheus.serviceMonitor.metricRelabelings[0].regex=\"frrk8s_bgp_(.*)\" \
+          --set prometheus.serviceMonitor.metricRelabelings[0].targetLabel=\"__name__\" \
+          --set prometheus.serviceMonitor.metricRelabelings[0].replacement=\"metallb_bgp_\\\$\$1\" \
+          --set prometheus.serviceMonitor.metricRelabelings[1].sourceLabels=\{__name__\} \
+          --set prometheus.serviceMonitor.metricRelabelings[1].regex=\"frrk8s_bfd_(.*)\" \
+          --set prometheus.serviceMonitor.metricRelabelings[1].targetLabel=\"__name__\" \
+          --set prometheus.serviceMonitor.metricRelabelings[1].replacement=\"metallb_bfd_\\\$\$1\" \
+          "
+          KIND_CLUSTER_NAME="kind" NAMESPACE=metallb-system LOGLEVEL=debug IP_FAMILY="ipv4" HELM_ARGS=${helm_args} make "deploy-helm"
+          mkdir -p /tmp/kind_logs/
+
+      - name: Checkout MetalLB
+        uses: actions/checkout@v4
+        with:
+          repository: metallb/metallb
+          path: metallb
+          ref: "main"
+
+      - name: Deploy MetalLB
+        run: |
+          export KUBECONFIG=${GITHUB_WORKSPACE}/bin/kubeconfig
+          cd ${GITHUB_WORKSPACE}/metallb/charts/metallb
+          # remove the frr-k8s dependencies
+          yq e --inplace '.dependencies |= [{"name": "crds", "condition": "crds.enabled", "version": "0.0.0"}]' Chart.yaml
+          rm -f charts/frr-k8s-*
+          # install with metrics enabled
+          helm_args="\
+          --namespace metallb-system \
+          --set speaker.logLevel=debug --set controller.logLevel=debug \
+          --set frrk8s.enabled=true --set speaker.frr.enabled=false \
+          --set controller.image.tag=main --set speaker.image.tag=main \
+          --set prometheus.serviceMonitor.enabled=true --set prometheus.secureMetricsPort=9120 \
+          --set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring \
+          "
+          helm install metallb ${helm_args} .
+          kubectl wait -n metallb-system --for=condition=Ready pod -l "app.kubernetes.io/name=metallb" --timeout=300s
+
+      - name: MetalLB E2E Tests
+        run: |
+          export KUBECONFIG=${GITHUB_WORKSPACE}/bin/kubeconfig
+          sudo pip3 install -r ${GITHUB_WORKSPACE}/metallb/dev-env/requirements.txt
+          GOBIN=/home/runner/.local/bin go install -v github.com/onsi/ginkgo/v2/ginkgo@v2.13.0
+
+          docker network create --ipv6 --subnet fc00:f853:ccd:e791::/64 -d bridge network2
+          KIND_NODES=$(kind get nodes)
+          for n in $KIND_NODES; do
+            docker network connect network2 "$n"
+          done
+
+          export SPEAKER_SELECTOR="app.kubernetes.io/component=speaker"
+          export CONTROLLER_SELECTOR="app.kubernetes.io/component=controller"
+          cd ${GITHUB_WORKSPACE}/metallb
+          sudo -E env "PATH=$PATH" inv e2etest -b "frr-k8s" --kubeconfig ${KUBECONFIG} --with-vrf --skip "L2|IPV6|DUALSTACK|FRR-MODE" -e /tmp/kind_logs
 
       - name: Collect Logs
         if: ${{ failure() }}
