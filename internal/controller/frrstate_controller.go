@@ -99,7 +99,6 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	frrStatus := r.FRRStatus.GetStatus()
 
 	newStatus := frrk8sv1beta1.FRRNodeStateStatus{
-		DesiredConfig:        cleanPasswords(frrStatus.Desired),
 		RunningConfig:        cleanPasswords(frrStatus.Current),
 		LastReloadResult:     cleanPasswords(frrStatus.LastReloadResult),
 		LastConversionResult: r.ConversionResult.ConversionResult(),

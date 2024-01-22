@@ -194,7 +194,6 @@ _Appears in:_
 
 | Field | Description |
 | --- | --- |
-| `desiredConfig` _string_ | DesiredConfig represents the desired FRR config, as the result of translating all of the `FRRConfiguration`s for the given node. |
 | `runningConfig` _string_ | RunningConfig represents the current FRR running config, which is the configuration the FRR instance is currently running with. |
 | `lastConversionResult` _string_ | LastConversionResult is the status of the last translation between the `FRRConfiguration`s resources and FRR's configuration, contains "success" or an error. |
 | `lastReloadResult` _string_ | LastReloadResult represents the status of the last configuration update operation by FRR, contains "success" or an error. |
