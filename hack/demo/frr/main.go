@@ -20,8 +20,7 @@ func main() {
 	flag.Parse()
 	fmt.Println(*nodeList)
 	data := BGPD{
-		NodesIP:  strings.Split(*nodeList, " "),
-		Protocol: "ipv4",
+		NodesIP: strings.Split(*nodeList, " "),
 	}
 
 	t, err := template.New("frr.conf.tmpl").ParseFiles("frr.conf.tmpl")
