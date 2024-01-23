@@ -75,9 +75,22 @@ ip prefix-list {{$plistName}} seq {{counter $plistName}} deny any
 {{- end }}
 {{ if not .neighbor.Incoming.PrefixesV6 }}
 ipv6 prefix-list {{$plistName}} seq {{counter $plistName}} deny any
+{{- end }}
+
+{{- if .neighbor.AlwaysBlock}}
+
+{{ $plistName:=deniedIncomingList $.neighbor}}
+{{- range $a := .neighbor.AlwaysBlock }}
+{{frrIPFamily $a.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$a.Prefix}}{{$a.Matcher}}
+{{- end }}
+
+route-map {{$.neighbor.ID}}-in deny {{counter $.neighbor.ID}}
+  match ip address prefix-list {{deniedIncomingList $.neighbor}}
+route-map {{$.neighbor.ID}}-in deny {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{deniedIncomingList $.neighbor}}
 {{- end -}}
 
-{{ if .neighbor.Incoming.All }}
+{{- if .neighbor.Incoming.All }}
 route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
 {{ else }}
 route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}

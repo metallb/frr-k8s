@@ -3,6 +3,8 @@
 package controller
 
 import (
+	"net"
+
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -30,7 +32,7 @@ func Validate(resources ...client.ObjectList) error {
 	}
 	resetSecrets(clusterResources.FRRConfigs)
 
-	_, err := apiToFRR(clusterResources)
+	_, err := apiToFRR(clusterResources, []net.IPNet{})
 	return err
 }
 

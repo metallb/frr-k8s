@@ -380,6 +380,46 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				},
 				splitCfg: splitByNeigh,
 			}),
+			ginkgo.Entry("IPV4 - receive ips from all, should block always block cidr", params{
+				ipFamily: ipfamily.IPv4,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				// the first two ips are being set via the alwaysBlock parameter when launching
+				// make deploy / deploy-helm and should be blocked
+				toAdvertiseV4: []string{"192.167.9.0/24", "192.167.9.3/32", "192.168.1.2/24"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
+					for _, p := range ppV4 {
+						ValidateNodesDoNotHaveRoutes(pods, p.FRR, "192.167.9.0/24", "192.167.9.3/32")
+						ValidateNodesHaveRoutes(pods, p.FRR, "192.168.1.2/24")
+					}
+				},
+				splitCfg: splitByNeigh,
+			}),
+			ginkgo.Entry("IPV6 - receive ips from all, should block always block cidr", params{
+				ipFamily: ipfamily.IPv6,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				// the first two ips are being set via the alwaysBlock parameter when launching
+				// make deploy / deploy-helm and should be blocked
+				toAdvertiseV6: []string{"fc00:f553:ccd:e799::/64", "fc00:f553:ccd:e799::1/128", "fc00:f853:ccd:e800::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV6 {
+						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
+					for _, p := range ppV6 {
+						ValidateNodesDoNotHaveRoutes(pods, p.FRR, "fc00:f553:ccd:e799::/64", "fc00:f553:ccd:e799::1/128")
+						ValidateNodesHaveRoutes(pods, p.FRR, "fc00:f853:ccd:e800::/64")
+					}
+				},
+				splitCfg: splitByNeigh,
+			}),
 		)
 
 		ginkgo.DescribeTable("Multiple configs", func(p params) {

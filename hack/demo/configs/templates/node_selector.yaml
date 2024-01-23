@@ -1,0 +1,21 @@
+apiVersion: frrk8s.metallb.io/v1beta1
+kind: FRRConfiguration
+metadata:
+  name: node-selector
+  namespace: frr-k8s-system
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: NEIGHBOR_IP
+        asn: 64512
+        toAdvertise:
+          allowed:
+            mode: all
+
+      prefixes:
+      - 192.168.3.0/24
+  nodeSelector:
+    matchLabels:
+      kubernetes.io/hostname: frr-k8s-worker

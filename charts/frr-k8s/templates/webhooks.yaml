@@ -34,8 +34,14 @@ spec:
         - --log-level={{ . }}
         {{- end }}
         - "--webhook-mode=onlywebhook"
+        {{- if .Values.frrk8s.disableCertRotation }}
+        - "--disable-cert-rotation=true"
+        {{- end }}
+        {{- if .Values.frrk8s.restartOnRotatorSecretRefresh }}
+        - "--restart-on-rotator-secret-refresh=true"
+        {{- end }}
         - "--namespace=$(NAMESPACE)"
-        - --health-probe-bind-address={{.Values.prometheus.metricsBindAddress}}:{{ .Values.frrk8s.healthPort }}
+        - --health-probe-bind-address=:8081
         env:
         - name: NAMESPACE
           valueFrom:
@@ -55,20 +61,20 @@ spec:
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
-            path: /livez
-            port: {{ .Values.frrk8s.frr.metricsPort }}
-            host: {{ .Values.frrk8s.frr.metricsBindAddress }}
+            path: /healthz
+            port: 8081
+          initialDelaySeconds: {{ .Values.frrk8s.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.frrk8s.livenessProbe.periodSeconds }}
           failureThreshold: {{ .Values.frrk8s.livenessProbe.failureThreshold }}
         {{- end }}
-        {{- if .Values.frrk8s.startupProbe.enabled }}
-        startupProbe:
+        {{- if .Values.frrk8s.readinessProbe.enabled }}
+        readinessProbe:
           httpGet:
-            path: /livez
-            port: {{ .Values.frrk8s.frr.metricsPort }}
-            host: {{ .Values.frrk8s.frr.metricsBindAddress }}
-          failureThreshold: {{ .Values.frrk8s.startupProbe.failureThreshold }}
-          periodSeconds: {{ .Values.frrk8s.startupProbe.periodSeconds }}
+            path: /readyz
+            port: 8081
+          initialDelaySeconds: {{ .Values.frrk8s.readinessProbe.initialDelaySeconds }}
+          periodSeconds: {{ .Values.frrk8s.readinessProbe.periodSeconds }}
+          failureThreshold: {{ .Values.frrk8s.readinessProbe.failureThreshold }}
         {{- end }}
         {{- with .Values.frrk8s.resources }}
         resources:

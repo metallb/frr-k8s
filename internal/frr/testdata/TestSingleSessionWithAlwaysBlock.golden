@@ -1,0 +1,108 @@
+log file /etc/frr/frr.log informational
+log timestamp precision 3
+hostname dummyhostname
+ip nht resolve-via-default
+ipv6 nht resolve-via-default
+
+
+route-map 192.168.1.2-out permit 1
+  match ip address prefix-list 192.168.1.2-pl-ipv4
+route-map 192.168.1.2-out permit 2
+  match ipv6 address prefix-list 192.168.1.2-pl-ipv4
+
+
+
+ip prefix-list 192.168.1.2-pl-ipv4 seq 1 deny any
+ipv6 prefix-list 192.168.1.2-pl-ipv4 seq 2 deny any
+
+
+
+
+
+
+ip prefix-list 192.168.1.2-inpl-ipv4 seq 1 deny any
+
+ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 2 deny any
+
+
+ip prefix-list 192.168.1.2-denied-inpl-ipv4 seq 1 permit 192.168.1.0/24 le 24
+ipv6 prefix-list 192.168.1.2-denied-inpl-ipv4 seq 2 permit fc00:f853:ccd:e800::/64 le 64
+
+route-map 192.168.1.2-in deny 3
+  match ip address prefix-list 192.168.1.2-denied-inpl-ipv4
+route-map 192.168.1.2-in deny 4
+  match ipv6 address prefix-list 192.168.1.2-denied-inpl-ipv4
+route-map 192.168.1.2-in permit 5
+
+
+
+route-map 192.168.1.6-out permit 1
+  match ip address prefix-list 192.168.1.6-pl-ipv4
+route-map 192.168.1.6-out permit 2
+  match ipv6 address prefix-list 192.168.1.6-pl-ipv4
+
+
+
+ip prefix-list 192.168.1.6-pl-ipv4 seq 1 deny any
+ipv6 prefix-list 192.168.1.6-pl-ipv4 seq 2 deny any
+
+
+
+
+ip prefix-list 192.168.1.6-inpl-ipv4 seq 1 permit 192.168.2.0/24
+
+
+
+ipv6 prefix-list 192.168.1.6-inpl-ipv4 seq 2 deny any
+
+
+ip prefix-list 192.168.1.6-denied-inpl-ipv4 seq 1 permit 192.168.1.0/24 le 24
+ipv6 prefix-list 192.168.1.6-denied-inpl-ipv4 seq 2 permit fc00:f853:ccd:e800::/64 le 64
+
+route-map 192.168.1.6-in deny 3
+  match ip address prefix-list 192.168.1.6-denied-inpl-ipv4
+route-map 192.168.1.6-in deny 4
+  match ipv6 address prefix-list 192.168.1.6-denied-inpl-ipv4
+route-map 192.168.1.6-in permit 5
+  match ip address prefix-list 192.168.1.6-inpl-ipv4
+route-map 192.168.1.6-in permit 6
+  match ipv6 address prefix-list 192.168.1.6-inpl-ipv4
+
+router bgp 65000
+  no bgp ebgp-requires-policy
+  no bgp network import-check
+  no bgp default ipv4-unicast
+
+  neighbor 192.168.1.2 remote-as 65001
+  
+  
+  
+  
+  neighbor 192.168.1.6 remote-as 65001
+  
+  
+  
+  
+
+  address-family ipv4 unicast
+    neighbor 192.168.1.2 activate
+    neighbor 192.168.1.2 route-map 192.168.1.2-in in
+    neighbor 192.168.1.2 route-map 192.168.1.2-out out
+  exit-address-family
+  address-family ipv6 unicast
+    neighbor 192.168.1.2 activate
+    neighbor 192.168.1.2 route-map 192.168.1.2-in in
+    neighbor 192.168.1.2 route-map 192.168.1.2-out out
+  exit-address-family
+
+  address-family ipv4 unicast
+    neighbor 192.168.1.6 activate
+    neighbor 192.168.1.6 route-map 192.168.1.6-in in
+    neighbor 192.168.1.6 route-map 192.168.1.6-out out
+  exit-address-family
+  address-family ipv6 unicast
+    neighbor 192.168.1.6 activate
+    neighbor 192.168.1.6 route-map 192.168.1.6-in in
+    neighbor 192.168.1.6 route-map 192.168.1.6-out out
+  exit-address-family
+

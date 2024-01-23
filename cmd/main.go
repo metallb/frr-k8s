@@ -19,7 +19,9 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net"
 	"os"
+	"strings"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -66,16 +68,18 @@ func init() {
 
 func main() {
 	var (
-		metricsAddr         string
-		probeAddr           string
-		logLevel            string
-		nodeName            string
-		namespace           string
-		disableCertRotation bool
-		certDir             string
-		certServiceName     string
-		webhookMode         string
-		pprofAddr           string
+		metricsAddr                   string
+		probeAddr                     string
+		logLevel                      string
+		nodeName                      string
+		namespace                     string
+		disableCertRotation           bool
+		restartOnRotatorSecretRefresh bool
+		certDir                       string
+		certServiceName               string
+		webhookMode                   string
+		pprofAddr                     string
+		alwaysBlockCIDRs              string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -85,9 +89,11 @@ func main() {
 	flag.StringVar(&namespace, "namespace", "", "The namespace this daemon is deployed in")
 	flag.StringVar(&webhookMode, "webhook-mode", "disabled", "webhook mode: can be disabled or onlywebhook if we want the controller to act as webhook endpoint only")
 	flag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
+	flag.BoolVar(&restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
 	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
+	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
 
 	opts := zap.Options{
 		Development: true,
@@ -145,7 +151,7 @@ func main() {
 	startListeners := make(chan struct{})
 	if enableWebhook && !disableCertRotation {
 		setupLog.Info("Starting certs generator")
-		err = setupCertRotation(startListeners, mgr, logger, namespace, certDir, certServiceName)
+		err = setupCertRotation(startListeners, mgr, logger, namespace, certDir, certServiceName, restartOnRotatorSecretRefresh)
 		if err != nil {
 			setupLog.Error(err, "unable to set up cert rotator")
 			os.Exit(1)
@@ -159,7 +165,7 @@ func main() {
 
 		if enableWebhook {
 			setupLog.Info("Starting webhooks")
-			err := setupWebhook(mgr, namespace, logger)
+			err := setupWebhook(mgr, logger)
 			if err != nil {
 				setupLog.Error(err, "unable to create", "webhooks")
 				os.Exit(1)
@@ -174,13 +180,20 @@ func main() {
 		}
 		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
 
+		alwaysBlock, err := parseCIDRs(alwaysBlockCIDRs)
+		if err != nil {
+			setupLog.Error(err, "failed to parse the always-block parameter", "always-block", alwaysBlockCIDRs)
+			os.Exit(1)
+		}
+
 		configReconciler := &controller.FRRConfigurationReconciler{
-			Client:       mgr.GetClient(),
-			Scheme:       mgr.GetScheme(),
-			FRRHandler:   frrInstance,
-			Logger:       logger,
-			NodeName:     nodeName,
-			ReloadStatus: reloadStatus,
+			Client:           mgr.GetClient(),
+			Scheme:           mgr.GetScheme(),
+			FRRHandler:       frrInstance,
+			Logger:           logger,
+			NodeName:         nodeName,
+			ReloadStatus:     reloadStatus,
+			AlwaysBlockCIDRS: alwaysBlock,
 		}
 		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
@@ -219,7 +232,7 @@ var (
 )
 
 func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger log.Logger,
-	namespace, certDir, certServiceName string) error {
+	namespace, certDir, certServiceName string, restartOnSecretRefresh bool) error {
 	webhooks := []rotator.WebhookInfo{
 		{
 			Name: webhookName,
@@ -233,13 +246,14 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 			Namespace: namespace,
 			Name:      webhookSecretName,
 		},
-		CertDir:        certDir,
-		CAName:         caName,
-		CAOrganization: caOrganization,
-		DNSName:        fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
-		IsReady:        notifyFinished,
-		Webhooks:       webhooks,
-		FieldOwner:     "frr-k8s",
+		CertDir:                certDir,
+		CAName:                 caName,
+		CAOrganization:         caOrganization,
+		DNSName:                fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
+		IsReady:                notifyFinished,
+		Webhooks:               webhooks,
+		FieldOwner:             "frr-k8s",
+		RestartOnSecretRefresh: restartOnSecretRefresh,
 	})
 	if err != nil {
 		level.Error(logger).Log("error", err, "unable to set up", "cert rotation")
@@ -248,10 +262,9 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager, namespace string, logger log.Logger) error {
+func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
-	frrk8sv1beta1.Namespace = namespace
 	frrk8sv1beta1.Logger = logger
 	frrk8sv1beta1.WebhookClient = mgr.GetAPIReader()
 	frrk8sv1beta1.Validate = controller.Validate
@@ -262,4 +275,22 @@ func setupWebhook(mgr manager.Manager, namespace string, logger log.Logger) erro
 	}
 
 	return nil
+}
+
+func parseCIDRs(cidrs string) ([]net.IPNet, error) {
+	if cidrs == "" {
+		return nil, nil
+	}
+
+	elems := strings.Split(cidrs, ",")
+	res := make([]net.IPNet, 0, len(elems))
+	for _, e := range elems {
+		trimmed := strings.Trim(e, " ")
+		_, cidr, err := net.ParseCIDR(trimmed)
+		if err != nil {
+			return nil, fmt.Errorf("failed to parse cidr %s: %w", e, err)
+		}
+		res = append(res, *cidr)
+	}
+	return res, nil
 }

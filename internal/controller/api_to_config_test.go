@@ -5,6 +5,7 @@ package controller
 import (
 	"errors"
 	"fmt"
+	"net"
 	"testing"
 	"time"
 
@@ -19,12 +20,16 @@ import (
 )
 
 func TestConversion(t *testing.T) {
+	_, ipv4CIDR, _ := net.ParseCIDR("192.168.1.0/24")
+	_, ipv6CIDR, _ := net.ParseCIDR("fc00:f853:ccd:e800::/64")
+
 	tests := []struct {
-		name     string
-		fromK8s  []v1beta1.FRRConfiguration
-		secrets  map[string]v1.Secret
-		expected *frr.Config
-		err      error
+		name        string
+		fromK8s     []v1beta1.FRRConfiguration
+		secrets     map[string]v1.Secret
+		alwaysBlock []net.IPNet
+		expected    *frr.Config
+		err         error
 	}{
 
 		{
@@ -81,6 +86,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "",
@@ -152,6 +158,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -166,6 +173,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "",
@@ -190,6 +198,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "vrf2",
@@ -245,6 +254,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -312,6 +322,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "vrf1",
@@ -377,6 +388,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -454,6 +466,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -486,6 +499,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
@@ -620,6 +634,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -659,6 +674,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
@@ -907,6 +923,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 					},
@@ -976,6 +993,7 @@ func TestConversion(t *testing.T) {
 										{IPFamily: "ipv6", Prefix: "2001:db8::/64"},
 									},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 					},
@@ -1045,6 +1063,7 @@ func TestConversion(t *testing.T) {
 										{IPFamily: "ipv6", Prefix: "2001:db8::/64"},
 									},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 					},
@@ -1204,6 +1223,7 @@ func TestConversion(t *testing.T) {
 									},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "",
@@ -1326,6 +1346,7 @@ func TestConversion(t *testing.T) {
 									},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "",
@@ -1508,6 +1529,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -1545,6 +1567,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "",
@@ -1574,6 +1597,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv6,
@@ -1603,6 +1627,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "vrf2",
@@ -1699,6 +1724,23 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
+							},
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65012@192.0.2.8",
+								ASN:      65012,
+								Addr:     "192.0.2.8",
+								Password: "cleartext-password",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
@@ -1738,6 +1780,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 							{
 								IPFamily: ipfamily.IPv6,
@@ -1754,6 +1797,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 						VRF:          "vrf2",
@@ -1988,6 +2032,7 @@ func TestConversion(t *testing.T) {
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
 								},
+								AlwaysBlock: []frr.IncomingFilter{},
 							},
 						},
 					},
@@ -2256,6 +2301,119 @@ func TestConversion(t *testing.T) {
 			secrets: map[string]v1.Secret{},
 			err:     errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid keepaliveTime {"50s"}`),
 		},
+		{
+			name: "With alwaysblock",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65011,
+											Address: "192.0.2.6",
+										},
+									},
+									VRF: "",
+								},
+								{
+									ASN: 65013,
+									ID:  "2001:db8::3",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65014,
+											Address: "2001:db8::4",
+										},
+									},
+									VRF:      "vrf2",
+									Prefixes: []string{},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:     map[string]v1.Secret{},
+			alwaysBlock: []net.IPNet{*ipv4CIDR, *ipv6CIDR},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65011@192.0.2.6",
+								ASN:      65011,
+								Addr:     "192.0.2.6",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+								AlwaysBlock: []frr.IncomingFilter{
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.168.1.0/24",
+										LE:       uint32(32),
+									}, {
+										IPFamily: ipfamily.IPv6,
+										Prefix:   "fc00:f853:ccd:e800::/64",
+										LE:       uint32(128),
+									},
+								},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+					{
+						MyASN:    65013,
+						RouterID: "2001:db8::3",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv6,
+								Name:     "65014@2001:db8::4",
+								ASN:      65014,
+								Addr:     "2001:db8::4",
+								VRFName:  "vrf2",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+								AlwaysBlock: []frr.IncomingFilter{
+									{
+										IPFamily: ipfamily.IPv4,
+										Prefix:   "192.168.1.0/24",
+										LE:       uint32(32),
+									}, {
+										IPFamily: ipfamily.IPv6,
+										Prefix:   "fc00:f853:ccd:e800::/64",
+										LE:       uint32(128),
+									},
+								},
+							},
+						},
+						VRF:          "vrf2",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -2264,7 +2422,7 @@ func TestConversion(t *testing.T) {
 				FRRConfigs:      test.fromK8s,
 				PasswordSecrets: test.secrets,
 			}
-			frr, err := apiToFRR(resources)
+			frr, err := apiToFRR(resources, test.alwaysBlock)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}

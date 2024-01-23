@@ -106,11 +106,6 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 						if status.Status.LastReloadResult != reloadSuccess {
 							return fmt.Errorf("LastReloadResult is not success for node %s", node.Name)
 						}
-						if err := stringMatches(status.Status.DesiredConfig, Contains,
-							"router bgp 64515",
-						); err != nil {
-							return err
-						}
 
 						if err := stringMatches(status.Status.RunningConfig, Contains,
 							"router bgp 64515",
@@ -153,24 +148,11 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 						if status.Status.LastReloadResult != reloadSuccess {
 							return fmt.Errorf("LastReloadResult is not success")
 						}
-						if err := stringMatches(status.Status.DesiredConfig, Contains,
-							"router bgp 64515",
-							"neighbor 192.168.5.1 activate",
-							"password <retracted>",
-						); err != nil {
-							return err
-						}
 
 						if err := stringMatches(status.Status.RunningConfig, Contains,
 							"router bgp 64515",
 							"neighbor 192.168.5.1 activate",
 							"password <retracted>",
-						); err != nil {
-							return err
-						}
-
-						if err := stringMatches(status.Status.DesiredConfig, DoesNotContain,
-							"supersecret",
 						); err != nil {
 							return err
 						}
@@ -197,24 +179,9 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 						if status.Status.LastReloadResult != reloadSuccess {
 							return fmt.Errorf("LastReloadResult is not success")
 						}
-						if err := stringMatches(status.Status.DesiredConfig, Contains,
-							"router bgp 64515",
-						); err != nil {
-							return err
-						}
-						if err := stringMatches(status.Status.DesiredConfig, DoesNotContain,
-							"neighbor 192.168.5.1 activate",
-						); err != nil {
-							return err
-						}
 
 						if err := stringMatches(status.Status.RunningConfig, Contains,
 							"router bgp 64515",
-						); err != nil {
-							return err
-						}
-						if err := stringMatches(status.Status.DesiredConfig, DoesNotContain,
-							"neighbor 192.168.5.1 activate",
 						); err != nil {
 							return err
 						}
@@ -234,16 +201,6 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 					return nodeMatchesStatus(cl, node.Name, func(status frrk8sv1beta1.FRRNodeState) error {
 						if !strings.Contains(status.Status.LastReloadResult, "ERROR") {
 							return fmt.Errorf("Last reload does not contain error")
-						}
-						if err := stringMatches(status.Status.DesiredConfig, Contains,
-							"this is a non valid configuration",
-						); err != nil {
-							return err
-						}
-						if err := stringMatches(status.Status.DesiredConfig, DoesNotContain,
-							"router bgp 64515",
-						); err != nil {
-							return err
 						}
 						if err := stringMatches(status.Status.RunningConfig, Contains,
 							"router bgp 64515",

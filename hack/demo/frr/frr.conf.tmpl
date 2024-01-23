@@ -1,0 +1,20 @@
+router bgp 64512
+ no bgp default ipv4-unicast
+ no bgp network import-check
+ 
+{{- range $r := .NodesIP }}
+ neighbor {{ . }} remote-as 64512
+{{- end }}
+
+ address-family ipv4 unicast
+  network 192.168.1.0/24
+  network 192.169.1.1/32
+ exit-address-family
+
+ address-family ipv4 unicast
+{{- range $r := .NodesIP }}
+  neighbor {{ . }} activate
+  neighbor {{ . }} next-hop-self 
+{{- end }}
+ exit-address-family
+

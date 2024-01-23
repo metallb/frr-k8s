@@ -147,6 +147,13 @@ frrk8s:
     enabled: true
     failureThreshold: 30
     periodSeconds: 5
+  ## A comma separated list of cidrs we want always to block for incoming routes
+  alwaysBlock: ""
+  ## Specifies whether the cert rotator works as part of the webhook.
+  disableCertRotation: false
+  ## Specifies whether the pod restarts when the rotator refreshes the cert secret.
+  ## Enabling this proved useful for the webhook's stability when it is redeployed multiple times in succession.
+  restartOnRotatorSecretRefresh: false
   # frr contains configuration specific to the FRR container,
   frr:
     image:
