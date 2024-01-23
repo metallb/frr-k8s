@@ -32,8 +32,6 @@ jobs:
         with:
           skip-upload: true
 
-<<<<<<< HEAD
-=======
   check-generated:
     runs-on: ubuntu-22.04
     if: github.actor != 'dependabot[bot]'
