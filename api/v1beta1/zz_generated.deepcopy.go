@@ -415,6 +415,11 @@ func (in *Neighbor) DeepCopyInto(out *Neighbor) {
 		*out = new(v1.Duration)
 		**out = **in
 	}
+	if in.ConnectTime != nil {
+		in, out := &in.ConnectTime, &out.ConnectTime
+		*out = new(v1.Duration)
+		**out = **in
+	}
 	in.ToAdvertise.DeepCopyInto(&out.ToAdvertise)
 	in.ToReceive.DeepCopyInto(&out.ToReceive)
 }

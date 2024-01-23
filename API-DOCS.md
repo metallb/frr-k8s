@@ -232,6 +232,7 @@ _Appears in:_
 | `passwordSecret` _[SecretReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretreference-v1-core)_ | PasswordSecret is name of the authentication secret for the neighbor. the secret must be of type "kubernetes.io/basic-auth", and created in the same namespace as the frr-k8s daemon. The password is stored in the secret as the key "password". Password and PasswordSecret are mutually exclusive. |
 | `holdTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | HoldTime is the requested BGP hold time, per RFC4271. Defaults to 180s. |
 | `keepaliveTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | KeepaliveTime is the requested BGP keepalive time, per RFC4271. Defaults to 60s. |
+| `connectTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | Requested BGP connect time, controls how long BGP waits between connection attempts to a neighbor. |
 | `ebgpMultiHop` _boolean_ | EBGPMultiHop indicates if the BGPPeer is multi-hops away. |
 | `bfdProfile` _string_ | BFDProfile is the name of the BFD Profile to be used for the BFD session associated to the BGP session. If not set, the BFD session won't be set up. |
 | `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor and the associated properties. |
