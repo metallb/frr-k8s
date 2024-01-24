@@ -1,6 +1,6 @@
 # FRRK8s Release Notes
 
-## Release v0.0.7
+## Release v0.0.8
 
 ### Features
 
