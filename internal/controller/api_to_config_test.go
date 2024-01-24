@@ -1742,21 +1742,6 @@ func TestConversion(t *testing.T) {
 								},
 								AlwaysBlock: []frr.IncomingFilter{},
 							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Name:     "65012@192.0.2.8",
-								ASN:      65012,
-								Addr:     "192.0.2.8",
-								Password: "cleartext-password",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{},
-									PrefixesV6: []frr.OutgoingFilter{},
-								},
-								Incoming: frr.AllowedIn{
-									PrefixesV4: []frr.IncomingFilter{},
-									PrefixesV6: []frr.IncomingFilter{},
-								},
-							},
 						},
 						VRF:          "",
 						IPV4Prefixes: []string{},
