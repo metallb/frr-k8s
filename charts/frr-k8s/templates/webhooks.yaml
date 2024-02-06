@@ -2,6 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "frrk8s.fullname" . }}-webhook-server
+  namespace: {{ .Release.Namespace | quote }}
   labels:
     {{- include "frrk8s.labels" . | nindent 4 }}
     app.kubernetes.io/component: frr-k8s-webhook-server
@@ -117,11 +118,13 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: frr-k8s-webhook-server-cert
+  namespace: {{ .Release.Namespace | quote }}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: frr-k8s-webhook-service
+  namespace: {{ .Release.Namespace | quote }}
 spec:
   ports:
   - port: 443

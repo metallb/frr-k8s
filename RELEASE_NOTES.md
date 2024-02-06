@@ -1,5 +1,10 @@
 # FRRK8s Release Notes
 
+## Release v0.0.9
+
+### Bug fixes
+ - helm: namespace all namespaced resources ([PR 117](https://github.com/metallb/frr-k8s/pull/117))
+
 ## Release v0.0.8
 
 ### Features
