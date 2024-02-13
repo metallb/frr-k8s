@@ -9,6 +9,9 @@
   {{ if and .neighbor.KeepaliveTime .neighbor.HoldTime }}
   neighbor {{.neighbor.Addr}} timers {{.neighbor.KeepaliveTime}} {{.neighbor.HoldTime}}
   {{- end }}
+  {{- if .neighbor.ConnectTime }}
+  neighbor {{.neighbor.Addr}} timers connect {{.neighbor.ConnectTime}}
+  {{- end }}
   {{ if .neighbor.Password -}}
   neighbor {{.neighbor.Addr}} password {{.neighbor.Password}}
   {{- end }}
