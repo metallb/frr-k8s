@@ -11,6 +11,10 @@
 ### Bug fixes
  - helm: namespace all namespaced resources ([PR 117](https://github.com/metallb/frr-k8s/pull/117))
 
+### Features
+
+- Add option to configure BGP connect time ([PR_119](https://github.com/metallb/frr-k8s/pull/119))
+
 ## Release v0.0.8
 
 ### Features
