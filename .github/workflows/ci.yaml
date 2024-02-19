@@ -287,4 +287,4 @@ jobs:
         if: ${{ failure() }}
         uses: ./.github/workflows/composite/collectlogs
         with:
-          artifact-name: kind-logs-${{ matrix.ip-family }}-${{ matrix.deployment }}
+          artifact-name: kind-logs-metallb-logs
