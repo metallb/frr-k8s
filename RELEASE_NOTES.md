@@ -1,5 +1,11 @@
 # FRRK8s Release Notes
 
+## Release v0.0.10
+
+### New features
+
+- FRR: bump to 9.0.2, allow to peer with localhost ([PR 118](https://github.com/metallb/frr-k8s/pull/118))
+
 ## Release v0.0.9
 
 ### Bug fixes
