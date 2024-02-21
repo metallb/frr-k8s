@@ -5,15 +5,13 @@
 ### New features
 
 - FRR: bump to 9.0.2, allow to peer with localhost ([PR 118](https://github.com/metallb/frr-k8s/pull/118))
+- Add option to configure BGP connect time ([PR_119](https://github.com/metallb/frr-k8s/pull/119))
 
 ## Release v0.0.9
 
 ### Bug fixes
  - helm: namespace all namespaced resources ([PR 117](https://github.com/metallb/frr-k8s/pull/117))
 
-### Features
-
-- Add option to configure BGP connect time ([PR_119](https://github.com/metallb/frr-k8s/pull/119))
 
 ## Release v0.0.8
 
