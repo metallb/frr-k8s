@@ -159,6 +159,20 @@ spec:
                                   BGP session. If not set, the BFD session won't be
                                   set up.
                                 type: string
+                              connectTime:
+                                description: Requested BGP connect time, controls
+                                  how long BGP waits between connection attempts to
+                                  a neighbor.
+                                type: string
+                                x-kubernetes-validations:
+                                - message: connect time should be between 1 seconds
+                                    to 65535
+                                  rule: duration(self).getSeconds() >= 1 && duration(self).getSeconds()
+                                    <= 65535
+                                - message: connect time should contain a whole number
+                                    of seconds
+                                  rule: duration(self).getMilliseconds() % 1000 ==
+                                    0
                               ebgpMultiHop:
                                 description: EBGPMultiHop indicates if the BGPPeer
                                   is multi-hops away.
@@ -1105,7 +1119,7 @@ spec:
         env:
         - name: TINI_SUBREAPER
           value: "true"
-        image: quay.io/frrouting/frr:8.4.2
+        image: quay.io/frrouting/frr:9.0.2
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -1138,7 +1152,7 @@ spec:
         - --metrics-bind-address=127.0.0.1
         command:
         - /etc/frr_metrics/frr-metrics
-        image: quay.io/frrouting/frr:8.4.2
+        image: quay.io/frrouting/frr:9.0.2
         name: frr-metrics
         ports:
         - containerPort: 7573
@@ -1152,7 +1166,7 @@ spec:
           name: metrics
       - command:
         - /etc/frr_reloader/frr-reloader.sh
-        image: quay.io/frrouting/frr:8.4.2
+        image: quay.io/frrouting/frr:9.0.2
         name: reloader
         volumeMounts:
         - mountPath: /var/run/frr
@@ -1167,7 +1181,7 @@ spec:
         - /bin/sh
         - -c
         - cp -rLf /tmp/frr/* /etc/frr/
-        image: quay.io/frrouting/frr:8.4.2
+        image: quay.io/frrouting/frr:9.0.2
         name: cp-frr-files
         securityContext:
           runAsGroup: 101

@@ -281,10 +281,12 @@ jobs:
           export SPEAKER_SELECTOR="app.kubernetes.io/component=speaker"
           export CONTROLLER_SELECTOR="app.kubernetes.io/component=controller"
           cd ${GITHUB_WORKSPACE}/metallb
+
+          env "PATH=$PATH" inv remove-lb-exclusion-from-nodes
           sudo -E env "PATH=$PATH" inv e2etest -b "frr-k8s" --kubeconfig ${KUBECONFIG} --with-vrf --skip "L2|IPV6|DUALSTACK|FRR-MODE" -e /tmp/kind_logs
 
       - name: Collect Logs
         if: ${{ failure() }}
         uses: ./.github/workflows/composite/collectlogs
         with:
-          artifact-name: kind-logs-${{ matrix.ip-family }}-${{ matrix.deployment }}
+          artifact-name: kind-logs-metallb-logs

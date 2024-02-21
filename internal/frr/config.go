@@ -69,6 +69,7 @@ type NeighborConfig struct {
 	Port          *uint16
 	HoldTime      *uint64
 	KeepaliveTime *uint64
+	ConnectTime   *uint64
 	Password      string
 	BFDProfile    string
 	EBGPMultiHop  bool

@@ -53,6 +53,9 @@ func TestConversion(t *testing.T) {
 											HoldTime: &metav1.Duration{
 												Duration: 40 * time.Second,
 											},
+											ConnectTime: &metav1.Duration{
+												Duration: 2 * time.Second,
+											},
 										},
 									},
 									VRF:      "",
@@ -78,6 +81,7 @@ func TestConversion(t *testing.T) {
 								Addr:          "192.0.2.2",
 								KeepaliveTime: ptr.To[uint64](20),
 								HoldTime:      ptr.To[uint64](40),
+								ConnectTime:   ptr.To(uint64(2)),
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []frr.OutgoingFilter{},
 									PrefixesV6: []frr.OutgoingFilter{},

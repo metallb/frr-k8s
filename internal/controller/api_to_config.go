@@ -17,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/ptr"
 )
 
 type ClusterResources struct {
@@ -149,6 +150,10 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, alwa
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {
 		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n.ASN, n.Address), err)
+	}
+
+	if n.ConnectTime != nil {
+		res.ConnectTime = ptr.To(uint64(n.ConnectTime.Duration / time.Second))
 	}
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)

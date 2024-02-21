@@ -156,6 +156,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						Addr:          "192.168.1.2",
 						HoldTime:      ptr.To[uint64](80),
 						KeepaliveTime: ptr.To[uint64](40),
+						ConnectTime:   ptr.To(uint64(10)),
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{

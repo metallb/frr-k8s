@@ -83,6 +83,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 										KeepaliveTime: &metav1.Duration{
 											Duration: 20 * time.Second,
 										},
+										ConnectTime: &metav1.Duration{
+											Duration: 3 * time.Second,
+										},
 									},
 								},
 							},
@@ -111,6 +114,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 					if neighbors[0].ConfiguredKeepAliveTime != 20000 {
 						return fmt.Errorf("expected hold time to be 20000, got %d", neighbors[0].ConfiguredKeepAliveTime)
+					}
+					if neighbors[0].ConfiguredConnectTime != 3 {
+						return fmt.Errorf("expected connect time to be 3, got %d", neighbors[0].ConfiguredConnectTime)
 					}
 					return nil
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())

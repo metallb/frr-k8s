@@ -230,6 +230,10 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("multiple keepalive times specified for %s", neighborKey)
 	}
 
+	if !ptrsEqual(n1.ConnectTime, n2.ConnectTime, uint64(60*time.Second)) {
+		return fmt.Errorf("multiple connect times specified for %s", neighborKey)
+	}
+
 	return nil
 }
 
