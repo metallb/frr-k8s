@@ -2,13 +2,44 @@
 
 ## Preparing the branch
 
-Checkout the release branch and cherry pick the relevant commits:
+Checkout the release branch and merge main or cherry pick the relevant commits:
+
+```bash
+git checkout v0.9
+git merge main
+git push
+```
+
+### Using cherry picks
+
+In case only a subset of the changes are brought to the new release, cherry-pick
+must be used.
 
 ```bash
 git checkout v0.9
 git cherry-pick -x f1f86ed658c1e8a6f90f967ed94881d61476b4c0
 git push
 ```
+
+## Generate the release notes
+
+A convenience generator script is added under `website/gen_relnotes.sh`. The syntax is
+as follows:
+
+```bash
+hack/gen_relnotes.sh <branch> <first commit> <last commit>
+```
+
+Where branch is the branch being released, first and last commit is the interval
+we want to generate the release notes for.
+
+The `GITHUB_TOKEN` environment variable must be set with a github token which has the following permissions:
+
+Read access to:
+
+- Contents
+- Pull requests
+- Commit statuses
 
 ## Finalize the release notes
 
