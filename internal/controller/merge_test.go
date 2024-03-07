@@ -1331,6 +1331,46 @@ func TestMergeNeighbors(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			// This test is similar to the previous, to ensure conversion stability
+			name: "HoldTime / KeepAlive time, one set to the default, the other set to nil",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:      ipfamily.IPv4,
+					Name:          "65040@192.0.1.20",
+					ASN:           65040,
+					Addr:          "192.0.1.20",
+					HoldTime:      ptr.To(uint64(180)),
+					KeepaliveTime: ptr.To(uint64(60)),
+					ConnectTime:   ptr.To(uint64(60)),
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      65040,
+					Addr:     "192.0.1.20",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      65040,
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []frr.OutgoingFilter{},
+						PrefixesV6: []frr.OutgoingFilter{},
+					},
+					Incoming: frr.AllowedIn{
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
