@@ -1,0 +1,97 @@
+log file /etc/frr/frr.log informational
+log timestamp precision 3
+hostname dummyhostname
+ip nht resolve-via-default
+ipv6 nht resolve-via-default
+
+
+
+
+ip prefix-list 192.168.1.2-pl-ipv4 seq 1 permit 192.169.1.0/24
+
+route-map 192.168.1.2-out permit 1
+  match ip address prefix-list 192.168.1.2-pl-ipv4
+route-map 192.168.1.2-out permit 2
+  match ipv6 address prefix-list 192.168.1.2-pl-ipv4
+
+
+
+ipv6 prefix-list 192.168.1.2-pl-ipv4 seq 2 deny any
+
+
+
+
+
+
+ip prefix-list 192.168.1.2-inpl-ipv4 seq 1 deny any
+
+ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 2 deny any
+route-map 192.168.1.2-in permit 3
+  match ip address prefix-list 192.168.1.2-inpl-ipv4
+route-map 192.168.1.2-in permit 4
+  match ipv6 address prefix-list 192.168.1.2-inpl-ipv4
+
+
+
+
+ipv6 prefix-list 2001:db8::1-pl-ipv6 seq 1 permit 2001:db8:abcd::/48
+
+route-map 2001:db8::1-out permit 1
+  match ip address prefix-list 2001:db8::1-pl-ipv6
+route-map 2001:db8::1-out permit 2
+  match ipv6 address prefix-list 2001:db8::1-pl-ipv6
+
+
+
+ip prefix-list 2001:db8::1-pl-ipv6 seq 2 deny any
+
+
+
+
+
+
+ip prefix-list 2001:db8::1-inpl-ipv6 seq 1 deny any
+
+ipv6 prefix-list 2001:db8::1-inpl-ipv6 seq 2 deny any
+route-map 2001:db8::1-in permit 3
+  match ip address prefix-list 2001:db8::1-inpl-ipv6
+route-map 2001:db8::1-in permit 4
+  match ipv6 address prefix-list 2001:db8::1-inpl-ipv6
+
+router bgp 65000
+  no bgp ebgp-requires-policy
+  no bgp network import-check
+  no bgp default ipv4-unicast
+
+  neighbor 192.168.1.2 remote-as 65001
+  
+  
+  
+  
+  neighbor 2001:db8::1 remote-as 65002
+  neighbor 2001:db8::1 ebgp-multihop
+  
+  
+  
+  
+
+  address-family ipv4 unicast
+    neighbor 192.168.1.2 activate
+    neighbor 192.168.1.2 route-map 192.168.1.2-in in
+    neighbor 192.168.1.2 route-map 192.168.1.2-out out
+  exit-address-family
+
+  address-family ipv6 unicast
+    neighbor 2001:db8::1 activate
+    neighbor 2001:db8::1 route-map 2001:db8::1-in in
+    neighbor 2001:db8::1 route-map 2001:db8::1-out out
+  exit-address-family
+  address-family ipv4 unicast
+    network 192.169.1.0/24
+  exit-address-family
+
+  address-family ipv6 unicast
+    network 2001:db8:abcd::/48
+  exit-address-family
+
+
