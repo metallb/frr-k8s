@@ -420,6 +420,7 @@ github.com/mdlayher/packet v1.0.0/go.mod h1:eE7/ctqDhoiRhQ44ko5JZU2zxB88g+JH/6jm
 github.com/mdlayher/socket v0.2.1/go.mod h1:QLlNPkFR88mRUNQIzRBMfXxwKal8H7u1h3bL1CV+f0E=
 github.com/metallb/metallb v0.0.0-20231018084006-477ed4165c47 h1:XK1EaUnIb13ZyziW+vb4fUXRPzBWxlXzWATLYPRMZdc=
 github.com/metallb/metallb v0.0.0-20231018084006-477ed4165c47/go.mod h1:lCJWsGzOOwCvepIN4P3VhdCjcVW4cJfRwS4ED88byg8=
+github.com/metallb/metallb/e2etest v0.0.0-20240307175911-a370625c5457/go.mod h1:pmCmsDOClzcfVBFQ+4g9oF8nS01GccCmN78LObtuBoQ=
 github.com/miekg/dns v1.1.43/go.mod h1:+evo5L0630/F6ca/Z9+GAqzhjGyn8/c+TBaOyfEl0V4=
 github.com/mikioh/ipaddr v0.0.0-20190404000644-d465c8ab6721/go.mod h1:Ickgr2WtCLZ2MDGd4Gr0geeCH5HybhRJbonOgQpvSxc=
 github.com/mindprince/gonvml v0.0.0-20190828220739-9ebdce4bb989/go.mod h1:2eu9pRWp8mo84xCg6KswZ+USQHjwgRhNp06sozOdsTY=
