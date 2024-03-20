@@ -5,7 +5,7 @@ go 1.20
 replace (
 	github.com/metallb/frr-k8s => ../
 	github.com/onsi/ginkgo/v2 => github.com/onsi/ginkgo/v2 v2.13.0
-	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240212183715-d7008482c559
+	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240307175911-a370625c5457
 	go.universe.tf/metallb => github.com/metallb/metallb v0.1.1-0.20240212183715-d7008482c559
 	k8s.io/api => k8s.io/api v0.28.3
 	k8s.io/apiextensions-apiserver => k8s.io/apiextensions-apiserver v0.28.3

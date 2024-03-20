@@ -239,8 +239,8 @@ github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zk
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
 github.com/metallb/metallb v0.1.1-0.20240212183715-d7008482c559 h1:j2oPB8NOEGvJCAzNfAvL6zisZbHofVbPuKc8M08RgaE=
 github.com/metallb/metallb v0.1.1-0.20240212183715-d7008482c559/go.mod h1:cPci8OBPmEJLs4ItfKL4nlntzrNJ6bmDFBRbI3BMAYI=
-github.com/metallb/metallb/e2etest v0.0.0-20240212183715-d7008482c559 h1:c9jxbHvFc9MCFzEDxM/5ZcxMruDULHAvZwWRZuadlzQ=
-github.com/metallb/metallb/e2etest v0.0.0-20240212183715-d7008482c559/go.mod h1:k/VcJHBcw8Qw/aTYXad0MXYAWqIhUz60VNkfCrWncuQ=
+github.com/metallb/metallb/e2etest v0.0.0-20240307175911-a370625c5457 h1:IDmmz7abb2XeUAmpAHJ7ftwyOUkyT4UMHLnKh1AgY4E=
+github.com/metallb/metallb/e2etest v0.0.0-20240307175911-a370625c5457/go.mod h1:pmCmsDOClzcfVBFQ+4g9oF8nS01GccCmN78LObtuBoQ=
 github.com/moby/spdystream v0.2.0 h1:cjW1zVyyoiM0T7b6UoySUFqzXMoqRckQtXwGPiBhOM8=
 github.com/moby/spdystream v0.2.0/go.mod h1:f7i0iNDQJ059oMTcWxx8MA/zKFIuD/lY+0GqbN2Wy8c=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
