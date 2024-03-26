@@ -10,16 +10,18 @@ import (
 	"strings"
 
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+
 	"go.universe.tf/e2etest/pkg/executor"
 	"go.universe.tf/e2etest/pkg/frr"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
-func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.Interface, f *framework.Framework) {
+func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.Interface) {
 	if ReportPath == "" {
-		framework.Logf("ReportPath is not set")
+		ginkgo.GinkgoWriter.Printf("ReportPath is not set")
 		panic("ReportPath is not set")
 	}
 
@@ -33,40 +35,40 @@ func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.In
 	for _, c := range FRRContainers {
 		dump, err := frr.RawDump(c, "/etc/frr/bgpd.conf", "/tmp/frr.log", "/etc/frr/daemons")
 		if err != nil {
-			framework.Logf("External frr dump for container %s failed %v", c.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for container %s failed %v", c.Name, err)
 			continue
 		}
 		f, err := logFileFor(testPath, fmt.Sprintf("frrdump-%s", c.Name))
 		if err != nil {
-			framework.Logf("External frr dump for container %s, failed to open file %v", c.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for container %s, failed to open file %v", c.Name, err)
 			continue
 		}
 		fmt.Fprintf(f, "Dumping information for %s, local addresses: ipv4 - %s, ipv6 - %s\n", c.Name, c.Ipv4, c.Ipv6)
 		_, err = fmt.Fprint(f, dump)
 		if err != nil {
-			framework.Logf("External frr dump for container %s, failed to write to file %v", c.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for container %s, failed to write to file %v", c.Name, err)
 			continue
 		}
 	}
 
 	frrk8sPods, err := k8s.FRRK8sPods(cs)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	for _, pod := range frrk8sPods {
 		podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
 		dump, err := frr.RawDump(podExec, "/etc/frr/frr.conf", "/etc/frr/frr.log")
 		if err != nil {
-			framework.Logf("External frr dump for pod %s failed %v", pod.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s failed %v", pod.Name, err)
 			continue
 		}
 		f, err := logFileFor(testPath, fmt.Sprintf("frrdump-%s", pod.Name))
 		if err != nil {
-			framework.Logf("External frr dump for pod %s, failed to open file %v", pod.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s, failed to open file %v", pod.Name, err)
 			continue
 		}
 		fmt.Fprintf(f, "Dumping information for %s, local addresses: %s\n", pod.Name, pod.Status.PodIPs)
 		_, err = fmt.Fprint(f, dump)
 		if err != nil {
-			framework.Logf("External frr dump for pod %s, failed to write to file %v", pod.Name, err)
+			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s, failed to write to file %v", pod.Name, err)
 			continue
 		}
 	}

@@ -8,6 +8,7 @@ import (
 	"text/template"
 
 	"github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 	"github.com/pkg/errors"
 	"go.universe.tf/e2etest/pkg/frr/container"
 
@@ -31,9 +32,9 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -43,7 +44,7 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -52,10 +53,10 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 	})
@@ -71,14 +72,14 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			ginkgo.By("pairing with nodes")
 			for _, c := range frrs {
 				err := container.PairWithNodes(cs, c, ipfamily.IPv4)
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			ginkgo.By(fmt.Sprintf("Manually generating the configuration for %s", frrs[0].Name))
 			rawAddress, err := rawConfigForFRR(neighborAddressTemplate, infra.FRRK8sASN, frrs[0])
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			rawFamily, err := rawConfigForFRR(neighborFamilyTemplate, infra.FRRK8sASN, frrs[0])
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -101,7 +102,7 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			}
 
 			err = updater.Update(peersConfig.Secrets, config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			configRawSecondBit := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -116,10 +117,10 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 				},
 			}
 			err = updater.Update(peersConfig.Secrets, configRawSecondBit)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, ipfamily.IPv4)

@@ -25,9 +25,9 @@ var _ = ginkgo.Describe("Webhooks", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -37,7 +37,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -46,10 +46,10 @@ var _ = ginkgo.Describe("Webhooks", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 	})
@@ -65,7 +65,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			modify(&cfg)
 
 			err := updater.Update([]corev1.Secret{}, cfg)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(errStr))
 		},
 			ginkgo.Entry("invalid nodeSelector",
@@ -129,7 +129,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 
 		ginkgo.It("Should reject create/update when there is a conflict with an existing config", func() {
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Creating the first config on the first node")
 			cfg1 := frrk8sv1beta1.FRRConfiguration{
@@ -154,7 +154,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg1)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Attempting to create a second config on the first node with a different ASN")
 			cfg2 := frrk8sv1beta1.FRRConfiguration{
@@ -179,7 +179,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 
 			ginkgo.By("Creating the second config on the second node")
@@ -189,7 +189,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Attempting to update the second config to select the first node")
 			cfg2.Spec.NodeSelector = metav1.LabelSelector{
@@ -198,7 +198,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 
 			ginkgo.By("Attempting to create a third config in a different namespace on the first node with a different ASN")
@@ -224,7 +224,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg3)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 		})
 
@@ -256,7 +256,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			}
 
 			err := updater.Update([]corev1.Secret{}, cfg)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

@@ -35,21 +35,21 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	myScheme := runtime.NewScheme()
 	err = frrk8sv1beta1.AddToScheme(myScheme)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	err = v1.AddToScheme(myScheme)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 
 	cl, err := client.New(clientconfig, client.Options{
 		Scheme: myScheme,
 	})
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 
 	f = framework.NewDefaultFramework("bgpfrr")
 	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
@@ -58,7 +58,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -67,10 +67,10 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 	})
@@ -95,10 +95,10 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			ginkgo.By("Creating a configuration with no neighbors")
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -140,7 +140,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 			ginkgo.By("Adding neighbors")
 			err = updater.Update([]corev1.Secret{s}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta1.Neighbor{}
 			ginkgo.By("Removing neighbors")
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -194,7 +194,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			frrconfig.Spec.BGP = frrk8sv1beta1.BGPConfig{}
 			frrconfig.Spec.Raw.Config = "this is a non valid configuration"
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -234,10 +234,10 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			ginkgo.By("Creating a valid configuration")
 			err = updater.Update([]corev1.Secret{}, validFRRConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -279,7 +279,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			err = updater.Update([]corev1.Secret{}, invalidConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -298,7 +298,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 func nodeMatchesStatus(cl client.Client, nodeName string, validate func(status frrk8sv1beta1.FRRNodeState) error) error {
 	statuses := frrk8sv1beta1.FRRNodeStateList{}
 	err := cl.List(context.Background(), &statuses)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	for _, status := range statuses.Items {
 		if status.Name == nodeName {
 			return validate(status)

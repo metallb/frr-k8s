@@ -11,12 +11,14 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	. "github.com/onsi/gomega"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
 	"k8s.io/kubernetes/test/e2e/framework"
+
 	admissionapi "k8s.io/pod-security-admission/api"
 )
 
@@ -26,9 +28,9 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -38,7 +40,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -47,10 +49,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 	})
@@ -97,20 +99,20 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 					frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
 					frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
 				})
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 			err := updater.Update(peersConfig.Secrets, config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
 			}
 
 			pods, err := k8s.FRRK8sPods(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating")
 			p.validate(peersConfig.PeersV4, peersConfig.PeersV6, pods)
@@ -121,17 +123,17 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 
 			ginkgo.By("Cleaning before retesting with the config splitted")
 			err = updater.Clean()
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRNotPeeredWithNodes(nodes, c, p.ipFamily)
 			}
 
 			cfgs, err := p.splitCfg(config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			err = updater.Update(peersConfig.Secrets, cfgs...)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
@@ -452,24 +454,24 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 					frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
 					frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
 				})
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			cfgs, err := p.splitCfg(config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			err = updater.Update(peersConfig.Secrets, cfgs...)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
 			}
 
 			pods, err := k8s.FRRK8sPods(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating")
 			p.validate(peersConfig.PeersV4, peersConfig.PeersV6, pods)
