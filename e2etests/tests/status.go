@@ -41,7 +41,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 	Expect(err).NotTo(HaveOccurred())
 	err = v1.AddToScheme(myScheme)
 	Expect(err).NotTo(HaveOccurred())
-
+	clientconfig := k8sclient.RestConfig()
 	cl, err := client.New(clientconfig, client.Options{
 		Scheme: myScheme,
 	})

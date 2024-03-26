@@ -24,8 +24,7 @@ var _ = ginkgo.Describe("Advertising and Receiving routes", func() {
 	var cs clientset.Interface
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig := k8sclient.RestConfig()
-	updater, err := config.NewUpdater(clientconfig)
+	updater, err := config.NewUpdater()
 	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
