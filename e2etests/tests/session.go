@@ -33,9 +33,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -45,7 +45,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -54,10 +54,10 @@ var _ = ginkgo.Describe("Advertisement", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		cs = f.ClientSet
 	})
 
@@ -94,10 +94,10 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			pods, err := k8s.FRRK8sPods(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, pod := range pods {
 				podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
@@ -166,14 +166,14 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			ginkgo.By("pairing with nodes")
 			for _, c := range frrs {
 				err := frrcontainer.PairWithNodes(cs, c, family)
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			err := updater.Update([]corev1.Secret{}, config)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, family)

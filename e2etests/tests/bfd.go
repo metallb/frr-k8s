@@ -34,9 +34,9 @@ var _ = ginkgo.Describe("BFD", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -46,7 +46,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -55,10 +55,10 @@ var _ = ginkgo.Describe("BFD", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 	})
@@ -89,7 +89,7 @@ var _ = ginkgo.Describe("BFD", func() {
 			err := container.PairWithNodes(cs, c, pairingFamily, func(container *frrcontainer.FRR) {
 				container.NeighborConfig.BFDEnabled = true
 			})
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		withBFD := func(neigh *frrk8sv1beta1.Neighbor) {
@@ -98,7 +98,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		defaultVRFConfig, secrets := configForVRF(infra.DefaultVRFName, infra.FRRK8sASN, pairingFamily, withBFD)
 		defaultVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileDefault}
 		err := updater.Update(secrets, defaultVRFConfig)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		withBFDRed := func(neigh *frrk8sv1beta1.Neighbor) {
 			neigh.BFDProfile = bfdProfileRed.Name
@@ -106,10 +106,10 @@ var _ = ginkgo.Describe("BFD", func() {
 		redVRFConfig, redSecrets := configForVRF(infra.VRFName, infra.FRRK8sASNVRF, pairingFamily, withBFDRed)
 		redVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileRed}
 		err = updater.Update(redSecrets, redVRFConfig)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		nodes, err := k8s.Nodes(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		for _, c := range infra.FRRContainers {
 			ValidateFRRPeeredWithNodes(nodes, c, pairingFamily)

@@ -44,9 +44,9 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 	defer ginkgo.GinkgoRecover()
 	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
 
 	f = framework.NewDefaultFramework("bgpfrr")
@@ -56,7 +56,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
 		}
 	})
 
@@ -65,15 +65,15 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		cs = f.ClientSet
 
 		promPod, err = metrics.PrometheusPod(cs, PrometheusNamespace)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	type params struct {
@@ -118,21 +118,21 @@ var _ = ginkgo.Describe("Metrics", func() {
 				frr.NeighborConfig.ToAdvertiseV4 = p.toAdvertiseV4
 				frr.NeighborConfig.ToAdvertiseV6 = p.toAdvertiseV6
 			})
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		err := updater.Update(peersConfig.Secrets, config)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		nodes, err := k8s.Nodes(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		for _, c := range frrs {
 			ValidateFRRPeeredWithNodes(nodes, c, p.ipFamily)
 		}
 
 		pods, err := k8s.FRRK8sPods(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By("validating")
 		p.validate(pods, frrs, promPod, p.ipFamily)
@@ -250,10 +250,10 @@ var _ = ginkgo.Describe("Metrics", func() {
 		}
 
 		err := updater.Update(peersConfig.Secrets, config)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		pods, err := k8s.FRRK8sPods(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By("validating")
 		ValidatePodK8SClientErrorMetrics(pods, frrs, promPod, ipfamily.IPv4)
@@ -296,21 +296,21 @@ var _ = ginkgo.Describe("Metrics", func() {
 			err := frrcontainer.PairWithNodes(cs, c, ipFamily, func(container *frrcontainer.FRR) {
 				container.NeighborConfig.BFDEnabled = true
 			})
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		err := updater.Update(peersConfig.Secrets, config)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		nodes, err := k8s.Nodes(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		for _, c := range frrs {
 			ValidateFRRPeeredWithNodes(nodes, c, ipFamily)
 		}
 
 		pods, err := k8s.FRRK8sPods(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By("validating")
 		echoFor := func(e *bool) bool {
@@ -323,7 +323,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 			err := frrcontainer.PairWithNodes(cs, c, ipFamily, func(container *frrcontainer.FRR) {
 				container.NeighborConfig.BFDEnabled = false
 			})
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		ginkgo.By("validating session down metrics")

@@ -8,12 +8,12 @@ import (
 	"fmt"
 	"net"
 
+	. "github.com/onsi/gomega"
 	"go.universe.tf/e2etest/pkg/executor"
 	"go.universe.tf/e2etest/pkg/frr"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 // PodHasPrefixFromContainer tells if the given frr-k8s pod has recevied a route for
@@ -87,7 +87,7 @@ func hasPrefix(pod *v1.Pod, pairingFamily ipfamily.Family, prefix *net.IPNet, ne
 	found := false
 	podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
 	routes, frrRoutesV6, err := frr.RoutesForVRF(vrf, podExec)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 
 	if pairingFamily == ipfamily.IPv6 {
 		routes = frrRoutesV6

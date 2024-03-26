@@ -13,6 +13,7 @@ import (
 	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
+	. "github.com/onsi/gomega"
 	"k8s.io/client-go/tools/clientcmd"
 	"k8s.io/kubernetes/test/e2e/framework"
 	e2econfig "k8s.io/kubernetes/test/e2e/framework/config"
@@ -83,20 +84,20 @@ var _ = ginkgo.BeforeSuite(func() {
 	framework.ExpectNotEqual(framework.TestContext.KubeConfig, "", fmt.Sprintf("%s env var not set", clientcmd.RecommendedConfigPathEnvVar))
 
 	cs, err := framework.LoadClientset()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 
 	switch {
 	case externalContainers != "":
 		infra.FRRContainers, err = infra.ExternalContainersSetup(externalContainers, cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 	case runOnHost:
 		infra.FRRContainers, err = infra.HostContainerSetup(frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 	default:
 		infra.FRRContainers, err = infra.KindnetContainersSetup(cs, frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		vrfFRRContainers, err := infra.VRFContainersSetup(cs, frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		infra.FRRContainers = append(infra.FRRContainers, vrfFRRContainers...)
 	}
 
@@ -105,10 +106,10 @@ var _ = ginkgo.BeforeSuite(func() {
 
 var _ = ginkgo.AfterSuite(func() {
 	cs, err := framework.LoadClientset()
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 
 	err = infra.InfraTearDown(cs)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	err = infra.InfraTearDownVRF(cs)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 })
