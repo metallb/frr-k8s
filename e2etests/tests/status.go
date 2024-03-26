@@ -16,6 +16,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	. "github.com/onsi/gomega"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	v1 "k8s.io/api/apps/v1"
@@ -23,22 +24,17 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 )
 
 const reloadSuccess = "success"
 
 var _ = ginkgo.Describe("Exposing FRR status", func() {
 	var cs clientset.Interface
-	var f *framework.Framework
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig, err := framework.LoadConfig()
+	updater, err := config.NewUpdater()
 	Expect(err).NotTo(HaveOccurred())
-	updater, err := config.NewUpdater(clientconfig)
-	Expect(err).NotTo(HaveOccurred())
-	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
+	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
 	myScheme := runtime.NewScheme()
 	err = frrk8sv1beta1.AddToScheme(myScheme)
@@ -51,14 +47,11 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 	})
 	Expect(err).NotTo(HaveOccurred())
 
-	f = framework.NewDefaultFramework("bgpfrr")
-	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
-
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet)
+			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
 	})
 
@@ -72,7 +65,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 		err := updater.Clean()
 		Expect(err).NotTo(HaveOccurred())
 
-		cs = f.ClientSet
+		cs = k8sclient.New()
 	})
 
 	ginkgo.Context("Exposing the frr status", func() {
