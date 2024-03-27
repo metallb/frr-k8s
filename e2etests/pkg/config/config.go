@@ -7,10 +7,10 @@ import (
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/rest"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -19,7 +19,8 @@ type Updater struct {
 	client client.Client
 }
 
-func NewUpdater(r *rest.Config) (*Updater, error) {
+func NewUpdater() (*Updater, error) {
+	r := k8sclient.RestConfig()
 	myScheme := runtime.NewScheme()
 	if err := frrk8sv1beta1.AddToScheme(myScheme); err != nil {
 		return nil, err

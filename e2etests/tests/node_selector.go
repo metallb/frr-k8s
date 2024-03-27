@@ -12,34 +12,29 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
+	. "github.com/onsi/gomega"
+
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 )
 
 var _ = ginkgo.Describe("Node Selector", func() {
 	var cs clientset.Interface
-	var f *framework.Framework
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
-	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
-	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
-
-	f = framework.NewDefaultFramework("bgpfrr")
-	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+	updater, err := config.NewUpdater()
+	Expect(err).NotTo(HaveOccurred())
+	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
 	})
 
@@ -48,12 +43,12 @@ var _ = ginkgo.Describe("Node Selector", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
-		cs = f.ClientSet
+		cs = k8sclient.New()
 	})
 
 	ginkgo.Context("Advertise", func() {
@@ -73,12 +68,12 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("pairing with nodes")
 			for _, c := range frrs {
 				err := container.PairWithNodes(cs, c, p.ipFamily)
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			ginkgo.By("creating the config selecting a single node")
@@ -107,7 +102,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			err = updater.Update(peersConfig.Secrets, configWithSelector)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating the containers paired only with the node matching the config")
 			for _, c := range frrs {
@@ -145,7 +140,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 			}
 			err = updater.Update(peersConfig.Secrets, globalConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating the containers are now paired with all nodes")
 			for _, c := range frrs {
@@ -207,10 +202,10 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			neighbors := config.NeighborsFromPeers(peersV4ForFirst, peersV6ForFirst)
 
 			allNodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			pods, err := k8s.FRRK8sPods(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("pairing with nodes")
 			allV4Pfxs := p.v4Prefixes
@@ -222,7 +217,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 					frr.NeighborConfig.ToAdvertiseV4 = allV4Pfxs
 					frr.NeighborConfig.ToAdvertiseV6 = allV6Pfxs
 				})
-				framework.ExpectNoError(err)
+				Expect(err).NotTo(HaveOccurred())
 			}
 
 			ginkgo.By("creating the config selecting a single node")
@@ -236,7 +231,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				otherNodes = allNodes[:i]
 				otherNodes = append(otherNodes, allNodes[i+1:]...)
 			}
-			framework.ExpectNotEqual(firstNode, corev1.Node{})
+			Expect(firstNode).NotTo(Equal(corev1.Node{}))
 
 			cfg := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -262,7 +257,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			err = updater.Update(peersConfig.Secrets, cfg)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating the containers paired only with the node matching the config")
 			for _, c := range frrs {
@@ -310,7 +305,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 			}
 			err = updater.Update(peersConfig.Secrets, globalConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("validating the containers are now paired with all nodes")
 			for _, c := range frrs {

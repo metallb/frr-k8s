@@ -16,6 +16,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	. "github.com/onsi/gomega"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	v1 "k8s.io/api/apps/v1"
@@ -23,42 +24,34 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 )
 
 const reloadSuccess = "success"
 
 var _ = ginkgo.Describe("Exposing FRR status", func() {
 	var cs clientset.Interface
-	var f *framework.Framework
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
-	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
-	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
+	updater, err := config.NewUpdater()
+	Expect(err).NotTo(HaveOccurred())
+	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
 	myScheme := runtime.NewScheme()
 	err = frrk8sv1beta1.AddToScheme(myScheme)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	err = v1.AddToScheme(myScheme)
-	framework.ExpectNoError(err)
-
+	Expect(err).NotTo(HaveOccurred())
+	clientconfig := k8sclient.RestConfig()
 	cl, err := client.New(clientconfig, client.Options{
 		Scheme: myScheme,
 	})
-	framework.ExpectNoError(err)
-
-	f = framework.NewDefaultFramework("bgpfrr")
-	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+	Expect(err).NotTo(HaveOccurred())
 
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
 	})
 
@@ -67,12 +60,12 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
-		cs = f.ClientSet
+		cs = k8sclient.New()
 	})
 
 	ginkgo.Context("Exposing the frr status", func() {
@@ -95,10 +88,10 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			ginkgo.By("Creating a configuration with no neighbors")
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -140,7 +133,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 			ginkgo.By("Adding neighbors")
 			err = updater.Update([]corev1.Secret{s}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -171,7 +164,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta1.Neighbor{}
 			ginkgo.By("Removing neighbors")
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -194,7 +187,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			frrconfig.Spec.BGP = frrk8sv1beta1.BGPConfig{}
 			frrconfig.Spec.Raw.Config = "this is a non valid configuration"
 			err = updater.Update([]corev1.Secret{}, frrconfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -234,10 +227,10 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			ginkgo.By("Creating a valid configuration")
 			err = updater.Update([]corev1.Secret{}, validFRRConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -279,7 +272,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			err = updater.Update([]corev1.Secret{}, invalidConfig)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			for _, node := range nodes {
 				Eventually(func() error {
@@ -298,7 +291,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 func nodeMatchesStatus(cl client.Client, nodeName string, validate func(status frrk8sv1beta1.FRRNodeState) error) error {
 	statuses := frrk8sv1beta1.FRRNodeStateList{}
 	err := cl.List(context.Background(), &statuses)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 	for _, status := range statuses.Items {
 		if status.Name == nodeName {
 			return validate(status)

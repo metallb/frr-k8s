@@ -16,7 +16,6 @@ import (
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/kubernetes/test/e2e/framework"
 )
 
 func ValidateFRRNotPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFamily ipfamily.Family) {
@@ -24,7 +23,7 @@ func ValidateFRRNotPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipF
 		ginkgo.By(fmt.Sprintf("checking node %s is not peered with the frr instance %s", node.Name, c.Name))
 		Eventually(func() error {
 			neighbors, err := frr.NeighborsInfo(c)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			err = frr.NeighborsMatchNodes([]corev1.Node{node}, neighbors, ipFamily, c.RouterConfig.VRF)
 			return err
 		}, 4*time.Minute, 1*time.Second).Should(MatchError(ContainSubstring("not established")))
@@ -35,7 +34,7 @@ func ValidateFRRPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFami
 	ginkgo.By(fmt.Sprintf("checking nodes are peered with the frr instance %s", c.Name))
 	Eventually(func() error {
 		neighbors, err := frr.NeighborsInfo(c)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		err = frr.NeighborsMatchNodes(nodes, neighbors, ipFamily, c.RouterConfig.VRF)
 		if err != nil {
 			return fmt.Errorf("failed to match neighbors for %s, %w", c.Name, err)
@@ -49,7 +48,7 @@ func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefix
 	Eventually(func() error {
 		for _, prefix := range prefixes {
 			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			if !found {
 				return fmt.Errorf("Neigh %s does not have prefix %s", neigh.Name, prefix)
 			}
@@ -63,7 +62,7 @@ func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixe
 	Eventually(func() error {
 		for _, prefix := range prefixes {
 			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 			if found {
 				return fmt.Errorf("Neigh %s has prefix %s", neigh.Name, prefix)
 			}

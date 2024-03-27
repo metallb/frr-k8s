@@ -4,18 +4,16 @@ package e2e
 
 import (
 	"flag"
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
-	"k8s.io/client-go/tools/clientcmd"
-	"k8s.io/kubernetes/test/e2e/framework"
-	e2econfig "k8s.io/kubernetes/test/e2e/framework/config"
+	. "github.com/onsi/gomega"
 )
 
 var (
@@ -31,18 +29,6 @@ var (
 
 // handleFlags sets up all flags and parses the command line.
 func handleFlags() {
-	e2econfig.CopyFlags(e2econfig.Flags, flag.CommandLine)
-	framework.RegisterCommonFlags(flag.CommandLine)
-	/*
-		Using framework.RegisterClusterFlags(flag.CommandLine) results in a panic:
-		"flag redefined: kubeconfig".
-		This happens because controller-runtime registers the kubeconfig flag as well.
-		To solve this we set the framework's kubeconfig directly via the KUBECONFIG env var
-		instead of letting it call the flag. Since we also use the provider flag it is handled manually.
-	*/
-	flag.StringVar(&framework.TestContext.Provider, "provider", "", "The name of the Kubernetes provider (gce, gke, local, skeleton (the fallback if not set), etc.)")
-	framework.TestContext.KubeConfig = os.Getenv(clientcmd.RecommendedConfigPathEnvVar)
-
 	flag.BoolVar(&skipDockerCmd, "skip-docker", false, "set this to true if the BGP daemon is running on the host instead of in a container")
 	flag.StringVar(&reportPath, "report-path", "/tmp/report", "the path to be used to dump test failure information")
 	flag.StringVar(&prometheusNamespace, "prometheus-namespace", "monitoring", "the namespace prometheus is running in (if running)")
@@ -64,8 +50,6 @@ func TestMain(m *testing.M) {
 		return
 	}
 
-	framework.AfterReadingAllFlags(&framework.TestContext)
-
 	os.Exit(m.Run())
 }
 
@@ -74,29 +58,25 @@ func TestE2E(t *testing.T) {
 		return
 	}
 
-	gomega.RegisterFailHandler(framework.Fail)
+	gomega.RegisterFailHandler(ginkgo.Fail)
 	ginkgo.RunSpecs(t, "E2E Suite")
 }
 
 var _ = ginkgo.BeforeSuite(func() {
-	// Make sure the framework's kubeconfig is set.
-	framework.ExpectNotEqual(framework.TestContext.KubeConfig, "", fmt.Sprintf("%s env var not set", clientcmd.RecommendedConfigPathEnvVar))
-
-	cs, err := framework.LoadClientset()
-	framework.ExpectNoError(err)
-
+	cs := k8sclient.New()
+	var err error
 	switch {
 	case externalContainers != "":
 		infra.FRRContainers, err = infra.ExternalContainersSetup(externalContainers, cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 	case runOnHost:
 		infra.FRRContainers, err = infra.HostContainerSetup(frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 	default:
 		infra.FRRContainers, err = infra.KindnetContainersSetup(cs, frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		vrfFRRContainers, err := infra.VRFContainersSetup(cs, frrImage)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 		infra.FRRContainers = append(infra.FRRContainers, vrfFRRContainers...)
 	}
 
@@ -104,11 +84,10 @@ var _ = ginkgo.BeforeSuite(func() {
 })
 
 var _ = ginkgo.AfterSuite(func() {
-	cs, err := framework.LoadClientset()
-	framework.ExpectNoError(err)
+	cs := k8sclient.New()
 
-	err = infra.InfraTearDown(cs)
-	framework.ExpectNoError(err)
+	err := infra.InfraTearDown(cs)
+	Expect(err).NotTo(HaveOccurred())
 	err = infra.InfraTearDownVRF(cs)
-	framework.ExpectNoError(err)
+	Expect(err).NotTo(HaveOccurred())
 })

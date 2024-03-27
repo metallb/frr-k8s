@@ -14,6 +14,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	metallbfrr "go.universe.tf/e2etest/pkg/frr"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	"go.universe.tf/e2etest/pkg/frr/container"
@@ -23,30 +24,22 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 	"k8s.io/utils/ptr"
 )
 
 var _ = ginkgo.Describe("BFD", func() {
 	var cs clientset.Interface
-	var f *framework.Framework
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
-	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
-	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
-
-	f = framework.NewDefaultFramework("bgpfrr")
-	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+	updater, err := config.NewUpdater()
+	Expect(err).NotTo(HaveOccurred())
+	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
 	})
 
@@ -55,12 +48,12 @@ var _ = ginkgo.Describe("BFD", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
-		cs = f.ClientSet
+		cs = k8sclient.New()
 	})
 
 	simpleProfile := frrk8sv1beta1.BFDProfile{
@@ -89,7 +82,7 @@ var _ = ginkgo.Describe("BFD", func() {
 			err := container.PairWithNodes(cs, c, pairingFamily, func(container *frrcontainer.FRR) {
 				container.NeighborConfig.BFDEnabled = true
 			})
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 
 		withBFD := func(neigh *frrk8sv1beta1.Neighbor) {
@@ -98,7 +91,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		defaultVRFConfig, secrets := configForVRF(infra.DefaultVRFName, infra.FRRK8sASN, pairingFamily, withBFD)
 		defaultVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileDefault}
 		err := updater.Update(secrets, defaultVRFConfig)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		withBFDRed := func(neigh *frrk8sv1beta1.Neighbor) {
 			neigh.BFDProfile = bfdProfileRed.Name
@@ -106,10 +99,10 @@ var _ = ginkgo.Describe("BFD", func() {
 		redVRFConfig, redSecrets := configForVRF(infra.VRFName, infra.FRRK8sASNVRF, pairingFamily, withBFDRed)
 		redVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileRed}
 		err = updater.Update(redSecrets, redVRFConfig)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		nodes, err := k8s.Nodes(cs)
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
 		for _, c := range infra.FRRContainers {
 			ValidateFRRPeeredWithNodes(nodes, c, pairingFamily)

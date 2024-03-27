@@ -11,33 +11,26 @@ import (
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
+	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
-	"k8s.io/kubernetes/test/e2e/framework"
-	admissionapi "k8s.io/pod-security-admission/api"
 )
 
 var _ = ginkgo.Describe("Webhooks", func() {
-	var f *framework.Framework
 	var cs clientset.Interface
 
 	defer ginkgo.GinkgoRecover()
-	clientconfig, err := framework.LoadConfig()
-	framework.ExpectNoError(err)
-	updater, err := config.NewUpdater(clientconfig)
-	framework.ExpectNoError(err)
-	reporter := dump.NewK8sReporter(framework.TestContext.KubeConfig, k8s.FRRK8sNamespace)
-
-	f = framework.NewDefaultFramework("bgpfrr")
-	f.NamespacePodSecurityEnforceLevel = admissionapi.LevelPrivileged
+	updater, err := config.NewUpdater()
+	Expect(err).NotTo(HaveOccurred())
+	reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
 
 	ginkgo.AfterEach(func() {
 		if ginkgo.CurrentSpecReport().Failed() {
 			testName := ginkgo.CurrentSpecReport().LeafNodeText
 			dump.K8sInfo(testName, reporter)
-			dump.BGPInfo(testName, infra.FRRContainers, f.ClientSet, f)
+			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
 	})
 
@@ -46,12 +39,12 @@ var _ = ginkgo.Describe("Webhooks", func() {
 
 		for _, c := range infra.FRRContainers {
 			err := c.UpdateBGPConfigFile(frrconfig.Empty)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
-		framework.ExpectNoError(err)
+		Expect(err).NotTo(HaveOccurred())
 
-		cs = f.ClientSet
+		cs = k8sclient.New()
 	})
 
 	ginkgo.Context("FRRConfiguration", func() {
@@ -65,7 +58,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			modify(&cfg)
 
 			err := updater.Update([]corev1.Secret{}, cfg)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring(errStr))
 		},
 			ginkgo.Entry("invalid nodeSelector",
@@ -129,7 +122,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 
 		ginkgo.It("Should reject create/update when there is a conflict with an existing config", func() {
 			nodes, err := k8s.Nodes(cs)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Creating the first config on the first node")
 			cfg1 := frrk8sv1beta1.FRRConfiguration{
@@ -154,7 +147,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg1)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Attempting to create a second config on the first node with a different ASN")
 			cfg2 := frrk8sv1beta1.FRRConfiguration{
@@ -179,7 +172,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 
 			ginkgo.By("Creating the second config on the second node")
@@ -189,7 +182,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Attempting to update the second config to select the first node")
 			cfg2.Spec.NodeSelector = metav1.LabelSelector{
@@ -198,7 +191,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg2)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 
 			ginkgo.By("Attempting to create a third config in a different namespace on the first node with a different ASN")
@@ -224,7 +217,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 			}
 			err = updater.Update([]corev1.Secret{}, cfg3)
-			framework.ExpectError(err)
+			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 		})
 
@@ -256,7 +249,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			}
 
 			err := updater.Update([]corev1.Secret{}, cfg)
-			framework.ExpectNoError(err)
+			Expect(err).NotTo(HaveOccurred())
 		})
 	})
 })

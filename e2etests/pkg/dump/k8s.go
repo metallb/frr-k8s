@@ -4,6 +4,7 @@ package dump
 
 import (
 	"log"
+	"os"
 	"strings"
 	"time"
 
@@ -14,7 +15,12 @@ import (
 
 const LogsTimeDepth = 10 * time.Minute
 
-func NewK8sReporter(kubeconfig, namespace string) *k8sreporter.KubernetesReporter {
+func NewK8sReporter(namespace string) *k8sreporter.KubernetesReporter {
+	kubeconfig := os.Getenv("KUBECONFIG")
+	if kubeconfig == "" {
+		log.Fatalf("KUBECONFIG not set")
+	}
+
 	if ReportPath == "" {
 		log.Fatalf("ReportPath is not set")
 	}
