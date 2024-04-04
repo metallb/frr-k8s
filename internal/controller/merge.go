@@ -4,10 +4,16 @@ package controller
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/metallb/frr-k8s/internal/frr"
 	"k8s.io/apimachinery/pkg/util/sets"
+)
+
+const (
+	defaultBGPPort       = 179
+	defaultHoldTime      = 180
+	defaultKeepaliveTime = 60
+	defaultConnectTime   = 60
 )
 
 // Merges two router configs.
@@ -65,6 +71,7 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 
 		curr.Incoming = mergeAllowedIn(curr.Incoming, n.Incoming)
 
+		cleanNeighborDefaults(curr)
 		mergedNeighbors[n.Addr] = curr
 	}
 
@@ -151,6 +158,23 @@ func mergeAllowedIn(r, toMerge frr.AllowedIn) frr.AllowedIn {
 	return res
 }
 
+// cleanNeighborDefaults unset any field whose value that is equal to the default
+// value for that field. This ensures consistency across conversions.
+func cleanNeighborDefaults(neigh *frr.NeighborConfig) {
+	if neigh.Port != nil && *neigh.Port == defaultBGPPort {
+		neigh.Port = nil
+	}
+	if neigh.HoldTime != nil && *neigh.HoldTime == defaultHoldTime {
+		neigh.HoldTime = nil
+	}
+	if neigh.KeepaliveTime != nil && *neigh.KeepaliveTime == defaultKeepaliveTime {
+		neigh.KeepaliveTime = nil
+	}
+	if neigh.ConnectTime != nil && *neigh.ConnectTime == defaultConnectTime {
+		neigh.ConnectTime = nil
+	}
+}
+
 func mergeIncomingFilters(curr, toMerge []frr.IncomingFilter) []frr.IncomingFilter {
 	all := curr
 	all = append(all, toMerge...)
@@ -202,7 +226,7 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("multiple asns specified for %s", neighborKey)
 	}
 
-	if !ptrsEqual(n1.Port, n2.Port, 179) {
+	if !ptrsEqual(n1.Port, n2.Port, defaultBGPPort) {
 		return fmt.Errorf("multiple ports specified for %s", neighborKey)
 	}
 
@@ -222,15 +246,19 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("conflicting ebgp-multihop specified for %s", neighborKey)
 	}
 
-	if !ptrsEqual(n1.HoldTime, n2.HoldTime, uint64(180*time.Second)) {
+	if n1.DisableMP != n2.DisableMP {
+		return fmt.Errorf("conflicting disableMP specified for %s", neighborKey)
+	}
+
+	if !ptrsEqual(n1.HoldTime, n2.HoldTime, defaultHoldTime) {
 		return fmt.Errorf("multiple hold times specified for %s", neighborKey)
 	}
 
-	if !ptrsEqual(n1.KeepaliveTime, n2.KeepaliveTime, uint64(60*time.Second)) {
+	if !ptrsEqual(n1.KeepaliveTime, n2.KeepaliveTime, defaultKeepaliveTime) {
 		return fmt.Errorf("multiple keepalive times specified for %s", neighborKey)
 	}
 
-	if !ptrsEqual(n1.ConnectTime, n2.ConnectTime, uint64(60*time.Second)) {
+	if !ptrsEqual(n1.ConnectTime, n2.ConnectTime, defaultConnectTime) {
 		return fmt.Errorf("multiple connect times specified for %s", neighborKey)
 	}
 

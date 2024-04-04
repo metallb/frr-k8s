@@ -145,6 +145,11 @@ type Neighbor struct {
 	// ToReceive represents the list of prefixes to receive from the given neighbor.
 	// +optional
 	ToReceive Receive `json:"toReceive,omitempty"`
+
+	// To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.
+	// +optional
+	// +kubebuilder:default:=false
+	DisableMP bool `json:"disableMP,omitempty"`
 }
 
 // Advertise represents a list of prefixes to advertise to the given neighbor.
