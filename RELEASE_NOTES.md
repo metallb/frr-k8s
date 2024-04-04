@@ -1,5 +1,15 @@
 # FRRK8s Release Notes
 
+## Release v0.0.11
+
+### New Features
+
+- Add a field to the FRRConfiguration CRD to disable MP BGP for the given peer (#128, @AlinaSecret)
+
+### Bug fixes
+
+- Fix the case where merging an FRRConfiguration with no hold / keepalive / connect Time set with one where the time is set to default fails. (#120, @fedepaol)
+
 ## Release v0.0.10
 
 ### New features
