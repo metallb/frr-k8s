@@ -4,6 +4,7 @@ package tests
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
@@ -78,6 +79,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 										ConnectTime: &metav1.Duration{
 											Duration: 3 * time.Second,
 										},
+										DisableMP: true,
 									},
 								},
 							},
@@ -109,6 +111,12 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 					if neighbors[0].ConfiguredConnectTime != 3 {
 						return fmt.Errorf("expected connect time to be 3, got %d", neighbors[0].ConfiguredConnectTime)
+					}
+					neighborFamily := ipfamily.ForAddress(neighbors[0].IP)
+					for _, family := range neighbors[0].AddressFamilies {
+						if !strings.Contains(family, string(neighborFamily)) {
+							return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", neighbors[0].IP, neighborFamily, family)
+						}
 					}
 					return nil
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
