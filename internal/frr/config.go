@@ -77,6 +77,7 @@ type NeighborConfig struct {
 	Incoming      AllowedIn
 	Outgoing      AllowedOut
 	AlwaysBlock   []IncomingFilter
+	DisableMP     bool
 }
 
 func (n *NeighborConfig) ID() string {
@@ -161,6 +162,9 @@ func templateConfig(data interface{}) (string, error) {
 					return "ipv6"
 				}
 				return "ip"
+			},
+			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family, disableMP bool) bool {
+				return !disableMP || (disableMP && string(neighbourFamily) == ipFamily)
 			},
 			"localPrefPrefixList": func(neighbor *NeighborConfig, localPreference uint32) string {
 				return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighbor.ID(), localPreference, neighbor.IPFamily)

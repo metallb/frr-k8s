@@ -158,6 +158,12 @@ spec:
                                     of seconds
                                   rule: duration(self).getMilliseconds() % 1000 ==
                                     0
+                              disableMP:
+                                default: false
+                                description: To set if we want to disable MP BGP that
+                                  will separate IPv4 and IPv6 route exchanges into
+                                  distinct BGP sessions.
+                                type: boolean
                               ebgpMultiHop:
                                 description: EBGPMultiHop indicates if the BGPPeer
                                   is multi-hops away.
