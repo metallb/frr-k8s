@@ -18,8 +18,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: frrconfigurations.frrk8s.metallb.io
 spec:
   group: frrk8s.metallb.io
@@ -36,14 +35,19 @@ spec:
         description: FRRConfiguration is a piece of FRR configuration.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -57,20 +61,22 @@ spec:
                     description: BFDProfiles is the list of bfd profiles to be used
                       when configuring the neighbors.
                     items:
-                      description: BFDProfile is the configuration related to the
-                        BFD protocol associated to a BGP session.
+                      description: |-
+                        BFDProfile is the configuration related to the BFD protocol associated
+                        to a BGP session.
                       properties:
                         detectMultiplier:
-                          description: Configures the detection multiplier to determine
-                            packet loss. The remote transmission interval will be
-                            multiplied by this value to determine the connection loss
-                            detection timer.
+                          description: |-
+                            Configures the detection multiplier to determine
+                            packet loss. The remote transmission interval will be multiplied
+                            by this value to determine the connection loss detection timer.
                           format: int32
                           maximum: 255
                           minimum: 2
                           type: integer
                         echoInterval:
-                          description: Configures the minimal echo receive transmission
+                          description: |-
+                            Configures the minimal echo receive transmission
                             interval that this system is capable of handling in milliseconds.
                             Defaults to 50ms
                           format: int32
@@ -78,38 +84,44 @@ spec:
                           minimum: 10
                           type: integer
                         echoMode:
-                          description: Enables or disables the echo transmission mode.
-                            This mode is disabled by default, and not supported on
-                            multi hops setups.
+                          description: |-
+                            Enables or disables the echo transmission mode.
+                            This mode is disabled by default, and not supported on multi
+                            hops setups.
                           type: boolean
                         minimumTtl:
-                          description: 'For multi hop sessions only: configure the
-                            minimum expected TTL for an incoming BFD control packet.'
+                          description: |-
+                            For multi hop sessions only: configure the minimum
+                            expected TTL for an incoming BFD control packet.
                           format: int32
                           maximum: 254
                           minimum: 1
                           type: integer
                         name:
-                          description: The name of the BFD Profile to be referenced
-                            in other parts of the configuration.
+                          description: |-
+                            The name of the BFD Profile to be referenced in other parts
+                            of the configuration.
                           type: string
                         passiveMode:
-                          description: 'Mark session as passive: a passive session
-                            will not attempt to start the connection and will wait
-                            for control packets from peer before it begins replying.'
+                          description: |-
+                            Mark session as passive: a passive session will not
+                            attempt to start the connection and will wait for control packets
+                            from peer before it begins replying.
                           type: boolean
                         receiveInterval:
-                          description: The minimum interval that this system is capable
-                            of receiving control packets in milliseconds. Defaults
-                            to 300ms.
+                          description: |-
+                            The minimum interval that this system is capable of
+                            receiving control packets in milliseconds.
+                            Defaults to 300ms.
                           format: int32
                           maximum: 60000
                           minimum: 10
                           type: integer
                         transmitInterval:
-                          description: The minimum transmission interval (less jitter)
-                            that this system wants to use to send BFD control packets
-                            in milliseconds. Defaults to 300ms
+                          description: |-
+                            The minimum transmission interval (less jitter)
+                            that this system wants to use to send BFD control packets in
+                            milliseconds. Defaults to 300ms
                           format: int32
                           maximum: 60000
                           minimum: 10
@@ -154,10 +166,9 @@ spec:
                                 minimum: 0
                                 type: integer
                               bfdProfile:
-                                description: BFDProfile is the name of the BFD Profile
-                                  to be used for the BFD session associated to the
-                                  BGP session. If not set, the BFD session won't be
-                                  set up.
+                                description: |-
+                                  BFDProfile is the name of the BFD Profile to be used for the BFD session associated
+                                  to the BGP session. If not set, the BFD session won't be set up.
                                 type: string
                               connectTime:
                                 description: Requested BGP connect time, controls
@@ -184,25 +195,27 @@ spec:
                                   is multi-hops away.
                                 type: boolean
                               holdTime:
-                                description: HoldTime is the requested BGP hold time,
-                                  per RFC4271. Defaults to 180s.
+                                description: |-
+                                  HoldTime is the requested BGP hold time, per RFC4271.
+                                  Defaults to 180s.
                                 type: string
                               keepaliveTime:
-                                description: KeepaliveTime is the requested BGP keepalive
-                                  time, per RFC4271. Defaults to 60s.
+                                description: |-
+                                  KeepaliveTime is the requested BGP keepalive time, per RFC4271.
+                                  Defaults to 60s.
                                 type: string
                               password:
-                                description: Password to be used for establishing
-                                  the BGP session. Password and PasswordSecret are
-                                  mutually exclusive.
+                                description: |-
+                                  Password to be used for establishing the BGP session.
+                                  Password and PasswordSecret are mutually exclusive.
                                 type: string
                               passwordSecret:
-                                description: PasswordSecret is name of the authentication
-                                  secret for the neighbor. the secret must be of type
-                                  "kubernetes.io/basic-auth", and created in the same
-                                  namespace as the frr-k8s daemon. The password is
-                                  stored in the secret as the key "password". Password
-                                  and PasswordSecret are mutually exclusive.
+                                description: |-
+                                  PasswordSecret is name of the authentication secret for the neighbor.
+                                  the secret must be of type "kubernetes.io/basic-auth", and created in the
+                                  same namespace as the frr-k8s daemon. The password is stored in the
+                                  secret as the key "password".
+                                  Password and PasswordSecret are mutually exclusive.
                                 properties:
                                   name:
                                     description: name is unique within a namespace
@@ -215,28 +228,28 @@ spec:
                                 type: object
                                 x-kubernetes-map-type: atomic
                               port:
-                                description: Port is the port to dial when establishing
-                                  the session. Defaults to 179.
+                                description: |-
+                                  Port is the port to dial when establishing the session.
+                                  Defaults to 179.
                                 maximum: 16384
                                 minimum: 0
                                 type: integer
                               toAdvertise:
-                                description: ToAdvertise represents the list of prefixes
-                                  to advertise to the given neighbor and the associated
-                                  properties.
+                                description: |-
+                                  ToAdvertise represents the list of prefixes to advertise to the given neighbor
+                                  and the associated properties.
                                 properties:
                                   allowed:
-                                    description: Allowed is is the list of prefixes
-                                      allowed to be propagated to this neighbor. They
-                                      must match the prefixes defined in the router.
+                                    description: |-
+                                      Allowed is is the list of prefixes allowed to be propagated to
+                                      this neighbor. They must match the prefixes defined in the router.
                                     properties:
                                       mode:
                                         default: filtered
-                                        description: Mode is the mode to use when
-                                          handling the prefixes. When set to "filtered",
-                                          only the prefixes in the given list will
-                                          be allowed. When set to "all", all the prefixes
-                                          configured on the router will be allowed.
+                                        description: |-
+                                          Mode is the mode to use when handling the prefixes.
+                                          When set to "filtered", only the prefixes in the given list will be allowed.
+                                          When set to "all", all the prefixes configured on the router will be allowed.
                                         enum:
                                         - all
                                         - filtered
@@ -247,11 +260,10 @@ spec:
                                         type: array
                                     type: object
                                   withCommunity:
-                                    description: PrefixesWithCommunity is a list of
-                                      prefixes that are associated to a bgp community
-                                      when being advertised. The prefixes associated
-                                      to a given local pref must be in the prefixes
-                                      allowed to be advertised.
+                                    description: |-
+                                      PrefixesWithCommunity is a list of prefixes that are associated to a
+                                      bgp community when being advertised. The prefixes associated to a given local pref
+                                      must be in the prefixes allowed to be advertised.
                                     items:
                                       description: CommunityPrefixes is a list of
                                         prefixes associated to a community.
@@ -271,11 +283,10 @@ spec:
                                       type: object
                                     type: array
                                   withLocalPref:
-                                    description: PrefixesWithLocalPref is a list of
-                                      prefixes that are associated to a local preference
-                                      when being advertised. The prefixes associated
-                                      to a given local pref must be in the prefixes
-                                      allowed to be advertised.
+                                    description: |-
+                                      PrefixesWithLocalPref is a list of prefixes that are associated to a local
+                                      preference when being advertised. The prefixes associated to a given local pref
+                                      must be in the prefixes allowed to be advertised.
                                     items:
                                       description: LocalPrefPrefixes is a list of
                                         prefixes associated to a local preference.
@@ -301,16 +312,16 @@ spec:
                                   to receive from the given neighbor.
                                 properties:
                                   allowed:
-                                    description: Allowed is the list of prefixes allowed
-                                      to be received from this neighbor.
+                                    description: |-
+                                      Allowed is the list of prefixes allowed to be received from
+                                      this neighbor.
                                     properties:
                                       mode:
                                         default: filtered
-                                        description: Mode is the mode to use when
-                                          handling the prefixes. When set to "filtered",
-                                          only the prefixes in the given list will
-                                          be allowed. When set to "all", all the prefixes
-                                          configured on the router will be allowed.
+                                        description: |-
+                                          Mode is the mode to use when handling the prefixes.
+                                          When set to "filtered", only the prefixes in the given list will be allowed.
+                                          When set to "all", all the prefixes configured on the router will be allowed.
                                         enum:
                                         - all
                                         - filtered
@@ -321,19 +332,17 @@ spec:
                                             of prefixes to receive.
                                           properties:
                                             ge:
-                                              description: The prefix length modifier.
-                                                This selector accepts any matching
-                                                prefix with length greater or equal
-                                                the given value.
+                                              description: |-
+                                                The prefix length modifier. This selector accepts any matching prefix with length
+                                                greater or equal the given value.
                                               format: int32
                                               maximum: 128
                                               minimum: 1
                                               type: integer
                                             le:
-                                              description: The prefix length modifier.
-                                                This selector accepts any matching
-                                                prefix with length less or equal the
-                                                given value.
+                                              description: |-
+                                                The prefix length modifier. This selector accepts any matching prefix with length
+                                                less or equal the given value.
                                               format: int32
                                               maximum: 128
                                               minimum: 1
@@ -366,33 +375,34 @@ spec:
                     type: array
                 type: object
               nodeSelector:
-                description: NodeSelector limits the nodes that will attempt to apply
-                  this config. When specified, the configuration will be considered
-                  only on nodes whose labels match the specified selectors. When it
-                  is not specified all nodes will attempt to apply this config.
+                description: |-
+                  NodeSelector limits the nodes that will attempt to apply this config.
+                  When specified, the configuration will be considered only on nodes
+                  whose labels match the specified selectors.
+                  When it is not specified all nodes will attempt to apply this config.
                 properties:
                   matchExpressions:
                     description: matchExpressions is a list of label selector requirements.
                       The requirements are ANDed.
                     items:
-                      description: A label selector requirement is a selector that
-                        contains values, a key, and an operator that relates the key
-                        and values.
+                      description: |-
+                        A label selector requirement is a selector that contains values, a key, and an operator that
+                        relates the key and values.
                       properties:
                         key:
                           description: key is the label key that the selector applies
                             to.
                           type: string
                         operator:
-                          description: operator represents a key's relationship to
-                            a set of values. Valid operators are In, NotIn, Exists
-                            and DoesNotExist.
+                          description: |-
+                            operator represents a key's relationship to a set of values.
+                            Valid operators are In, NotIn, Exists and DoesNotExist.
                           type: string
                         values:
-                          description: values is an array of string values. If the
-                            operator is In or NotIn, the values array must be non-empty.
-                            If the operator is Exists or DoesNotExist, the values
-                            array must be empty. This array is replaced during a strategic
+                          description: |-
+                            values is an array of string values. If the operator is In or NotIn,
+                            the values array must be non-empty. If the operator is Exists or DoesNotExist,
+                            the values array must be empty. This array is replaced during a strategic
                             merge patch.
                           items:
                             type: string
@@ -405,27 +415,28 @@ spec:
                   matchLabels:
                     additionalProperties:
                       type: string
-                    description: matchLabels is a map of {key,value} pairs. A single
-                      {key,value} in the matchLabels map is equivalent to an element
-                      of matchExpressions, whose key field is "key", the operator
-                      is "In", and the values array contains only "value". The requirements
-                      are ANDed.
+                    description: |-
+                      matchLabels is a map of {key,value} pairs. A single {key,value} in the matchLabels
+                      map is equivalent to an element of matchExpressions, whose key field is "key", the
+                      operator is "In", and the values array contains only "value". The requirements are ANDed.
                     type: object
                 type: object
                 x-kubernetes-map-type: atomic
               raw:
-                description: Raw is a snippet of raw frr configuration that gets appended
-                  to the one rendered translating the type safe API.
+                description: |-
+                  Raw is a snippet of raw frr configuration that gets appended to the
+                  one rendered translating the type safe API.
                 properties:
                   priority:
-                    description: Priority is the order with this configuration is
-                      appended to the bottom of the rendered configuration. A higher
-                      value means the raw config is appended later in the configuration
-                      file.
+                    description: |-
+                      Priority is the order with this configuration is appended to the
+                      bottom of the rendered configuration. A higher value means the
+                      raw config is appended later in the configuration file.
                     type: integer
                   rawConfig:
-                    description: Config is a raw FRR configuration to be appended
-                      to the configuration rendered via the k8s api.
+                    description: |-
+                      Config is a raw FRR configuration to be appended to the configuration
+                      rendered via the k8s api.
                     type: string
                 type: object
             type: object
@@ -442,8 +453,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.11.3
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.14.0
   name: frrnodestates.frrk8s.metallb.io
 spec:
   group: frrk8s.metallb.io
@@ -461,14 +471,19 @@ spec:
           each node.
         properties:
           apiVersion:
-            description: 'APIVersion defines the versioned schema of this representation
-              of an object. Servers should convert recognized schemas to the latest
-              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
             type: string
           kind:
-            description: 'Kind is a string value representing the REST resource this
-              object represents. Servers may infer this from the endpoint the client
-              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
             type: string
           metadata:
             type: object
@@ -533,7 +548,6 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  creationTimestamp: null
   name: frr-k8s-daemon-role
 rules:
 - apiGroups:
@@ -1210,7 +1224,6 @@ spec:
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  creationTimestamp: null
   name: frr-k8s-validating-webhook-configuration
 webhooks:
 - admissionReviewVersions:
