@@ -234,6 +234,12 @@ spec:
                                 maximum: 16384
                                 minimum: 0
                                 type: integer
+                              sourceaddress:
+                                description: |-
+                                  SourceAddress is the IPv4 or IPv6 source address to use for the BGP
+                                  session to this neighbour, may be specified as either an IP address
+                                  directly or as an interface name
+                                type: string
                               toAdvertise:
                                 description: |-
                                   ToAdvertise represents the list of prefixes to advertise to the given neighbor

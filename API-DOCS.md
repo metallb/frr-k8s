@@ -226,6 +226,7 @@ _Appears in:_
 | Field | Description |
 | --- | --- |
 | `asn` _integer_ | ASN is the AS number to use for the local end of the session. |
+| `sourceaddress` _string_ | SourceAddress is the IPv4 or IPv6 source address to use for the BGP session to this neighbour, may be specified as either an IP address directly or as an interface name |
 | `address` _string_ | Address is the IP address to establish the session with. |
 | `port` _integer_ | Port is the port to dial when establishing the session. Defaults to 179. |
 | `password` _string_ | Password to be used for establishing the BGP session. Password and PasswordSecret are mutually exclusive. |
