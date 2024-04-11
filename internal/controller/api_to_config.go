@@ -146,6 +146,7 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, alwa
 		BFDProfile:   n.BFDProfile,
 		VRFName:      routerVRF,
 		AlwaysBlock:  alwaysBlock,
+		DisableMP:    n.DisableMP,
 	}
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {

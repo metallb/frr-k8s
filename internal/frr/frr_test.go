@@ -560,6 +560,63 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:  ipfamily.IPv4,
+						ASN:       65001,
+						Addr:      "192.168.1.2",
+						DisableMP: true,
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+							},
+						},
+					},
+					{
+						IPFamily:     ipfamily.IPv6,
+						ASN:          65002,
+						Addr:         "2001:db8::1",
+						EBGPMultiHop: true,
+						DisableMP:    true,
+						Outgoing: AllowedOut{
+							PrefixesV6: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv6,
+									Prefix:   "2001:db8:abcd::/48",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 	testSetup(t)
 
