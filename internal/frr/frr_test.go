@@ -521,6 +521,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						ASN:      65001,
+						SrcAddr:  "192.168.1.50",
 						Addr:     "192.168.1.2",
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
