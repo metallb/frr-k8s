@@ -7,9 +7,10 @@ import (
 	"fmt"
 	"text/template"
 
+	"errors"
+
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	"go.universe.tf/e2etest/pkg/frr/container"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
@@ -150,7 +151,7 @@ const neighborFamilyTemplate = `router bgp {{.RouterASN}}
 func rawConfigForFRR(configTemplate string, myASN uint32, frr *frrcontainer.FRR) (string, error) {
 	t, err := template.New("bgp Config Template").Parse(configTemplate)
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to create bgp template")
+		return "", errors.Join(err, errors.New("failed to create bgp template"))
 	}
 
 	var b bytes.Buffer
@@ -171,7 +172,7 @@ func rawConfigForFRR(configTemplate string, myASN uint32, frr *frrcontainer.FRR)
 			NeighborMultiHop: frr.NeighborConfig.MultiHop,
 		})
 	if err != nil {
-		return "", errors.Wrapf(err, "Failed to update bgp template")
+		return "", errors.Join(err, errors.New("failed to update bgp template"))
 	}
 
 	return b.String(), nil

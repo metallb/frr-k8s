@@ -10,7 +10,6 @@ require (
 	github.com/onsi/gomega v1.30.0
 	github.com/open-policy-agent/cert-controller v0.10.1
 	github.com/ory/dockertest/v3 v3.10.0
-	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.19.0
 	k8s.io/api v0.29.3
 	k8s.io/apimachinery v0.29.3
@@ -62,6 +61,7 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
 	github.com/opencontainers/runc v1.1.5 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/prometheus/client_model v0.6.0 // indirect
 	github.com/prometheus/common v0.51.1 // indirect
 	github.com/prometheus/procfs v0.13.0 // indirect

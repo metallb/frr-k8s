@@ -14,10 +14,11 @@ import (
 	"text/template"
 	"time"
 
+	"errors"
+
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
-	"github.com/pkg/errors"
 )
 
 var (

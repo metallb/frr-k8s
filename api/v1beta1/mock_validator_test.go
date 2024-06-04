@@ -3,7 +3,8 @@
 package v1beta1
 
 import (
-	"github.com/pkg/errors"
+	"errors"
+
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )

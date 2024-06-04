@@ -5,7 +5,8 @@ package k8s
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -15,7 +16,7 @@ import (
 func Nodes(cs clientset.Interface) ([]corev1.Node, error) {
 	nodes, err := cs.CoreV1().Nodes().List(context.Background(), metav1.ListOptions{})
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch frrk8s pods")
+		return nil, errors.Join(err, errors.New("failed to fetch frrk8s nodes"))
 	}
 	return nodes.Items, nil
 }
