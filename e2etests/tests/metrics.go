@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"errors"
+
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
@@ -18,7 +20,6 @@ import (
 	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/pkg/errors"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
 	"go.universe.tf/e2etest/pkg/executor"
@@ -439,7 +440,7 @@ func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error)
 			"--no-check-certificate", "-qO-", metricsURL,
 			"--header", fmt.Sprintf("Authorization: Bearer %s", token))
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to scrape metrics for %s", target.Name)
+			return nil, errors.Join(err, fmt.Errorf("failed to scrape metrics for %s", target.Name))
 		}
 		res, err := metricsFromString(metrics)
 		if err != nil {
@@ -455,7 +456,7 @@ func metricsFromString(metrics string) (map[string]*dto.MetricFamily, error) {
 	var parser expfmt.TextParser
 	mf, err := parser.TextToMetricFamilies(strings.NewReader(metrics))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to parse metrics %s", metrics)
+		return nil, errors.Join(err, fmt.Errorf("failed to parse metrics %s", metrics))
 	}
 	return mf, nil
 }

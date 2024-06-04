@@ -13,8 +13,9 @@ import (
 	"testing"
 	"time"
 
+	"errors"
+
 	"github.com/ory/dockertest/v3"
-	"github.com/pkg/errors"
 )
 
 var (

@@ -4,10 +4,12 @@ package v1beta1
 
 import (
 	"context"
+	"fmt"
+
+	"errors"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/pkg/errors"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
@@ -64,7 +66,7 @@ func (frrConfig *FRRConfiguration) ValidateDelete() (admission.Warnings, error) 
 func validateConfig(frrConfig *FRRConfiguration) error {
 	selector, err := metav1.LabelSelectorAsSelector(&frrConfig.Spec.NodeSelector)
 	if err != nil {
-		return errors.Wrapf(err, "resource contains an invalid NodeSelector")
+		return errors.Join(err, errors.New("resource contains an invalid NodeSelector"))
 	}
 
 	existingNodes, err := getNodes()
@@ -114,7 +116,7 @@ func validateConfig(frrConfig *FRRConfiguration) error {
 	for _, n := range matchingNodes {
 		err := Validate(n.cfgs)
 		if err != nil {
-			return errors.Wrapf(err, "resource is invalid for node %s", n.name)
+			return errors.Join(err, fmt.Errorf("resource is invalid for node %s", n.name))
 		}
 	}
 
@@ -125,7 +127,7 @@ var getFRRConfigurations = func() (*FRRConfigurationList, error) {
 	frrConfigurationsList := &FRRConfigurationList{}
 	err := WebhookClient.List(context.Background(), frrConfigurationsList)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get existing FRRConfiguration objects")
+		return nil, errors.Join(err, errors.New("failed to get existing FRRConfiguration objects"))
 	}
 	return frrConfigurationsList, nil
 }
@@ -134,7 +136,7 @@ var getNodes = func() ([]corev1.Node, error) {
 	nodesList := &corev1.NodeList{}
 	err := WebhookClient.List(context.Background(), nodesList)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get existing Node objects")
+		return nil, errors.Join(err, errors.New("failed to get existing Node objects"))
 	}
 	return nodesList.Items, nil
 }
