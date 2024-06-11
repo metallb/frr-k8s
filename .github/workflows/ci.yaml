@@ -105,7 +105,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: quay.io/metallb/frr-k8s:dev
+          tags: quay.io/metallb/frr-k8s:main
           file: Dockerfile
           outputs: type=docker,dest=/tmp/frrk8s.tar
           cache-from: type=gha

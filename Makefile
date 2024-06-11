@@ -1,6 +1,6 @@
 
 ifeq (,$(FRRK8S_VERSION))
-IMG_TAG="dev"
+IMG_TAG="main"
 GOBIN=$(shell go env GOPATH)/bin
 else
 IMG_TAG=v${FRRK8S_VERSION}

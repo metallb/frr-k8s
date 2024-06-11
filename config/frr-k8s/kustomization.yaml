@@ -6,5 +6,5 @@ kind: Kustomization
 images:
 - name: controller
   newName: quay.io/metallb/frr-k8s
-  newTag: dev
+  newTag: main
 namespace: frr-k8s-system
