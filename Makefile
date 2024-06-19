@@ -129,7 +129,7 @@ KIND_VERSION ?= v0.23.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
 HELM_DOCS_VERSION ?= v1.10.0
-APIDOCSGEN_VERSION ?= v0.0.10
+APIDOCSGEN_VERSION ?= v0.0.12
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
