@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
@@ -2480,6 +2481,279 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "Multiple Routers import VRFs",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Imports: []v1beta1.Import{
+										{VRF: "red"},
+									},
+								},
+								{
+									ASN: 65013,
+									ID:  "2001:db8::3",
+									VRF: "red",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:      65010,
+						RouterID:   "192.0.2.5",
+						VRF:        "",
+						ImportVRFs: []string{"red"},
+					},
+					{
+						MyASN:    65013,
+						RouterID: "2001:db8::3",
+						VRF:      "red",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Multiple Routers import VRF, advertise ips from the imported vrf",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									VRF: "",
+									Imports: []v1beta1.Import{
+										{VRF: "red"},
+									},
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.5.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+											},
+										},
+										{
+											ASN:     65041,
+											Address: "192.0.2.22",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
+								},
+								{
+									ASN:      65013,
+									ID:       "192.0.2.20",
+									VRF:      "red",
+									Prefixes: []string{"192.0.5.0/24", "2001:db9::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      65041,
+								Addr:     "192.0.2.21",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.5.0/24",
+										},
+									},
+								},
+							},
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.22",
+								ASN:      65041,
+								Addr:     "192.0.2.22",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.5.0/24",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db8::/64",
+										}, {
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db9::/64",
+										},
+									},
+								},
+							},
+						},
+						ImportVRFs:   []string{"red"},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+					{
+						MyASN:        65013,
+						RouterID:     "192.0.2.20",
+						VRF:          "red",
+						IPV4Prefixes: []string{"192.0.5.0/24"},
+						IPV6Prefixes: []string{"2001:db9::/64"},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			secrets: map[string]v1.Secret{},
+		},
+		{
+			name: "Multiple Routers import non existing VRFs",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Imports: []v1beta1.Import{
+										{VRF: "blue"},
+									},
+								},
+								{
+									ASN: 65013,
+									ID:  "2001:db8::3",
+									VRF: "red",
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("router 65010- imports vrf blue which is not defined"),
+		},
+		{
+			name: "Multiple Routers import VRF, red imports default and advertises",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									VRF: "red",
+									Imports: []v1beta1.Import{
+										{VRF: "default"},
+									},
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.22",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
+								},
+								{
+									ASN:      65013,
+									ID:       "192.0.2.20",
+									Prefixes: []string{"192.0.5.0/24", "2001:db9::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65013,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{"192.0.5.0/24"},
+						IPV6Prefixes: []string{"2001:db9::/64"},
+					},
+					{
+						MyASN:    65040,
+						VRF:      "red",
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.22",
+								ASN:      65041,
+								Addr:     "192.0.2.22",
+								VRFName:  "red",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.5.0/24",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db8::/64",
+										}, {
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db9::/64",
+										},
+									},
+								},
+							},
+						},
+						ImportVRFs:   []string{"default"},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+		},
 	}
 
 	for _, test := range tests {
@@ -2495,7 +2769,7 @@ func TestConversion(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(frr, test.expected); diff != "" {
+			if diff := cmp.Diff(frr, test.expected, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})
