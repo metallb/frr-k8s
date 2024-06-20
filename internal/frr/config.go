@@ -48,6 +48,7 @@ type RouterConfig struct {
 	VRF          string
 	IPV4Prefixes []string
 	IPV6Prefixes []string
+	ImportVRFs   []string
 }
 
 type BFDProfile struct {
