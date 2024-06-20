@@ -91,6 +91,9 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 	res.Routers = sortMapPtr(routersForVRF)
 	res.ExtraConfig = joinRawConfigs(rawConfigs)
 	res.BFDProfiles = sortMap(bfdProfilesAllConfigs)
+	for _, r := range res.Routers {
+		fmt.Println("FEDE", *r)
+	}
 
 	return res, nil
 }
