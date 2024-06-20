@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 	"k8s.io/utils/ptr"
@@ -538,7 +539,7 @@ func TestMergeRouters(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(merged, test.expected); diff != "" {
+			if diff := cmp.Diff(merged, test.expected, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})
@@ -1359,14 +1360,6 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      65040,
 					Addr:     "192.0.1.20",
-					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{},
-						PrefixesV6: []frr.OutgoingFilter{},
-					},
-					Incoming: frr.AllowedIn{
-						PrefixesV4: []frr.IncomingFilter{},
-						PrefixesV6: []frr.IncomingFilter{},
-					},
 				},
 			},
 			err: nil,
@@ -1382,7 +1375,7 @@ func TestMergeNeighbors(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(merged, test.expected); diff != "" {
+			if diff := cmp.Diff(merged, test.expected, cmpopts.EquateEmpty()); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})

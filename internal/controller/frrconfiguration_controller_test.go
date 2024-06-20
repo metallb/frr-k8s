@@ -99,6 +99,7 @@ var _ = Describe("Frrk8s controller", func() {
 					},
 				},
 			}
+
 			err := k8sClient.Create(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() *frr.Config {
@@ -109,6 +110,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
+						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 				},
@@ -141,6 +143,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
+						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 				},
@@ -159,6 +162,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV4Prefixes: []string{"192.168.1.0/32"},
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
+						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 				},
@@ -192,6 +196,7 @@ var _ = Describe("Frrk8s controller", func() {
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
+						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 				},
@@ -283,6 +288,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 						{
 							MyASN:        uint32(52),
@@ -290,6 +296,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -314,6 +321,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 						{
 							MyASN:        uint32(62),
@@ -321,6 +329,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 						{
 							MyASN:        uint32(52),
@@ -328,6 +337,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -349,6 +359,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 						{
 							MyASN:        uint32(62),
@@ -356,6 +367,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -415,6 +427,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -441,6 +454,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 						{
 							MyASN:        uint32(52),
@@ -448,6 +462,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -470,6 +485,7 @@ var _ = Describe("Frrk8s controller", func() {
 							IPV4Prefixes: []string{},
 							IPV6Prefixes: []string{},
 							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
@@ -527,6 +543,7 @@ var _ = Describe("Frrk8s controller", func() {
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
+						ImportVRFs:   []string{},
 						Neighbors: []*frr.NeighborConfig{
 							{
 								IPFamily: ipfamily.IPv4,
@@ -563,6 +580,7 @@ var _ = Describe("Frrk8s controller", func() {
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
+						ImportVRFs:   []string{},
 						Neighbors: []*frr.NeighborConfig{
 							{
 								IPFamily: ipfamily.IPv4,
@@ -615,6 +633,7 @@ var _ = Describe("Frrk8s controller", func() {
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
+						ImportVRFs:   []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
@@ -644,6 +663,7 @@ var _ = Describe("Frrk8s controller", func() {
 			}).Should(Equal(
 				&frr.Config{
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
+						ImportVRFs:   []string{},
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
 						Neighbors:    []*frr.NeighborConfig{},
@@ -704,6 +724,7 @@ var _ = Describe("Frrk8s controller", func() {
 					Routers: []*frr.RouterConfig{{MyASN: uint32(42),
 						IPV4Prefixes: []string{},
 						IPV6Prefixes: []string{},
+						ImportVRFs:   []string{},
 						Neighbors:    []*frr.NeighborConfig{},
 					}},
 					BFDProfiles: []frr.BFDProfile{
