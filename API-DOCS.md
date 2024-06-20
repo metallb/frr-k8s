@@ -222,6 +222,22 @@ _Appears in:_
 | `lastReloadResult` _string_ | LastReloadResult represents the status of the last configuration update operation by FRR, contains "success" or an error. |  |  |
 
 
+#### Import
+
+
+
+Import represents the possible imported VRFs to a given router.
+
+
+
+_Appears in:_
+- [Router](#router)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `vrf` _string_ | Vrf is the vrf we want to import from |  |  |
+
+
 #### LocalPrefPrefixes
 
 
@@ -339,6 +355,7 @@ _Appears in:_
 | `vrf` _string_ | VRF is the host vrf used to establish sessions from this router. |  |  |
 | `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  |  |
 | `prefixes` _string array_ | Prefixes is the list of prefixes we want to advertise from this router instance. |  |  |
+| `imports` _[Import](#import) array_ | Imports is the list of imported VRFs we want for this router / vrf. |  |  |
 
 
 #### SecretReference
