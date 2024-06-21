@@ -44,10 +44,15 @@ func ValidateFRRPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFami
 }
 
 func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	ValidatePrefixesForNeighborVRF(neigh, nodes, neigh.RouterConfig.VRF, prefixes...)
+}
+
+// Validates the given neighbor has the prefixes towards the given VRF
+func ValidatePrefixesForNeighborVRF(neigh frrcontainer.FRR, nodes []v1.Node, vrfName string, prefixes ...string) {
 	ginkgo.By(fmt.Sprintf("checking prefixes %v for %s", prefixes, neigh.Name))
 	Eventually(func() error {
 		for _, prefix := range prefixes {
-			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			err := routes.CheckNeighborHasPrefix(neigh, vrfName, prefix, nodes)
 			if err != nil {
 				return fmt.Errorf("Neigh %s does not have prefix %s: %w", neigh.Name, prefix, err)
 			}
@@ -57,10 +62,14 @@ func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefix
 }
 
 func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
+	ValidateNeighborNoPrefixesVRF(neigh, nodes, neigh.RouterConfig.VRF, prefixes...)
+}
+
+func ValidateNeighborNoPrefixesVRF(neigh frrcontainer.FRR, nodes []v1.Node, vrfName string, prefixes ...string) {
 	ginkgo.By(fmt.Sprintf("checking prefixes %v not announced to %s", prefixes, neigh.Name))
 	Eventually(func() error {
 		for _, prefix := range prefixes {
-			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			err := routes.CheckNeighborHasPrefix(neigh, vrfName, prefix, nodes)
 			if err != nil {
 				return fmt.Errorf("Neigh %s does not have prefix %s: %w", neigh.Name, prefix, err)
 			}
@@ -101,12 +110,12 @@ func ValidateNeighborCommunityPrefixes(neigh frrcontainer.FRR, community string,
 	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
 }
 
-func ValidateNodesHaveRoutes(pods []*v1.Pod, neigh frrcontainer.FRR, prefixes ...string) {
+func ValidateNodesHaveRoutesVRF(pods []*v1.Pod, neigh frrcontainer.FRR, vrf string, prefixes ...string) {
 	ginkgo.By(fmt.Sprintf("Checking routes %v from %s", prefixes, neigh.Name))
 	Eventually(func() error {
 		for _, prefix := range prefixes {
 			for _, pod := range pods {
-				if !routes.PodHasPrefixFromContainer(pod, neigh, prefix) {
+				if !routes.PodHasPrefixFromContainer(pod, neigh, vrf, prefix) {
 					return fmt.Errorf("pod %s does not have prefix %s from %s", pod.Name, prefix, neigh.Name)
 				}
 			}
@@ -115,12 +124,16 @@ func ValidateNodesHaveRoutes(pods []*v1.Pod, neigh frrcontainer.FRR, prefixes ..
 	}, time.Minute, time.Second).ShouldNot(HaveOccurred())
 }
 
+func ValidateNodesHaveRoutes(pods []*v1.Pod, neigh frrcontainer.FRR, prefixes ...string) {
+	ValidateNodesHaveRoutesVRF(pods, neigh, neigh.RouterConfig.VRF, prefixes...)
+}
+
 func ValidateNodesDoNotHaveRoutes(pods []*v1.Pod, neigh frrcontainer.FRR, prefixes ...string) {
 	ginkgo.By(fmt.Sprintf("Checking routes %v not injected from %s", prefixes, neigh.Name))
 	shouldPassConsistently(func() error {
 		for _, prefix := range prefixes {
 			for _, pod := range pods {
-				if routes.PodHasPrefixFromContainer(pod, neigh, prefix) {
+				if routes.PodHasPrefixFromContainer(pod, neigh, neigh.RouterConfig.VRF, prefix) {
 					return fmt.Errorf("pod %s has prefix %s from %s", pod.Name, prefix, neigh.Name)
 				}
 			}

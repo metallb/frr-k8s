@@ -17,20 +17,19 @@ import (
 
 // PodHasPrefixFromContainer tells if the given frr-k8s pod has recevied a route for
 // the given prefix from the given container.
-func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, prefix string) bool {
+func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, vrf, prefix string) bool {
 	_, cidr, _ := net.ParseCIDR(prefix)
 	ipFamily := ipfamily.ForCIDR(cidr)
 	nextHop := frr.Ipv4
 	if ipFamily == ipfamily.IPv6 {
 		nextHop = frr.Ipv6
 	}
-	vrf := frr.RouterConfig.VRF
 	return hasPrefix(pod, ipFamily, cidr, nextHop, vrf)
 }
 
 // CheckNeighborHasPrefix tells if the given frr container has a route toward the given prefix
 // via the set of node passed to this function.
-func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, prefix string, nodes []v1.Node) error {
+func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, vrf, prefix string, nodes []v1.Node) error {
 	routesV4, routesV6, err := frr.Routes(neighbor)
 	if err != nil {
 		return err
@@ -47,7 +46,7 @@ func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, prefix string, nodes []v1
 	}
 
 	cidrFamily := ipfamily.ForCIDR(cidr)
-	err = frr.RoutesMatchNodes(nodes, route, cidrFamily, neighbor.RouterConfig.VRF)
+	err = frr.RoutesMatchNodes(nodes, route, cidrFamily, vrf)
 	if err != nil {
 		return err
 	}

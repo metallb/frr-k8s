@@ -105,10 +105,9 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 
 			check := func() error {
 				for _, p := range peersConfig.Peers() {
-					found, err := routes.CheckNeighborHasPrefix(p.FRR, prefix, nodes)
-					Expect(err).NotTo(HaveOccurred())
-					if !found {
-						return fmt.Errorf("Neigh %s does not have prefix %s", p.FRR.Name, prefix)
+					err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes)
+					if err != nil {
+						return fmt.Errorf("Neigh %s does not have prefix %s: %w", p.FRR.Name, prefix, err)
 					}
 				}
 				return nil
