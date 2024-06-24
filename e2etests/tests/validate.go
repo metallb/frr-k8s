@@ -47,10 +47,9 @@ func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefix
 	ginkgo.By(fmt.Sprintf("checking prefixes %v for %s", prefixes, neigh.Name))
 	Eventually(func() error {
 		for _, prefix := range prefixes {
-			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
-			Expect(err).NotTo(HaveOccurred())
-			if !found {
-				return fmt.Errorf("Neigh %s does not have prefix %s", neigh.Name, prefix)
+			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			if err != nil {
+				return fmt.Errorf("Neigh %s does not have prefix %s: %w", neigh.Name, prefix, err)
 			}
 		}
 		return nil
@@ -61,14 +60,17 @@ func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixe
 	ginkgo.By(fmt.Sprintf("checking prefixes %v not announced to %s", prefixes, neigh.Name))
 	Eventually(func() error {
 		for _, prefix := range prefixes {
-			found, err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
-			Expect(err).NotTo(HaveOccurred())
-			if found {
-				return fmt.Errorf("Neigh %s has prefix %s", neigh.Name, prefix)
+			err := routes.CheckNeighborHasPrefix(neigh, prefix, nodes)
+			if err != nil {
+				return fmt.Errorf("Neigh %s does not have prefix %s: %w", neigh.Name, prefix, err)
 			}
 		}
 		return nil
-	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
+	}, 5*time.Second, time.Second).Should(
+		MatchError(
+			Or(ContainSubstring("route not found"),
+				ContainSubstring("not found in nodes"))))
+
 }
 
 func ValidateNeighborCommunityPrefixes(neigh frrcontainer.FRR, community string, prefixes []string, ipfam ipfamily.Family) {

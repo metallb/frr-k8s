@@ -4,7 +4,6 @@ package routes
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"net"
 
@@ -31,42 +30,40 @@ func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, prefix string)
 
 // CheckNeighborHasPrefix tells if the given frr container has a route toward the given prefix
 // via the set of node passed to this function.
-func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, prefix string, nodes []v1.Node) (bool, error) {
+func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, prefix string, nodes []v1.Node) error {
 	routesV4, routesV6, err := frr.Routes(neighbor)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	_, cidr, err := net.ParseCIDR(prefix)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	route, err := routeForCIDR(cidr, routesV4, routesV6)
-	var notFound RouteNotFoundError
-	if errors.As(err, &notFound) {
-		return false, nil
-	}
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	cidrFamily := ipfamily.ForCIDR(cidr)
 	err = frr.RoutesMatchNodes(nodes, route, cidrFamily, neighbor.RouterConfig.VRF)
 	if err != nil {
-		return false, nil
+		return err
 	}
-	return true, nil
+	return nil
 }
 
 func cidrsAreEqual(a, b *net.IPNet) bool {
 	return a.IP.Equal(b.IP) && bytes.Equal(a.Mask, b.Mask)
 }
 
-type RouteNotFoundError string
+type RouteNotFoundError struct {
+	Route string
+}
 
 func (e RouteNotFoundError) Error() string {
-	return string(e)
+	return fmt.Sprintf("route not found %s", e.Route)
 }
 
 func routeForCIDR(cidr *net.IPNet, routesV4 map[string]frr.Route, routesV6 map[string]frr.Route) (frr.Route, error) {
@@ -80,7 +77,7 @@ func routeForCIDR(cidr *net.IPNet, routesV4 map[string]frr.Route, routesV6 map[s
 			return route, nil
 		}
 	}
-	return frr.Route{}, RouteNotFoundError(fmt.Sprintf("route %s not found", cidr))
+	return frr.Route{}, RouteNotFoundError{Route: cidr.String()}
 }
 
 func hasPrefix(pod *v1.Pod, pairingFamily ipfamily.Family, prefix *net.IPNet, nextHop, vrf string) bool {
