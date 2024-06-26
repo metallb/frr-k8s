@@ -62,23 +62,24 @@ type BFDProfile struct {
 }
 
 type NeighborConfig struct {
-	IPFamily      ipfamily.Family
-	Name          string
-	ASN           uint32
-	SrcAddr       string
-	Addr          string
-	Port          *uint16
-	HoldTime      *uint64
-	KeepaliveTime *uint64
-	ConnectTime   *uint64
-	Password      string
-	BFDProfile    string
-	EBGPMultiHop  bool
-	VRFName       string
-	Incoming      AllowedIn
-	Outgoing      AllowedOut
-	AlwaysBlock   []IncomingFilter
-	DisableMP     bool
+	IPFamily        ipfamily.Family
+	Name            string
+	ASN             uint32
+	SrcAddr         string
+	Addr            string
+	Port            *uint16
+	HoldTime        *uint64
+	KeepaliveTime   *uint64
+	ConnectTime     *uint64
+	Password        string
+	BFDProfile      string
+	GracefulRestart bool
+	EBGPMultiHop    bool
+	VRFName         string
+	Incoming        AllowedIn
+	Outgoing        AllowedOut
+	AlwaysBlock     []IncomingFilter
+	DisableMP       bool
 }
 
 func (n *NeighborConfig) ID() string {
