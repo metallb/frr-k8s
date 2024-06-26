@@ -142,6 +142,13 @@ type Neighbor struct {
 	// +optional
 	BFDProfile string `json:"bfdProfile,omitempty"`
 
+	// EnableGracefulRestart allows BGP peer to continue to forward data packets along
+	// known routes while the routing protocol information is being restored. If
+	// the session is already established, the configuration will have effect
+	// after reconnecting to the peer
+	// +optional
+	EnableGracefulRestart bool `json:"enableGracefulRestart,omitempty"`
+
 	// ToAdvertise represents the list of prefixes to advertise to the given neighbor
 	// and the associated properties.
 	// +optional
