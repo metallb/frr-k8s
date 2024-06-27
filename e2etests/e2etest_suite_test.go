@@ -34,8 +34,8 @@ func handleFlags() {
 	flag.StringVar(&reportPath, "report-path", "/tmp/report", "the path to be used to dump test failure information")
 	flag.StringVar(&prometheusNamespace, "prometheus-namespace", "monitoring", "the namespace prometheus is running in (if running)")
 	flag.StringVar(&externalContainers, "external-containers", "", "a comma separated list of external containers names to use for the test. (valid parameters are: ibgp-single-hop / ibgp-multi-hop / ebgp-single-hop / ebgp-multi-hop)")
-	flag.StringVar(&frrImage, "frr-image", "quay.io/frrouting/frr:9.0.2", "the image to use for the external frr containers")
 	flag.StringVar(&executor.Kubectl, "kubectl", "kubectl", "the path for the kubectl binary")
+	flag.StringVar(&frrImage, "frr-image", "quay.io/frrouting/frr:9.1.0", "the image to use for the external frr containers")
 
 	flag.Parse()
 

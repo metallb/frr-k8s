@@ -13,7 +13,7 @@ cp frr/daemons $FRR_CONFIG
 chmod a+rw $FRR_CONFIG/*
 
 docker rm -f frr
-docker run -d --privileged --network kind --rm --ulimit core=-1 --name frr --volume "$FRR_CONFIG":/etc/frr quay.io/frrouting/frr:9.0.2
+docker run -d --privileged --network kind --rm --ulimit core=-1 --name frr --volume "$FRR_CONFIG":/etc/frr quay.io/frrouting/frr:9.1.0
 
 FRR_IP=$(docker inspect -f "{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}" frr)
 
