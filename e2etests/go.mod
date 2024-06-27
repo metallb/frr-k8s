@@ -6,12 +6,12 @@ toolchain go1.22.4
 
 replace (
 	github.com/metallb/frr-k8s => ../
-	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240326160753-c8cc222a5831
-	go.universe.tf/metallb => github.com/metallb/metallb v0.14.4
+	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240619133525-62822a4a17e3
+	go.universe.tf/metallb => github.com/metallb/metallb v0.14.5
 )
 
 require (
-	github.com/metallb/frr-k8s v0.0.10
+	github.com/metallb/frr-k8s v0.0.11
 	github.com/onsi/ginkgo/v2 v2.17.2
 	github.com/onsi/gomega v1.33.1
 	github.com/openshift-kni/k8sreporter v1.0.4
