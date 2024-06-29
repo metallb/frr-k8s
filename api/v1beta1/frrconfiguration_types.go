@@ -80,6 +80,16 @@ type Router struct {
 	// Prefixes is the list of prefixes we want to advertise from this router instance.
 	// +optional
 	Prefixes []string `json:"prefixes,omitempty"`
+
+	// Imports is the list of imports we want for this router / vrf
+	// +optional
+	Imports []Import `json:"imports,omitempty"`
+}
+
+type Import struct {
+	// Vrf is the vrf we want to import from
+	// +optional
+	VRF string `json:"vrf,omitempty"`
 }
 
 // Neighbor represents a BGP Neighbor we want FRR to connect to.

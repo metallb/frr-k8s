@@ -67,8 +67,37 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 		}
 
 		alwaysBlockFRR := alwaysBlockToFRR(alwaysBlock)
+		prefixesForVRF := map[string][]string{}
 		for _, r := range cfg.Spec.BGP.Routers {
-			routerCfg, err := routerToFRRConfig(r, alwaysBlockFRR, resources.PasswordSecrets, bfdProfiles)
+			err := validatePrefixes(r.Prefixes)
+			if err != nil {
+				return nil, err
+			}
+			prefixesForVRF[r.VRF] = r.Prefixes
+		}
+
+		for _, r := range cfg.Spec.BGP.Routers {
+			err := validateImportVRFs(r, prefixesForVRF)
+			if err != nil {
+				return nil, err
+			}
+
+			// All prefixes available in this router: defined and imported from VRFs
+			prefixesInRouter := sets.New(r.Prefixes...)
+			for _, i := range r.Imports {
+				importedPrefixes := prefixesForVRF[i.VRF]
+				if i.VRF == "default" {
+					importedPrefixes = prefixesForVRF[""]
+				}
+				prefixesInRouter.Insert(importedPrefixes...)
+			}
+
+			err = validateOutgoingPrefixes(prefixesInRouter, r)
+			if err != nil {
+				return nil, err
+			}
+
+			routerCfg, err := routerToFRRConfig(r, alwaysBlockFRR, resources.PasswordSecrets, bfdProfiles, prefixesInRouter)
 			if err != nil {
 				return nil, err
 			}
@@ -95,7 +124,7 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 	return res, nil
 }
 
-func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.RouterConfig, error) {
+func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile, prefixesInRouter sets.Set[string]) (*frr.RouterConfig, error) {
 	res := &frr.RouterConfig{
 		MyASN:        r.ASN,
 		RouterID:     r.ID,
@@ -103,32 +132,27 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 		Neighbors:    make([]*frr.NeighborConfig, 0),
 		IPV4Prefixes: make([]string, 0),
 		IPV6Prefixes: make([]string, 0),
+		ImportVRFs:   make([]string, 0),
 	}
 
-	for _, p := range r.Prefixes {
-		family := ipfamily.ForCIDRString(p)
-		switch family {
-		case ipfamily.IPv4:
-			res.IPV4Prefixes = append(res.IPV4Prefixes, p)
-		case ipfamily.IPv6:
-			res.IPV6Prefixes = append(res.IPV6Prefixes, p)
-		case ipfamily.Unknown:
-			return nil, fmt.Errorf("unknown ipfamily for %s", p)
-		}
-	}
+	res.IPV4Prefixes = ipfamily.FilterPrefixes(r.Prefixes, ipfamily.IPv4)
+	res.IPV6Prefixes = ipfamily.FilterPrefixes(r.Prefixes, ipfamily.IPv6)
 
 	for _, n := range r.Neighbors {
-		frrNeigh, err := neighborToFRR(n, res.IPV4Prefixes, res.IPV6Prefixes, alwaysBlock, r.VRF, secrets, bfdProfiles)
+		frrNeigh, err := neighborToFRR(n, prefixesInRouter, alwaysBlock, r.VRF, secrets, bfdProfiles)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
 		}
 		res.Neighbors = append(res.Neighbors, frrNeigh)
 	}
 
+	for _, v := range r.Imports {
+		res.ImportVRFs = append(res.ImportVRFs, v.VRF)
+	}
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter sets.Set[string], alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
 	neighborFamily, err := ipfamily.ForAddresses(n.Address)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
@@ -162,7 +186,7 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, alwa
 	if err != nil {
 		return nil, err
 	}
-	res.Outgoing, err = toAdvertiseToFRR(n.ToAdvertise, ipv4Prefixes, ipv6Prefixes)
+	res.Outgoing, err = toAdvertiseToFRR(n.ToAdvertise, prefixesInRouter)
 	if err != nil {
 		return nil, err
 	}
@@ -201,11 +225,11 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 	return string(srcPass), nil
 }
 
-func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (frr.AllowedOut, error) {
-	advsV4, advsV6, err := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
+func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, prefixesInRouter sets.Set[string]) (frr.AllowedOut, error) {
+	ipv4Prefixes := ipfamily.FilterPrefixes(sets.List(prefixesInRouter), ipfamily.IPv4)
+	ipv6Prefixes := ipfamily.FilterPrefixes(sets.List(prefixesInRouter), ipfamily.IPv6)
+	advsV4, advsV6 := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
+
 	communities, err := communityPrefixesToMap(toAdvertise.PrefixesWithCommunity)
 	if err != nil {
 		return frr.AllowedOut{}, err
@@ -239,7 +263,7 @@ func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes 
 
 // prefixesToMap returns two maps of prefix->OutgoingFilter (ie family, advertisement, communities), one for each family.
 // The ipv4Prefixes and ipv6Prefixes represent the "global" allowed prefixes which are the prefixes defined on the router.
-func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter, error) {
+func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter) {
 	resV4 := map[string]*frr.OutgoingFilter{}
 	resV6 := map[string]*frr.OutgoingFilter{}
 	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
@@ -249,27 +273,19 @@ func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []s
 		for _, p := range ipv6Prefixes {
 			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv6}
 		}
-		return resV4, resV6, nil
+		return resV4, resV6
 	}
 
-	allowedV4 := sets.New(ipv4Prefixes...)
-	allowedV6 := sets.New(ipv6Prefixes...)
 	for _, p := range toAdvertise.Allowed.Prefixes {
 		family := ipfamily.ForCIDRString(p)
 		switch family {
 		case ipfamily.IPv4:
-			if !allowedV4.Has(p) {
-				return nil, nil, fmt.Errorf("prefix %s is not an allowed prefix", p)
-			}
 			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		case ipfamily.IPv6:
-			if !allowedV6.Has(p) {
-				return nil, nil, fmt.Errorf("prefix %s is not an allowed prefix", p)
-			}
 			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
 		}
 	}
-	return resV4, resV6, nil
+	return resV4, resV6
 }
 
 // setCommunitiesToAdvertisements takes the given communityPrefixes and fills the relevant fields to the advertisements contained in the advs map.
@@ -380,6 +396,32 @@ func validateSelectorLengths(mask int, le, ge uint32) error {
 	}
 	if ge > 0 && uint32(mask) > ge {
 		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than ge %d", mask, ge)
+	}
+	return nil
+}
+
+func validateImportVRFs(r v1beta1.Router, allVRFs map[string][]string) error {
+	for _, i := range r.Imports {
+		if i.VRF == "default" {
+			continue
+		}
+		if _, ok := allVRFs[i.VRF]; !ok {
+			return fmt.Errorf("router %d-%s imports vrf %s which is not defined", r.ASN, r.VRF, i.VRF)
+		}
+	}
+	return nil
+}
+
+func validateOutgoingPrefixes(prefixesInRouter sets.Set[string], routerConfig v1beta1.Router) error {
+	for _, n := range routerConfig.Neighbors {
+		if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
+			continue
+		}
+		for _, p := range n.ToAdvertise.Allowed.Prefixes {
+			if !prefixesInRouter.Has(p) {
+				return fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s, vrf %s", p, neighborName(n.ASN, n.Address), routerConfig.VRF)
+			}
+		}
 	}
 	return nil
 }
@@ -571,4 +613,14 @@ func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
 	kaSeconds := uint64(keepaliveTime / time.Second)
 
 	return &htSeconds, &kaSeconds, nil
+}
+
+func validatePrefixes(prefixes []string) error {
+	for _, p := range prefixes {
+		family := ipfamily.ForCIDRString(p)
+		if family == ipfamily.Unknown {
+			return fmt.Errorf("unknown ipfamily for %s", p)
+		}
+	}
+	return nil
 }

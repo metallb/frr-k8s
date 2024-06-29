@@ -91,3 +91,19 @@ func ForService(svc *v1.Service) (Family, error) {
 	addresses := []string{svc.Spec.ClusterIP}
 	return ForAddresses(addresses...)
 }
+
+// FilterPrefixes filters the given slice of prefixes taking only those for the given family.
+func FilterPrefixes(prefixes []string, familyToFilter Family) []string {
+	if familyToFilter == DualStack {
+		return prefixes
+	}
+	res := []string{}
+	for _, p := range prefixes {
+		family := ForCIDRString(p)
+		if family != familyToFilter {
+			continue
+		}
+		res = append(res, p)
+	}
+	return res
+}
