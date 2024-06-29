@@ -25,7 +25,6 @@ ip prefix-list 192.168.1.2-inpl-ipv4 seq 4 permit 192.168.3.0/24 le 32
 ip prefix-list 192.168.1.2-inpl-ipv4 seq 5 permit 192.168.3.0/24 ge 16
 
 
-
 ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 6 deny any
 route-map 192.168.1.2-in permit 3
   match ip address prefix-list 192.168.1.2-inpl-ipv4
@@ -50,7 +49,6 @@ ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 1 permit fc00:f853:ccd:e800::/64
 ip prefix-list 192.168.1.3-inpl-ipv4 seq 2 permit 192.168.1.0/24
 ip prefix-list 192.168.1.3-inpl-ipv4 seq 3 permit 192.168.2.0/24 le 26 ge 24
 ip prefix-list 192.168.1.3-inpl-ipv4 seq 4 permit 192.168.3.0/24 le 32 ge 27
-
 
 
 ipv6 prefix-list 192.168.1.3-inpl-ipv4 seq 5 deny any
@@ -78,7 +76,6 @@ ip prefix-list 192.168.1.4-inpl-ipv4 seq 2 permit 192.169.1.0/24
 ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 3 permit fc00:f853:ccd:e800::/64 le 32 ge 24
 ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 4 permit fc00:f853:ccd:e801::/64 ge 24
 ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 5 permit fc00:f853:ccd:e802::/64 le 32
-
 
 
 ipv6 prefix-list 192.168.1.4-inpl-ipv4 seq 6 deny any
