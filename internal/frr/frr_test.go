@@ -825,3 +825,35 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 
 	testCheckConfigFile(t)
 }
+
+func TestSingleSessionWithGracefulRestart(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             65001,
+						Addr:            "192.168.1.2",
+						GracefulRestart: true,
+					},
+				},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
