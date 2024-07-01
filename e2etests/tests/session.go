@@ -123,7 +123,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			}
 		})
 
-		ginkgo.DescribeTable("Establishes sessions with cleartext password", func(family ipfamily.Family) {
+		ginkgo.DescribeTable("Establishes sessions with cleartext password and graceful restart", func(family ipfamily.Family) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
 			neighbors := []frrk8sv1beta1.Neighbor{}
 
@@ -136,11 +136,12 @@ var _ = ginkgo.Describe("Advertisement", func() {
 
 				for _, address := range addresses {
 					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
-						ASN:          f.RouterConfig.ASN,
-						Address:      address,
-						Password:     f.RouterConfig.Password,
-						Port:         &f.RouterConfig.BGPPort,
-						EBGPMultiHop: ebgpMultihop,
+						ASN:                   f.RouterConfig.ASN,
+						Address:               address,
+						Password:              f.RouterConfig.Password,
+						Port:                  &f.RouterConfig.BGPPort,
+						EBGPMultiHop:          ebgpMultihop,
+						EnableGracefulRestart: true,
 					})
 				}
 			}
@@ -177,6 +178,22 @@ var _ = ginkgo.Describe("Advertisement", func() {
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, family)
+			}
+
+			ginkgo.By("getting all session are GR enabled")
+			pods, err := k8s.FRRK8sPods(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, pod := range pods {
+				podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
+				neighbors, err := frr.NeighborsInfo(podExec)
+				Expect(err).NotTo(HaveOccurred())
+				for _, n := range neighbors {
+					Expect(n.GRInfo.LocalGrMode).Should(Equal("Restart"))
+					Expect(n.GRInfo.RemoteGrMode).Should(Equal("Helper"))
+					Expect(n.GRInfo.NBit).To(BeTrue())
+					Expect(n.GRInfo.RBit).To(BeTrue())
+				}
 			}
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4),
