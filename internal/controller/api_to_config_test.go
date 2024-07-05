@@ -1732,7 +1732,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1756,7 +1756,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret2",
 												Namespace: "frr-k8s-system",
 											},
@@ -1887,7 +1887,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1926,7 +1926,7 @@ func TestConversion(t *testing.T) {
 											ASN:      65012,
 											Address:  "192.0.2.7",
 											Password: "cleartext-password",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},

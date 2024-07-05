@@ -6,7 +6,6 @@ import (
 	"net"
 
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
-	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -41,7 +40,7 @@ func resetSecrets(cfgs []v1beta1.FRRConfiguration) {
 	for _, cfg := range cfgs {
 		for _, r := range cfg.Spec.BGP.Routers {
 			for i := range r.Neighbors {
-				r.Neighbors[i].PasswordSecret = corev1.SecretReference{}
+				r.Neighbors[i].PasswordSecret = v1beta1.SecretReference{}
 			}
 		}
 	}

@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -116,7 +115,7 @@ type Neighbor struct {
 	// secret as the key "password".
 	// Password and PasswordSecret are mutually exclusive.
 	// +optional
-	PasswordSecret v1.SecretReference `json:"passwordSecret,omitempty"`
+	PasswordSecret SecretReference `json:"passwordSecret,omitempty"`
 
 	// HoldTime is the requested BGP hold time, per RFC4271.
 	// Defaults to 180s.
@@ -325,6 +324,20 @@ type FRRConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []FRRConfiguration `json:"items"`
+}
+
+//nolint
+//+structType=atomic
+
+// SecretReference represents a Secret Reference. It has enough information to retrieve secret
+// in any namespace.
+type SecretReference struct {
+	// name is unique within a namespace to reference a secret resource.
+	// +optional
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	// namespace defines the space within which the secret name must be unique.
+	// +optional
+	Namespace string `json:"namespace,omitempty" protobuf:"bytes,2,opt,name=namespace"`
 }
 
 func init() {
