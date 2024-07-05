@@ -1,19 +1,21 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package v1beta1
+package webhooks
 
 import (
 	"context"
 	"fmt"
+	"net/http"
 
 	"errors"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/metallb/frr-k8s/api/v1beta1"
+	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -26,44 +28,90 @@ var (
 	Validate      func(resources ...client.ObjectList) error
 )
 
-func (frrConfig *FRRConfiguration) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).
-		For(frrConfig).
-		Complete()
+const frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+
+type FRRConfigValidator struct {
+	ClusterResourceNamespace string
+
+	client  client.Client
+	decoder admission.Decoder
+}
+
+func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
+	v.client = mgr.GetClient()
+	v.decoder = admission.NewDecoder(mgr.GetScheme())
+
+	mgr.GetWebhookServer().Register(
+		frrConfigWebhookPath,
+		&webhook.Admission{Handler: v})
+	return nil
 }
 
 //+kubebuilder:webhook:verbs=create;update,path=/validate-frrk8s-metallb-io-v1beta1-frrconfiguration,mutating=false,failurePolicy=fail,groups=frrk8s.metallb.io,resources=frrconfigurations,versions=v1beta1,name=frrconfigurationsvalidationwebhook.metallb.io,sideEffects=None,admissionReviewVersions=v1
 
-var _ webhook.Validator = &FRRConfiguration{}
+func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) (resp admission.Response) {
+	var config v1beta1.FRRConfiguration
+	var oldConfig v1beta1.FRRConfiguration
+	if req.Operation == v1.Delete {
+		if err := v.decoder.DecodeRaw(req.OldObject, &config); err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
+		}
+	} else {
+		if err := v.decoder.Decode(req, &config); err != nil {
+			return admission.Errored(http.StatusBadRequest, err)
+		}
+		if req.OldObject.Size() > 0 {
+			if err := v.decoder.DecodeRaw(req.OldObject, &oldConfig); err != nil {
+				return admission.Errored(http.StatusBadRequest, err)
+			}
+		}
+	}
+
+	switch req.Operation {
+	case v1.Create:
+		err := validateConfigCreate(&config)
+		if err != nil {
+			return admission.Denied(err.Error())
+		}
+	case v1.Update:
+		err := validateConfigUpdate(&config)
+		if err != nil {
+			return admission.Denied(err.Error())
+		}
+	case v1.Delete:
+		err := validateConfigDelete(&config)
+		if err != nil {
+			return admission.Denied(err.Error())
+		}
+	}
+	return admission.Allowed("")
+}
 
 type nodeAndConfigs struct {
 	name   string
 	labels map[string]string
-	cfgs   *FRRConfigurationList
+	cfgs   *v1beta1.FRRConfigurationList
 }
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateCreate() (admission.Warnings, error) {
+func validateConfigCreate(frrConfig *v1beta1.FRRConfiguration) error {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
-	return nil, validateConfig(frrConfig)
+	return validateConfig(frrConfig)
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateUpdate(old runtime.Object) (admission.Warnings, error) {
+func validateConfigUpdate(frrConfig *v1beta1.FRRConfiguration) error {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
-	return nil, validateConfig(frrConfig)
+	return validateConfig(frrConfig)
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for FRRConfiguration.
-func (frrConfig *FRRConfiguration) ValidateDelete() (admission.Warnings, error) {
-	return nil, nil
+func validateConfigDelete(frrConfig *v1beta1.FRRConfiguration) error {
+	return nil
 }
 
-func validateConfig(frrConfig *FRRConfiguration) error {
+func validateConfig(frrConfig *v1beta1.FRRConfiguration) error {
 	selector, err := metav1.LabelSelectorAsSelector(&frrConfig.Spec.NodeSelector)
 	if err != nil {
 		return errors.Join(err, errors.New("resource contains an invalid NodeSelector"))
@@ -85,7 +133,7 @@ func validateConfig(frrConfig *FRRConfiguration) error {
 			matchingNodes = append(matchingNodes, nodeAndConfigs{
 				name:   n.Name,
 				labels: n.Labels,
-				cfgs:   &FRRConfigurationList{},
+				cfgs:   &v1beta1.FRRConfigurationList{},
 			})
 		}
 	}
@@ -123,8 +171,8 @@ func validateConfig(frrConfig *FRRConfiguration) error {
 	return nil
 }
 
-var getFRRConfigurations = func() (*FRRConfigurationList, error) {
-	frrConfigurationsList := &FRRConfigurationList{}
+var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
+	frrConfigurationsList := &v1beta1.FRRConfigurationList{}
 	err := WebhookClient.List(context.Background(), frrConfigurationsList)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("failed to get existing FRRConfiguration objects"))

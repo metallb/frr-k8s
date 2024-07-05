@@ -1,16 +1,17 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package v1beta1
+package webhooks
 
 import (
 	"errors"
 
+	"github.com/metallb/frr-k8s/api/v1beta1"
 	v1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type mockValidator struct {
-	configs    *FRRConfigurationList
+	configs    *v1beta1.FRRConfigurationList
 	nodes      *v1.NodeList
 	forceError bool
 }
@@ -18,7 +19,7 @@ type mockValidator struct {
 func (m *mockValidator) Validate(objects ...client.ObjectList) error {
 	for _, obj := range objects { // assuming one object per type
 		switch list := obj.(type) {
-		case *FRRConfigurationList:
+		case *v1beta1.FRRConfigurationList:
 			m.configs = list
 		case *v1.NodeList:
 			m.nodes = list
