@@ -307,6 +307,8 @@ type FRRConfigurationStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//nolint
+//+genclient
 
 // FRRConfiguration is a piece of FRR configuration.
 type FRRConfiguration struct {
