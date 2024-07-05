@@ -218,7 +218,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		frrs := config.ContainersForVRF(infra.FRRContainers, "")
 		peersConfig := config.PeersForContainers(frrs, ipfamily.IPv4)
 		for i := range peersConfig.PeersV4 {
-			peersConfig.PeersV4[i].Neigh.PasswordSecret = corev1.SecretReference{
+			peersConfig.PeersV4[i].Neigh.PasswordSecret = frrk8sv1beta1.SecretReference{
 				Name:      "nonexisting",
 				Namespace: k8s.FRRK8sNamespace,
 			}

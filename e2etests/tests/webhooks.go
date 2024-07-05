@@ -236,7 +236,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 									{
 										ASN:     100,
 										Address: "1.2.3.4",
-										PasswordSecret: corev1.SecretReference{
+										PasswordSecret: frrk8sv1beta1.SecretReference{
 											Name:      "nonexisting",
 											Namespace: k8s.FRRK8sNamespace,
 										},

@@ -257,7 +257,7 @@ _Appears in:_
 | `address` _string_ | Address is the IP address to establish the session with. |  |  |
 | `port` _integer_ | Port is the port to dial when establishing the session.<br />Defaults to 179. |  | Maximum: 16384 <br />Minimum: 0 <br /> |
 | `password` _string_ | Password to be used for establishing the BGP session.<br />Password and PasswordSecret are mutually exclusive. |  |  |
-| `passwordSecret` _[SecretReference](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#secretreference-v1-core)_ | PasswordSecret is name of the authentication secret for the neighbor.<br />the secret must be of type "kubernetes.io/basic-auth", and created in the<br />same namespace as the frr-k8s daemon. The password is stored in the<br />secret as the key "password".<br />Password and PasswordSecret are mutually exclusive. |  |  |
+| `passwordSecret` _[SecretReference](#secretreference)_ | PasswordSecret is name of the authentication secret for the neighbor.<br />the secret must be of type "kubernetes.io/basic-auth", and created in the<br />same namespace as the frr-k8s daemon. The password is stored in the<br />secret as the key "password".<br />Password and PasswordSecret are mutually exclusive. |  |  |
 | `holdTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | HoldTime is the requested BGP hold time, per RFC4271.<br />Defaults to 180s. |  |  |
 | `keepaliveTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | KeepaliveTime is the requested BGP keepalive time, per RFC4271.<br />Defaults to 60s. |  |  |
 | `connectTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | Requested BGP connect time, controls how long BGP waits between connection attempts to a neighbor. |  |  |
@@ -338,5 +338,23 @@ _Appears in:_
 | `vrf` _string_ | VRF is the host vrf used to establish sessions from this router. |  |  |
 | `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  |  |
 | `prefixes` _string array_ | Prefixes is the list of prefixes we want to advertise from this router instance. |  |  |
+
+
+#### SecretReference
+
+
+
+SecretReference represents a Secret Reference. It has enough information to retrieve secret
+in any namespace.
+
+
+
+_Appears in:_
+- [Neighbor](#neighbor)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `name` _string_ | name is unique within a namespace to reference a secret resource. |  |  |
+| `namespace` _string_ | namespace defines the space within which the secret name must be unique. |  |  |
 
 
