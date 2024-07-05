@@ -50,6 +50,7 @@ import (
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"
+	"github.com/metallb/frr-k8s/internal/webhooks"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	//+kubebuilder:scaffold:imports
 )
@@ -265,11 +266,11 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
-	frrk8sv1beta1.Logger = logger
-	frrk8sv1beta1.WebhookClient = mgr.GetAPIReader()
-	frrk8sv1beta1.Validate = controller.Validate
+	webhooks.Logger = logger
+	webhooks.WebhookClient = mgr.GetAPIReader()
+	webhooks.Validate = controller.Validate
 
-	if err := (&frrk8sv1beta1.FRRConfiguration{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
 		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
 		return err
 	}

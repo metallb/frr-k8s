@@ -1,12 +1,13 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package v1beta1
+package webhooks
 
 import (
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/google/go-cmp/cmp"
+	"github.com/metallb/frr-k8s/api/v1beta1"
 	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -15,7 +16,7 @@ const TestNamespace = "test-namespace"
 
 func TestValidateFRRConfiguration(t *testing.T) {
 	Logger = log.NewNopLogger()
-	existingConfig := FRRConfiguration{
+	existingConfig := v1beta1.FRRConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: TestNamespace,
@@ -23,9 +24,9 @@ func TestValidateFRRConfiguration(t *testing.T) {
 	}
 
 	toRestore := getFRRConfigurations
-	getFRRConfigurations = func() (*FRRConfigurationList, error) {
-		return &FRRConfigurationList{
-			Items: []FRRConfiguration{
+	getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
+		return &v1beta1.FRRConfigurationList{
+			Items: []v1beta1.FRRConfiguration{
 				existingConfig,
 			},
 		}, nil
@@ -51,22 +52,22 @@ func TestValidateFRRConfiguration(t *testing.T) {
 
 	tests := []struct {
 		desc         string
-		config       *FRRConfiguration
+		config       *v1beta1.FRRConfiguration
 		isNew        bool
 		failValidate bool
-		expected     *FRRConfigurationList
+		expected     *v1beta1.FRRConfigurationList
 	}{
 		{
 			desc: "Second config",
-			config: &FRRConfiguration{
+			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: true,
-			expected: &FRRConfigurationList{
-				Items: []FRRConfiguration{
+			expected: &v1beta1.FRRConfigurationList{
+				Items: []v1beta1.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -84,15 +85,15 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		},
 		{
 			desc: "Same, update",
-			config: &FRRConfiguration{
+			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: false,
-			expected: &FRRConfigurationList{
-				Items: []FRRConfiguration{
+			expected: &v1beta1.FRRConfigurationList{
+				Items: []v1beta1.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -104,15 +105,15 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		},
 		{
 			desc: "Same, new",
-			config: &FRRConfiguration{
+			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: true,
-			expected: &FRRConfigurationList{
-				Items: []FRRConfiguration{
+			expected: &v1beta1.FRRConfigurationList{
+				Items: []v1beta1.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -125,12 +126,12 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		},
 		{
 			desc: "Validation should fail if created with an invalid nodeSelector",
-			config: &FRRConfiguration{
+			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config1",
 					Namespace: TestNamespace,
 				},
-				Spec: FRRConfigurationSpec{
+				Spec: v1beta1.FRRConfigurationSpec{
 					NodeSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app": "@",
@@ -150,9 +151,9 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		mock.forceError = test.failValidate
 
 		if test.isNew {
-			_, err = test.config.ValidateCreate()
+			err = validateConfigCreate(test.config)
 		} else {
-			_, err = test.config.ValidateUpdate(nil)
+			err = validateConfigUpdate(test.config)
 		}
 		if test.failValidate && err == nil {
 			t.Fatalf("test %s failed, expecting error", test.desc)
