@@ -8,7 +8,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/go-kit/log v0.2.1
 	github.com/google/go-cmp v0.6.0
-	github.com/onsi/ginkgo/v2 v2.17.2
+	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/onsi/gomega v1.33.1
 	github.com/open-policy-agent/cert-controller v0.10.2-0.20240531181455-2649f121ab97
 	github.com/ory/dockertest/v3 v3.10.0
