@@ -63,7 +63,7 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersCo
 						"password": []byte(f.RouterConfig.Password),
 					},
 				}
-				peer.Neigh.PasswordSecret = corev1.SecretReference{
+				peer.Neigh.PasswordSecret = frrk8sv1beta1.SecretReference{
 					Name:      f.Name,
 					Namespace: k8s.FRRK8sNamespace,
 				}

@@ -31,7 +31,80 @@ func TestConversion(t *testing.T) {
 		expected    *frr.Config
 		err         error
 	}{
-
+		{
+			name: "Single Router and Neighbor with SrcAddr",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:           65002,
+											Port:          ptr.To[uint16](179),
+											SourceAddress: "192.1.1.1",
+											Address:       "192.0.2.2",
+											KeepaliveTime: &metav1.Duration{
+												Duration: 20 * time.Second,
+											},
+											HoldTime: &metav1.Duration{
+												Duration: 40 * time.Second,
+											},
+											ConnectTime: &metav1.Duration{
+												Duration: 2 * time.Second,
+											},
+											DisableMP: true,
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65001,
+						RouterID: "192.0.2.1",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:      ipfamily.IPv4,
+								Name:          "65002@192.0.2.2",
+								ASN:           65002,
+								Port:          ptr.To[uint16](179),
+								SrcAddr:       "192.1.1.1",
+								Addr:          "192.0.2.2",
+								KeepaliveTime: ptr.To[uint64](20),
+								HoldTime:      ptr.To[uint64](40),
+								ConnectTime:   ptr.To(uint64(2)),
+								DisableMP:     true,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{},
+									PrefixesV6: []frr.OutgoingFilter{},
+								},
+								Incoming: frr.AllowedIn{
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{},
+								},
+								AlwaysBlock: []frr.IncomingFilter{},
+							},
+						},
+						VRF:          "",
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						IPV6Prefixes: []string{},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			err: nil,
+		},
 		{
 			name: "Single Router and Neighbor",
 			fromK8s: []v1beta1.FRRConfiguration{
@@ -1659,7 +1732,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1683,7 +1756,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret2",
 												Namespace: "frr-k8s-system",
 											},
@@ -1814,7 +1887,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1853,7 +1926,7 @@ func TestConversion(t *testing.T) {
 											ASN:      65012,
 											Address:  "192.0.2.7",
 											Password: "cleartext-password",
-											PasswordSecret: v1.SecretReference{
+											PasswordSecret: v1beta1.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},

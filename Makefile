@@ -1,6 +1,6 @@
 
 ifeq (,$(FRRK8S_VERSION))
-IMG_TAG="dev"
+IMG_TAG="main"
 GOBIN=$(shell go env GOPATH)/bin
 else
 IMG_TAG=v${FRRK8S_VERSION}
@@ -56,6 +56,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+	hack/update-codegen.sh
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -67,7 +68,8 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test ./... -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" \
+	go test ./... -coverprofile cover.out
 
 ##@ Build
 
@@ -121,14 +123,14 @@ export KUBECONFIG=$(KUBECONFIG_PATH)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
-CONTROLLER_TOOLS_VERSION ?= v0.11.3
+CONTROLLER_TOOLS_VERSION ?= v0.14.0
 KUBECTL_VERSION ?= v1.27.0
 GINKGO_VERSION ?= v2.11.0
-KIND_VERSION ?= v0.19.0
+KIND_VERSION ?= v0.23.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
 HELM_DOCS_VERSION ?= v1.10.0
-APIDOCSGEN_VERSION ?= v0.0.10
+APIDOCSGEN_VERSION ?= v0.0.12
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
@@ -236,7 +238,7 @@ $(APIDOCSGEN): $(LOCALBIN)
 
 .PHONY: e2etests
 e2etests: ginkgo
-	$(GINKGO) -v $(GINKGO_ARGS) --timeout=3h ./e2etests -- $(TEST_ARGS)
+	$(GINKGO) -v $(GINKGO_ARGS) --timeout=3h ./e2etests -- --kubectl=$(KUBECTL) $(TEST_ARGS)
 
 
 .PHONY: kind-cluster

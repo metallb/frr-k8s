@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -89,6 +88,12 @@ type Neighbor struct {
 	// +kubebuilder:validation:Maximum=4294967295
 	ASN uint32 `json:"asn"`
 
+	// SourceAddress is the IPv4 or IPv6 source address to use for the BGP
+	// session to this neighbour, may be specified as either an IP address
+	// directly or as an interface name
+	// +optional
+	SourceAddress string `json:"sourceaddress,omitempty"`
+
 	// Address is the IP address to establish the session with.
 	Address string `json:"address"`
 
@@ -110,7 +115,7 @@ type Neighbor struct {
 	// secret as the key "password".
 	// Password and PasswordSecret are mutually exclusive.
 	// +optional
-	PasswordSecret v1.SecretReference `json:"passwordSecret,omitempty"`
+	PasswordSecret SecretReference `json:"passwordSecret,omitempty"`
 
 	// HoldTime is the requested BGP hold time, per RFC4271.
 	// Defaults to 180s.
@@ -302,6 +307,8 @@ type FRRConfigurationStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//nolint
+//+genclient
 
 // FRRConfiguration is a piece of FRR configuration.
 type FRRConfiguration struct {
@@ -319,6 +326,20 @@ type FRRConfigurationList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []FRRConfiguration `json:"items"`
+}
+
+//nolint
+//+structType=atomic
+
+// SecretReference represents a Secret Reference. It has enough information to retrieve secret
+// in any namespace.
+type SecretReference struct {
+	// name is unique within a namespace to reference a secret resource.
+	// +optional
+	Name string `json:"name,omitempty" protobuf:"bytes,1,opt,name=name"`
+	// namespace defines the space within which the secret name must be unique.
+	// +optional
+	Namespace string `json:"namespace,omitempty" protobuf:"bytes,2,opt,name=namespace"`
 }
 
 func init() {

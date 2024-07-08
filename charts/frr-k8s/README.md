@@ -29,7 +29,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.disableCertRotation | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
-| frrk8s.frr.image.tag | string | `"9.0.2"` |  |
+| frrk8s.frr.image.tag | string | `"9.1.0"` |  |
 | frrk8s.frr.metricsBindAddress | string | `"127.0.0.1"` |  |
 | frrk8s.frr.metricsPort | int | `7573` |  |
 | frrk8s.frr.resources | object | `{}` |  |

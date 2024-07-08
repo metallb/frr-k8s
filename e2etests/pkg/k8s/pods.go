@@ -5,7 +5,8 @@ package k8s
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"errors"
+
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -19,7 +20,7 @@ func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
 		LabelSelector: labelSelector,
 	})
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch frrk8s pods")
+		return nil, errors.Join(err, errors.New("failed to fetch frrk8s pods"))
 	}
 	if len(pods.Items) == 0 {
 		return nil, errors.New("No frrk8s pods found")

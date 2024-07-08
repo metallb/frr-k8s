@@ -34,3 +34,9 @@ var (
 	// AddToScheme adds the types in this group-version to the given scheme.
 	AddToScheme = SchemeBuilder.AddToScheme
 )
+
+var SchemeGroupVersion = schema.GroupVersion{Group: "frrk8s.metallb.io", Version: "v1beta1"}
+
+func Resource(resource string) schema.GroupResource {
+	return SchemeGroupVersion.WithResource(resource).GroupResource()
+}

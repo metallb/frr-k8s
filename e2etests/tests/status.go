@@ -124,7 +124,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 				{
 					ASN:     123,
 					Address: "192.168.5.1",
-					PasswordSecret: corev1.SecretReference{
+					PasswordSecret: frrk8sv1beta1.SecretReference{
 						Name:      "neighsecret",
 						Namespace: k8s.FRRK8sNamespace,
 					},
@@ -259,7 +259,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 									{
 										ASN:     1234,
 										Address: "192.168.1.1",
-										PasswordSecret: corev1.SecretReference{
+										PasswordSecret: frrk8sv1beta1.SecretReference{
 											Name:      "nonexisting",
 											Namespace: k8s.FRRK8sNamespace,
 										},
