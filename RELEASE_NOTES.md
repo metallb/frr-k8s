@@ -1,5 +1,17 @@
 # FRRK8s Release Notes
 
+## Release v0.0.12
+
+### New features
+
+- Expose the IPv4 or IPv6 source address to use for the BGP session through the k8s API (#137, @karampok)
+- Make the type safe code-generator generated types available. (#167, @fedepaol)
+
+### Bug fixes
+
+- Make the all-in-one manifests from the main branch work by setting the image tag as "main", which is the tag under the builds from main are published on quay. (#155, @fedepaol)
+
+
 ## Release v0.0.11
 
 ### New Features
