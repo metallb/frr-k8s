@@ -15,6 +15,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/infra"
 	"github.com/metallb/frrk8stests/pkg/k8s"
 	"github.com/metallb/frrk8stests/pkg/k8sclient"
+	"go.universe.tf/e2etest/pkg/frr"
 	metallbfrr "go.universe.tf/e2etest/pkg/frr"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	"go.universe.tf/e2etest/pkg/frr/container"
@@ -133,6 +134,33 @@ var _ = ginkgo.Describe("BFD", func() {
 			}
 			return nil
 		}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+
+		previousNeighbors := map[string]frr.NeighborsMap{}
+		for _, c := range infra.FRRContainers {
+			neighbors, err := frr.NeighborsInfo(c)
+			Expect(err).NotTo(HaveOccurred())
+			previousNeighbors[c.Name] = neighbors
+		}
+		ginkgo.By("adding prefixes to the router ")
+		defaultVRFConfig.Spec.BGP.Routers[0].Prefixes = []string{"192.168.2.0/24", "192.169.2.0/24"}
+		err = updater.Update(secrets, defaultVRFConfig)
+		Expect(err).NotTo(HaveOccurred())
+
+		Consistently(func() error {
+			for _, c := range infra.FRRContainers {
+				neighbors, err := frr.NeighborsInfo(c)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(neighbors).To(HaveLen(len(previousNeighbors[c.Name])))
+
+				for _, n := range neighbors {
+					previousDropped := previousNeighbors[c.Name][n.IP.String()].ConnectionsDropped
+					if n.ConnectionsDropped > previousDropped {
+						return fmt.Errorf("increased connections dropped from %s to %s, previous: %d current %d", c.Name, n.IP.String(), previousDropped, n.ConnectionsDropped)
+					}
+				}
+			}
+			return nil
+		}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
 
 	},
 		ginkgo.Entry("IPV4 - default", simpleProfile, simpleProfile, ipfamily.IPv4),
