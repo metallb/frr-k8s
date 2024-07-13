@@ -19,6 +19,7 @@
   neighbor {{.neighbor.Addr}} update-source {{.neighbor.SrcAddr}}
   {{- end }}
 {{- if ne .neighbor.BFDProfile ""}}
+  neighbor {{.neighbor.Addr}} bfd
   neighbor {{.neighbor.Addr}} bfd profile {{.neighbor.BFDProfile}}
 {{- end }}
 {{- if  mustDisableConnectedCheck .neighbor.IPFamily .routerASN .neighbor.ASN .neighbor.EBGPMultiHop }}
