@@ -2,6 +2,26 @@ apiVersion: v1
 entries:
   frr-k8s:
   - apiVersion: v2
+    appVersion: v0.0.13
+    created: "2024-07-15T14:41:34.133911158Z"
+    dependencies:
+    - condition: crds.enabled
+      name: crds
+      repository: ""
+      version: 0.0.13
+    description: A cloud native wrapper of FRR
+    digest: d1e97b7f137a1f77186c74fe9cfe511d7b587a0cf55fe64cf25258b6a6067639
+    home: https://metallb.universe.tf
+    icon: https://metallb.universe.tf/images/logo/metallb-white.png
+    kubeVersion: '>= 1.19.0-0'
+    name: frr-k8s
+    sources:
+    - https://github.com/metallb/frr-k8s
+    type: application
+    urls:
+    - https://github.com/metallb/frr-k8s/releases/download/frr-k8s-chart-0.0.13/frr-k8s-0.0.13.tgz
+    version: 0.0.13
+  - apiVersion: v2
     appVersion: v0.0.12
     created: "2024-07-08T09:42:23.541379719Z"
     dependencies:
@@ -181,4 +201,4 @@ entries:
     urls:
     - https://github.com/metallb/frr-k8s/releases/download/frr-k8s-chart-0.0.1/frr-k8s-0.0.1.tgz
     version: 0.0.1
-generated: "2024-07-08T09:42:23.541425975Z"
+generated: "2024-07-15T14:41:34.133962285Z"
