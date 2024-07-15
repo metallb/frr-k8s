@@ -38,6 +38,7 @@ router bgp 65000
   
   
   
+  neighbor 192.168.1.2 bfd
   neighbor 192.168.1.2 bfd profile test
 
   address-family ipv4 unicast

@@ -6,7 +6,7 @@ toolchain go1.22.4
 
 replace (
 	github.com/metallb/frr-k8s => ../
-	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240619133525-62822a4a17e3
+	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20240715121012-af3c10d65f18
 	go.universe.tf/metallb => github.com/metallb/metallb v0.14.5
 )
 

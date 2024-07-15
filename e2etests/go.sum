@@ -61,8 +61,8 @@ github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/metallb/metallb v0.14.5 h1:2KHXaqoHWh924YTb5aJ9VRahXtO+V2DxvVrH5WQgsHI=
 github.com/metallb/metallb v0.14.5/go.mod h1:ZraHgX0iQnmWMK9CBpgs/5zXV0SkGjiXpPOxHKNO/9s=
-github.com/metallb/metallb/e2etest v0.0.0-20240619133525-62822a4a17e3 h1:ElpUr4tN1JMEUGBgEksAqjwck3fL5vCnrHCXz+Xu1O8=
-github.com/metallb/metallb/e2etest v0.0.0-20240619133525-62822a4a17e3/go.mod h1:YPFnmTIVs9MKgeIF5rEKPgDClyE3RDO+9suFgO1KmPQ=
+github.com/metallb/metallb/e2etest v0.0.0-20240715121012-af3c10d65f18 h1:k9HM+6H0mgsPMaJgJszqvRinXE9e2C61saSP7SqlruM=
+github.com/metallb/metallb/e2etest v0.0.0-20240715121012-af3c10d65f18/go.mod h1:YPFnmTIVs9MKgeIF5rEKPgDClyE3RDO+9suFgO1KmPQ=
 github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd h1:TRLaZ9cD/w8PVh93nsPXa1VrQ6jlwL5oN8l14QlcNfg=
 github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd/go.mod h1:6dJC0mAP4ikYIbvyc7fijjWJddQyLn8Ig3JB5CqoB9Q=
