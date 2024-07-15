@@ -1,5 +1,16 @@
 # FRRK8s Release Notes
 
+## Release v0.0.13
+
+### Bug fixes
+
+- Fix session flapping when BFD is enabled and the configuration is changed. (#169, @fedepaol)
+
+### Other (Cleanup or Flake)
+
+- Make the generated frr file compatible with frr 8+: split bfd echo interval in echo tx / echo rx. (#168, @fedepaol)+ end
+- Export the client-go compatible generated types
+
 ## Release v0.0.12
 
 ### New features
