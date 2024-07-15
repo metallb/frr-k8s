@@ -103,22 +103,25 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					if len(neighbors) != 1 {
 						return fmt.Errorf("expected 1 neighbor, got %d", len(neighbors))
 					}
-					if neighbors[0].ConfiguredHoldTime != 100000 {
-						return fmt.Errorf("expected hold time to be 100000, got %d", neighbors[0].ConfiguredHoldTime)
-					}
-					if neighbors[0].ConfiguredKeepAliveTime != 20000 {
-						return fmt.Errorf("expected hold time to be 20000, got %d", neighbors[0].ConfiguredKeepAliveTime)
-					}
-					if neighbors[0].ConfiguredConnectTime != 3 {
-						return fmt.Errorf("expected connect time to be 3, got %d", neighbors[0].ConfiguredConnectTime)
-					}
-					neighborFamily := ipfamily.ForAddress(neighbors[0].IP)
-					for _, family := range neighbors[0].AddressFamilies {
-						if !strings.Contains(family, string(neighborFamily)) {
-							return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", neighbors[0].IP, neighborFamily, family)
+					for _, n := range neighbors {
+						if n.ConfiguredHoldTime != 100000 {
+							return fmt.Errorf("expected hold time to be 100000, got %d", n.ConfiguredHoldTime)
+						}
+						if n.ConfiguredKeepAliveTime != 20000 {
+							return fmt.Errorf("expected hold time to be 20000, got %d", n.ConfiguredKeepAliveTime)
+						}
+						if n.ConfiguredConnectTime != 3 {
+							return fmt.Errorf("expected connect time to be 3, got %d", n.ConfiguredConnectTime)
+						}
+						neighborFamily := ipfamily.ForAddress(n.IP)
+						for _, family := range n.AddressFamilies {
+							if !strings.Contains(family, string(neighborFamily)) {
+								return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", n.IP, neighborFamily, family)
+							}
 						}
 					}
 					return nil
+
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			}
 		})

@@ -83,6 +83,7 @@ router bgp 65000 vrf red
   
   
   
+  neighbor 192.168.1.3 bfd
   neighbor 192.168.1.3 bfd profile testdefault
 
   address-family ipv4 unicast
@@ -102,7 +103,8 @@ bfd
     transmit-interval 200
     detect-multiplier 3
     echo-mode
-    echo-interval 25
+    echo transmit-interval 25
+    echo receive-interval 25
     passive-mode
     minimum-ttl 20
     
