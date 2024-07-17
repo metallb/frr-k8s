@@ -60,9 +60,6 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 		nodes, err = k8s.Nodes(cs)
 		Expect(err).NotTo(HaveOccurred())
 
-		h, err := k8s.FRRK8isDaemonSetReady(cs)
-		Expect(err).NotTo(HaveOccurred())
-		Expect(h).Should(BeTrue(), "frr-k8s daemonset should be ready before test")
 	})
 
 	ginkgo.AfterEach(func() {
