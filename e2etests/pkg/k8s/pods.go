@@ -4,15 +4,23 @@ package k8s
 
 import (
 	"context"
+	"fmt"
+	"slices"
+	"time"
 
 	"errors"
 
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/wait"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-const labelSelector = "app=frr-k8s"
+const (
+	FRRK8sLabelSelector = "control-plane=frr-k8s"
+	labelSelector       = "app=frr-k8s"
+)
 
 // FRRK8sPods returns the set of pods related to FRR-K8s.
 func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
@@ -31,4 +39,74 @@ func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
 		res = append(res, &i)
 	}
 	return res, nil
+}
+
+func RestartFRRK8sPods(cs clientset.Interface) error {
+	pods, err := FRRK8sPods(cs)
+	if err != nil {
+		return err
+	}
+	oldNames := []string{}
+	for _, p := range pods {
+		oldNames = append(oldNames, p.Name)
+		err := cs.CoreV1().Pods(FRRK8sNamespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{})
+		if err != nil {
+			return err
+		}
+	}
+
+	return wait.PollUntilContextTimeout(context.Background(), time.Second,
+		120*time.Second, false, func(context.Context) (bool, error) {
+			npods, err := FRRK8sPods(cs)
+			if err != nil {
+				return false, err
+			}
+			if len(npods) != len(pods) {
+				return false, nil
+			}
+			for _, p := range npods {
+				if slices.Contains(oldNames, p.Name) {
+					return false, nil
+				}
+				if !podIsRunningAndReady(p) {
+					return false, nil
+				}
+			}
+			return true, nil
+		})
+}
+
+func podIsRunningAndReady(pod *v1.Pod) bool {
+	if pod.Status.Phase != v1.PodRunning {
+		return false
+	}
+
+	for _, containerStatus := range pod.Status.ContainerStatuses {
+		if !containerStatus.Ready {
+			return false
+		}
+	}
+
+	return true
+}
+
+func FRRK8isDaemonSetReady(clientset clientset.Interface) (bool, error) {
+
+	// common labels in helm, kustomize
+	l := "app.kubernetes.io/component=frr-k8s,app.kubernetes.io/name=frr-k8s"
+	dss, err := clientset.AppsV1().DaemonSets(FRRK8sNamespace).List(context.Background(), metav1.ListOptions{
+		LabelSelector: l,
+	})
+	if len(dss.Items) != 1 {
+		return false, fmt.Errorf("found more or less than single daemonset")
+	}
+
+	n := dss.Items[0].Name
+	ds, err := clientset.AppsV1().DaemonSets(FRRK8sNamespace).Get(context.Background(),
+		n, metav1.GetOptions{})
+	if err != nil {
+		return false, err
+	}
+
+	return ds.Status.DesiredNumberScheduled == ds.Status.NumberAvailable, nil
 }
