@@ -9,12 +9,15 @@ import (
 
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
+	"github.com/metallb/frrk8stests/pkg/k8s"
 	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
 	"github.com/onsi/gomega"
 	. "github.com/onsi/gomega"
 	"go.universe.tf/e2etest/pkg/executor"
+	"sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var (
@@ -65,6 +68,7 @@ func TestE2E(t *testing.T) {
 }
 
 var _ = ginkgo.BeforeSuite(func() {
+	log.SetLogger(zap.New(zap.WriteTo(ginkgo.GinkgoWriter), zap.UseDevMode(true)))
 	cs := k8sclient.New()
 	var err error
 	switch {
@@ -83,6 +87,10 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	tests.PrometheusNamespace = prometheusNamespace
+
+	h, err := k8s.FRRK8isDaemonSetReady(cs)
+	Expect(err).NotTo(HaveOccurred())
+	Expect(h).Should(BeTrue(), "frr-k8s daemonset should be ready before test")
 })
 
 var _ = ginkgo.AfterSuite(func() {

@@ -26,7 +26,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var _ = ginkgo.Describe("Advertisement", func() {
+var _ = ginkgo.Describe("Session", func() {
 	var cs clientset.Interface
 
 	defer ginkgo.GinkgoRecover()
@@ -180,6 +180,84 @@ var _ = ginkgo.Describe("Advertisement", func() {
 
 			for _, c := range frrs {
 				ValidateFRRPeeredWithNodes(nodes, c, family)
+			}
+
+		},
+			ginkgo.Entry("IPV4", ipfamily.IPv4),
+			ginkgo.Entry("IPV6", ipfamily.IPv6),
+		)
+
+		ginkgo.DescribeTable("Establishes sessions with graceful restart", func(family ipfamily.Family) {
+			frrs := config.ContainersForVRF(infra.FRRContainers, "")
+			neighbors := []frrk8sv1beta1.Neighbor{}
+
+			for _, f := range frrs {
+				addresses := f.AddressesForFamily(family)
+				ebgpMultihop := false
+				if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
+					ebgpMultihop = true
+				}
+
+				for _, address := range addresses {
+					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+						ASN:                   f.RouterConfig.ASN,
+						Address:               address,
+						Password:              f.RouterConfig.Password, // Password is hardcoded in external FRRs config
+						Port:                  &f.RouterConfig.BGPPort,
+						EBGPMultiHop:          ebgpMultihop,
+						EnableGracefulRestart: true,
+					})
+				}
+			}
+
+			config := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       infra.FRRK8sASN,
+								VRF:       "",
+								Neighbors: neighbors,
+							},
+						},
+					},
+				},
+			}
+
+			ginkgo.By("pairing with nodes")
+			for _, c := range frrs {
+				err := frrcontainer.PairWithNodes(cs, c, family)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := updater.Update([]corev1.Secret{}, config)
+			Expect(err).NotTo(HaveOccurred())
+
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, family)
+			}
+
+			ginkgo.By("getting all session are GR enabled")
+			pods, err := k8s.FRRK8sPods(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, pod := range pods {
+				podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
+				neighbors, err := frr.NeighborsInfo(podExec)
+				Expect(err).NotTo(HaveOccurred())
+				for _, n := range neighbors {
+					Expect(n.GRInfo.LocalGrMode).Should(Equal("Restart"))
+					Expect(n.GRInfo.RemoteGrMode).Should(Equal("Helper"))
+					Expect(n.GRInfo.NBit).To(BeTrue())
+					Expect(n.GRInfo.RBit).To(BeTrue())
+				}
 			}
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4),

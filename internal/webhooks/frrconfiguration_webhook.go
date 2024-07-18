@@ -67,24 +67,28 @@ func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) 
 		}
 	}
 
+	var warnings []string
 	switch req.Operation {
 	case v1.Create:
-		err := validateConfigCreate(&config)
+		w, err := validateConfigCreate(&config)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
+		warnings = w
 	case v1.Update:
-		err := validateConfigUpdate(&config)
+		w, err := validateConfigUpdate(&config)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
+		warnings = w
 	case v1.Delete:
-		err := validateConfigDelete(&config)
+		w, err := validateConfigDelete(&config)
 		if err != nil {
 			return admission.Denied(err.Error())
 		}
+		warnings = w
 	}
-	return admission.Allowed("")
+	return admission.Allowed("").WithWarnings(warnings...)
 }
 
 type nodeAndConfigs struct {
@@ -93,38 +97,40 @@ type nodeAndConfigs struct {
 	cfgs   *v1beta1.FRRConfigurationList
 }
 
-func validateConfigCreate(frrConfig *v1beta1.FRRConfiguration) error {
+func validateConfigCreate(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigUpdate(frrConfig *v1beta1.FRRConfiguration) error {
+func validateConfigUpdate(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigDelete(frrConfig *v1beta1.FRRConfiguration) error {
-	return nil
+func validateConfigDelete(_ *v1beta1.FRRConfiguration) ([]string, error) {
+	return []string{}, nil
 }
 
-func validateConfig(frrConfig *v1beta1.FRRConfiguration) error {
+func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
+	var warnings []string
+
 	selector, err := metav1.LabelSelectorAsSelector(&frrConfig.Spec.NodeSelector)
 	if err != nil {
-		return errors.Join(err, errors.New("resource contains an invalid NodeSelector"))
+		return warnings, errors.Join(err, errors.New("resource contains an invalid NodeSelector"))
 	}
 
 	existingNodes, err := getNodes()
 	if err != nil {
-		return err
+		return warnings, err
 	}
 
 	existingFRRConfigurations, err := getFRRConfigurations()
 	if err != nil {
-		return err
+		return warnings, err
 	}
 
 	matchingNodes := []nodeAndConfigs{}
@@ -151,6 +157,21 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) error {
 				// shouldn't happen for creates as it would be considered an update, and in any case
 				// we add the updated one at the end because for updates we don't want the old and updated resources
 				// to be considered together.
+				for _, rold := range cfg.Spec.BGP.Routers {
+					for _, rnew := range frrConfig.Spec.BGP.Routers {
+						if rold.VRF != rnew.VRF {
+							continue
+						}
+						for _, nold := range rold.Neighbors {
+							for _, nnew := range rnew.Neighbors {
+								if nold.ASN == nnew.ASN && nold.Address == nnew.Address && nold.EnableGracefulRestart != nnew.EnableGracefulRestart {
+									warnings = append(warnings, "Graceful restart configuration changed, it will be available on the next restart")
+									continue
+								}
+							}
+						}
+					}
+				}
 				continue
 			}
 
@@ -164,11 +185,11 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) error {
 	for _, n := range matchingNodes {
 		err := Validate(n.cfgs)
 		if err != nil {
-			return errors.Join(err, fmt.Errorf("resource is invalid for node %s", n.name))
+			return warnings, errors.Join(err, fmt.Errorf("resource is invalid for node %s", n.name))
 		}
 	}
 
-	return nil
+	return warnings, nil
 }
 
 var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {

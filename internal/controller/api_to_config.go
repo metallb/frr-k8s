@@ -137,17 +137,18 @@ func neighborToFRR(n v1beta1.Neighbor, ipv4Prefixes, ipv6Prefixes []string, alwa
 		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n.ASN, n.Address), n.BFDProfile)
 	}
 	res := &frr.NeighborConfig{
-		Name:         neighborName(n.ASN, n.Address),
-		ASN:          n.ASN,
-		SrcAddr:      n.SourceAddress,
-		Addr:         n.Address,
-		Port:         n.Port,
-		IPFamily:     neighborFamily,
-		EBGPMultiHop: n.EBGPMultiHop,
-		BFDProfile:   n.BFDProfile,
-		VRFName:      routerVRF,
-		AlwaysBlock:  alwaysBlock,
-		DisableMP:    n.DisableMP,
+		Name:            neighborName(n.ASN, n.Address),
+		ASN:             n.ASN,
+		SrcAddr:         n.SourceAddress,
+		Addr:            n.Address,
+		Port:            n.Port,
+		IPFamily:        neighborFamily,
+		EBGPMultiHop:    n.EBGPMultiHop,
+		BFDProfile:      n.BFDProfile,
+		GracefulRestart: n.EnableGracefulRestart,
+		VRFName:         routerVRF,
+		AlwaysBlock:     alwaysBlock,
+		DisableMP:       n.DisableMP,
 	}
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {

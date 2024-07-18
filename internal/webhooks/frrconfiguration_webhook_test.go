@@ -14,23 +14,16 @@ import (
 
 const TestNamespace = "test-namespace"
 
+var existingConfig = v1beta1.FRRConfiguration{
+	ObjectMeta: metav1.ObjectMeta{
+		Name:      "test-config",
+		Namespace: TestNamespace,
+	},
+}
+
 func TestValidateFRRConfiguration(t *testing.T) {
 	Logger = log.NewNopLogger()
-	existingConfig := v1beta1.FRRConfiguration{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      "test-config",
-			Namespace: TestNamespace,
-		},
-	}
-
 	toRestore := getFRRConfigurations
-	getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
-		return &v1beta1.FRRConfigurationList{
-			Items: []v1beta1.FRRConfiguration{
-				existingConfig,
-			},
-		}, nil
-	}
 	toRestoreNodes := getNodes
 	getNodes = func() ([]v1core.Node, error) {
 		return []v1core.Node{
@@ -52,13 +45,16 @@ func TestValidateFRRConfiguration(t *testing.T) {
 
 	tests := []struct {
 		desc         string
+		before       *v1beta1.FRRConfiguration
 		config       *v1beta1.FRRConfiguration
 		isNew        bool
 		failValidate bool
 		expected     *v1beta1.FRRConfigurationList
+		warnings     []string
 	}{
 		{
-			desc: "Second config",
+			desc:   "Second config",
+			before: &existingConfig,
 			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -84,7 +80,8 @@ func TestValidateFRRConfiguration(t *testing.T) {
 			},
 		},
 		{
-			desc: "Same, update",
+			desc:   "Same, update",
+			before: &existingConfig,
 			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
@@ -104,7 +101,8 @@ func TestValidateFRRConfiguration(t *testing.T) {
 			},
 		},
 		{
-			desc: "Same, new",
+			desc:   "Same, new",
+			before: &existingConfig,
 			config: &v1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
@@ -143,23 +141,109 @@ func TestValidateFRRConfiguration(t *testing.T) {
 			expected:     nil,
 			failValidate: true,
 		},
+		{
+			desc: "return warning when enableGracefulRestart changes",
+			before: &v1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: TestNamespace,
+				},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{
+							{
+								Neighbors: []v1beta1.Neighbor{
+									{
+										ASN:                   65002,
+										EnableGracefulRestart: false,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			config: &v1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: TestNamespace,
+				},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{
+							{
+								Neighbors: []v1beta1.Neighbor{
+									{
+										ASN:                   65002,
+										EnableGracefulRestart: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isNew: false,
+			expected: &v1beta1.FRRConfigurationList{
+				Items: []v1beta1.FRRConfiguration{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-config",
+							Namespace: TestNamespace,
+						},
+						Spec: v1beta1.FRRConfigurationSpec{
+							BGP: v1beta1.BGPConfig{
+								Routers: []v1beta1.Router{
+									{
+										Neighbors: []v1beta1.Neighbor{
+											{
+												ASN:                   65002,
+												EnableGracefulRestart: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			failValidate: false,
+			warnings:     []string{"Graceful restart configuration changed, it will be available on the next restart"},
+		},
 	}
 	for _, test := range tests {
-		var err error
-		mock := &mockValidator{}
-		Validate = mock.Validate
-		mock.forceError = test.failValidate
+		t.Run(test.desc, func(t *testing.T) {
+			var err error
+			getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
+				return &v1beta1.FRRConfigurationList{
+					Items: []v1beta1.FRRConfiguration{
+						*test.before,
+					},
+				}, nil
+			}
+			mock := &mockValidator{}
+			Validate = mock.Validate
+			mock.forceError = test.failValidate
 
-		if test.isNew {
-			err = validateConfigCreate(test.config)
-		} else {
-			err = validateConfigUpdate(test.config)
-		}
-		if test.failValidate && err == nil {
-			t.Fatalf("test %s failed, expecting error", test.desc)
-		}
-		if !cmp.Equal(test.expected, mock.configs) {
-			t.Fatalf("test %s failed, %s", test.desc, cmp.Diff(test.expected, mock.configs))
-		}
+			var warnings []string
+
+			if test.isNew {
+				warnings, err = validateConfigCreate(test.config)
+			} else {
+				warnings, err = validateConfigUpdate(test.config)
+			}
+			if test.failValidate && err == nil {
+				t.Fatalf("test %s failed, expecting error", test.desc)
+			}
+
+			if !cmp.Equal(test.warnings, warnings) {
+				t.Fatalf("admission warning message don't match: expected '%#v', got '%#v'", test.warnings, warnings)
+			}
+
+			if !cmp.Equal(test.expected, mock.configs) {
+				t.Fatalf("test %s failed, %s", test.desc, cmp.Diff(test.expected, mock.configs))
+			}
+		})
 	}
 }
