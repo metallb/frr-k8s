@@ -81,7 +81,7 @@ jobs:
             org.opencontainers.image.description=frr-k8s, a cloud native wrapper of some frr features
 
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         id: build-and-push
         with:
           context: .
