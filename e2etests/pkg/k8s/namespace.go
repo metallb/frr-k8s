@@ -2,4 +2,7 @@
 
 package k8s
 
-var FRRK8sNamespace = "frr-k8s-system"
+var (
+	FRRK8sNamespace = "frr-k8s-system"
+	FRRK8sDaemonset = "frr-k8s-daemon"
+)

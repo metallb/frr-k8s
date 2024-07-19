@@ -29,6 +29,7 @@ func mergeRouterConfigs(r, toMerge *frr.RouterConfig) (*frr.RouterConfig, error)
 
 	v4Prefixes := sets.New(append(r.IPV4Prefixes, toMerge.IPV4Prefixes...)...)
 	v6Prefixes := sets.New(append(r.IPV6Prefixes, toMerge.IPV6Prefixes...)...)
+	importVRFs := sets.New(append(r.ImportVRFs, toMerge.ImportVRFs...)...)
 
 	mergedNeighbors, err := mergeNeighbors(r.Neighbors, toMerge.Neighbors)
 	if err != nil {
@@ -37,6 +38,7 @@ func mergeRouterConfigs(r, toMerge *frr.RouterConfig) (*frr.RouterConfig, error)
 
 	r.IPV4Prefixes = sets.List(v4Prefixes)
 	r.IPV6Prefixes = sets.List(v6Prefixes)
+	r.ImportVRFs = sets.List(importVRFs)
 	r.Neighbors = mergedNeighbors
 
 	return r, nil

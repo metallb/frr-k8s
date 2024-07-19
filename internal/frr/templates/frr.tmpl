@@ -30,9 +30,22 @@ router bgp {{$r.MyASN}}{{ if $r.VRF }} vrf {{$r.VRF}}{{end}}
   no bgp ebgp-requires-policy
   no bgp network import-check
   no bgp default ipv4-unicast
+  bgp graceful-restart preserve-fw-state
 {{ if $r.RouterID }}
   bgp router-id {{$r.RouterID}}
 {{- end }}
+{{- if gt (len .ImportVRFs) 0}}
+  address-family ipv4 unicast
+{{- range .ImportVRFs }}
+    import vrf {{.}}
+{{- end}}
+  exit-address-family
+  address-family ipv6 unicast
+{{- range .ImportVRFs }}
+    import vrf {{.}}
+{{- end}}
+  exit-address-family
+{{- end}}
 
 {{- range .Neighbors }}
 {{- template "neighborsession" dict "neighbor" . "routerASN" $r.MyASN -}}

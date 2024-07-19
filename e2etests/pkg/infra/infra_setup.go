@@ -124,7 +124,6 @@ func HostContainerSetup(image string) ([]*frrcontainer.FRR, error) {
 	containers (we're using kind) and the ibgp/ebgp containers connected to multi-hop-net,
 	using the 2nd container as a gateway.
 
-	See `e2etest/README.md` for more details.
 */
 
 func KindnetContainersSetup(cs *clientset.Clientset, image string) ([]*frrcontainer.FRR, error) {

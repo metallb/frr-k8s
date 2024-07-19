@@ -1,5 +1,13 @@
 # FRRK8s Release Notes
 
+## Release v0.0.14
+
+### New Features
+
+- Add graceful restart support (#162, @karampok)
+- Allow FRR-K8s to accept incoming BGP connection so it can be used to establish sessions among the nodes (to announce pod IPs for example). (#171, @fedepaol)
+- Implement the import vrf feature as described in [https://docs.frrouting.org/en/latest/bgp.html#clicmd-import-vrf-VRFNAME](https://docs.frrouting.org/en/latest/bgp.html#clicmd-import-vrf-VRFNAME). By implementing import VRF, we allow routes defined in the RIB of a router related to a given VRF to be imported from another router tied to another VRF. (#160, @fedepaol)
+
 ## Release v0.0.13
 
 ### Bug fixes

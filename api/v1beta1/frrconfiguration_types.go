@@ -79,6 +79,17 @@ type Router struct {
 	// Prefixes is the list of prefixes we want to advertise from this router instance.
 	// +optional
 	Prefixes []string `json:"prefixes,omitempty"`
+
+	// Imports is the list of imported VRFs we want for this router / vrf.
+	// +optional
+	Imports []Import `json:"imports,omitempty"`
+}
+
+// Import represents the possible imported VRFs to a given router.
+type Import struct {
+	// Vrf is the vrf we want to import from
+	// +optional
+	VRF string `json:"vrf,omitempty"`
 }
 
 // Neighbor represents a BGP Neighbor we want FRR to connect to.
@@ -141,6 +152,13 @@ type Neighbor struct {
 	// to the BGP session. If not set, the BFD session won't be set up.
 	// +optional
 	BFDProfile string `json:"bfdProfile,omitempty"`
+
+	// EnableGracefulRestart allows BGP peer to continue to forward data packets along
+	// known routes while the routing protocol information is being restored. If
+	// the session is already established, the configuration will have effect
+	// after reconnecting to the peer
+	// +optional
+	EnableGracefulRestart bool `json:"enableGracefulRestart,omitempty"`
 
 	// ToAdvertise represents the list of prefixes to advertise to the given neighbor
 	// and the associated properties.

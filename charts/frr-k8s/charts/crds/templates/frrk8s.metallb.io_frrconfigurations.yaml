@@ -132,6 +132,18 @@ spec:
                         id:
                           description: ID is the BGP router ID
                           type: string
+                        imports:
+                          description: Imports is the list of imported VRFs we want
+                            for this router / vrf.
+                          items:
+                            description: Import represents the possible imported VRFs
+                              to a given router.
+                            properties:
+                              vrf:
+                                description: Vrf is the vrf we want to import from
+                                type: string
+                            type: object
+                          type: array
                         neighbors:
                           description: Neighbors is the list of neighbors we want
                             to establish BGP sessions with.
@@ -178,6 +190,13 @@ spec:
                               ebgpMultiHop:
                                 description: EBGPMultiHop indicates if the BGPPeer
                                   is multi-hops away.
+                                type: boolean
+                              enableGracefulRestart:
+                                description: |-
+                                  EnableGracefulRestart allows BGP peer to continue to forward data packets along
+                                  known routes while the routing protocol information is being restored. If
+                                  the session is already established, the configuration will have effect
+                                  after reconnecting to the peer
                                 type: boolean
                               holdTime:
                                 description: |-

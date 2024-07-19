@@ -25,8 +25,11 @@ type PeersConfig struct {
 	Secrets []corev1.Secret
 }
 
-// PeersForContainers returns two lists of Peers, one for v4 addresses and one for v6 addresses.
-func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersConfig {
+func (pc PeersConfig) Peers() []Peer {
+	return append(pc.PeersV4, pc.PeersV6...)
+}
+
+func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, options ...func(*PeersConfig)) PeersConfig {
 	res := PeersConfig{
 		PeersV4: make([]Peer, 0),
 		PeersV6: make([]Peer, 0),
@@ -34,12 +37,13 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersCo
 	}
 
 	for _, f := range frrs {
-		addresses := f.AddressesForFamily(ipFam)
+
 		ebgpMultihop := false
 		if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
 			ebgpMultihop = true
 		}
 
+		addresses := f.AddressesForFamily(ipFam)
 		for _, address := range addresses {
 			peer := Peer{
 				IP: address,
@@ -77,7 +81,37 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family) PeersCo
 			res.PeersV6 = append(res.PeersV6, peer)
 		}
 	}
+
+	for _, option := range options {
+		option(&res)
+	}
 	return res
+}
+
+func EnableGracefulRestart(pc *PeersConfig) {
+	// for _,p := range pc.PeersV4 { // not working, go uses a copy of the value instead of the value itself within a range clause
+	//    p.Neigh.EnableGracefulRestart = true
+	// }
+
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.EnableGracefulRestart = true
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.EnableGracefulRestart = true
+	}
+}
+
+func EnableAllowAll(pc *PeersConfig) {
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+	}
 }
 
 func NeighborsFromPeers(peers []Peer, peers1 []Peer) []frrk8sv1beta1.Neighbor {

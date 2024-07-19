@@ -825,3 +825,82 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 
 	testCheckConfigFile(t)
 }
+
+func TestSingleSessionWithGracefulRestart(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             65001,
+						Addr:            "192.168.1.2",
+						GracefulRestart: true,
+					},
+				},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestMultipleRoutersImportVRFs(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.IPv4,
+						ASN:          65001,
+						Addr:         "192.168.1.2",
+						EBGPMultiHop: true,
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+				ImportVRFs:   []string{"red"},
+			},
+			{
+				MyASN:        65000,
+				VRF:          "red",
+				IPV4Prefixes: []string{"192.171.1.0/24"},
+			},
+			{
+				MyASN:        65000,
+				VRF:          "blue",
+				IPV4Prefixes: []string{"192.171.1.0/24"},
+				IPV6Prefixes: []string{"2001:db9:abcd::/48"},
+				ImportVRFs:   []string{"default"},
+			},
+		},
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
