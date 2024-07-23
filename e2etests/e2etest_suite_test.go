@@ -9,7 +9,6 @@ import (
 
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
-	"github.com/metallb/frrk8stests/pkg/k8s"
 	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
@@ -87,10 +86,6 @@ var _ = ginkgo.BeforeSuite(func() {
 	}
 
 	tests.PrometheusNamespace = prometheusNamespace
-
-	h, err := k8s.FRRK8isDaemonSetReady(cs)
-	Expect(err).NotTo(HaveOccurred())
-	Expect(h).Should(BeTrue(), "frr-k8s daemonset should be ready before test")
 })
 
 var _ = ginkgo.AfterSuite(func() {

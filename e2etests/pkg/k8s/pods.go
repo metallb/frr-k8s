@@ -4,7 +4,6 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
@@ -88,25 +87,4 @@ func podIsRunningAndReady(pod *v1.Pod) bool {
 	}
 
 	return true
-}
-
-func FRRK8isDaemonSetReady(clientset clientset.Interface) (bool, error) {
-
-	// common labels in helm, kustomize
-	l := "app.kubernetes.io/component=frr-k8s,app.kubernetes.io/name=frr-k8s"
-	dss, err := clientset.AppsV1().DaemonSets(FRRK8sNamespace).List(context.Background(), metav1.ListOptions{
-		LabelSelector: l,
-	})
-	if len(dss.Items) != 1 {
-		return false, fmt.Errorf("found more or less than single daemonset")
-	}
-
-	n := dss.Items[0].Name
-	ds, err := clientset.AppsV1().DaemonSets(FRRK8sNamespace).Get(context.Background(),
-		n, metav1.GetOptions{})
-	if err != nil {
-		return false, err
-	}
-
-	return ds.Status.DesiredNumberScheduled == ds.Status.NumberAvailable, nil
 }
