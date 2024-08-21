@@ -5,7 +5,7 @@
 package scheme
 
 import (
-	corev1beta1 "github.com/metallb/frr-k8s/core/v1beta1"
+	apiv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
@@ -17,7 +17,7 @@ var Scheme = runtime.NewScheme()
 var Codecs = serializer.NewCodecFactory(Scheme)
 var ParameterCodec = runtime.NewParameterCodec(Scheme)
 var localSchemeBuilder = runtime.SchemeBuilder{
-	corev1beta1.AddToScheme,
+	apiv1beta1.AddToScheme,
 }
 
 // AddToScheme adds all types of this clientset into the given scheme. This allows composition

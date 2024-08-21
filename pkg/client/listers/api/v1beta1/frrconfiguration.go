@@ -6,8 +6,8 @@ package v1beta1
 
 import (
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/client-go/listers"
 	"k8s.io/client-go/tools/cache"
 )
 
@@ -24,25 +24,17 @@ type FRRConfigurationLister interface {
 
 // fRRConfigurationLister implements the FRRConfigurationLister interface.
 type fRRConfigurationLister struct {
-	indexer cache.Indexer
+	listers.ResourceIndexer[*v1beta1.FRRConfiguration]
 }
 
 // NewFRRConfigurationLister returns a new FRRConfigurationLister.
 func NewFRRConfigurationLister(indexer cache.Indexer) FRRConfigurationLister {
-	return &fRRConfigurationLister{indexer: indexer}
-}
-
-// List lists all FRRConfigurations in the indexer.
-func (s *fRRConfigurationLister) List(selector labels.Selector) (ret []*v1beta1.FRRConfiguration, err error) {
-	err = cache.ListAll(s.indexer, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.FRRConfiguration))
-	})
-	return ret, err
+	return &fRRConfigurationLister{listers.New[*v1beta1.FRRConfiguration](indexer, v1beta1.Resource("frrconfiguration"))}
 }
 
 // FRRConfigurations returns an object that can list and get FRRConfigurations.
 func (s *fRRConfigurationLister) FRRConfigurations(namespace string) FRRConfigurationNamespaceLister {
-	return fRRConfigurationNamespaceLister{indexer: s.indexer, namespace: namespace}
+	return fRRConfigurationNamespaceLister{listers.NewNamespaced[*v1beta1.FRRConfiguration](s.ResourceIndexer, namespace)}
 }
 
 // FRRConfigurationNamespaceLister helps list and get FRRConfigurations.
@@ -60,26 +52,5 @@ type FRRConfigurationNamespaceLister interface {
 // fRRConfigurationNamespaceLister implements the FRRConfigurationNamespaceLister
 // interface.
 type fRRConfigurationNamespaceLister struct {
-	indexer   cache.Indexer
-	namespace string
-}
-
-// List lists all FRRConfigurations in the indexer for a given namespace.
-func (s fRRConfigurationNamespaceLister) List(selector labels.Selector) (ret []*v1beta1.FRRConfiguration, err error) {
-	err = cache.ListAllByNamespace(s.indexer, s.namespace, selector, func(m interface{}) {
-		ret = append(ret, m.(*v1beta1.FRRConfiguration))
-	})
-	return ret, err
-}
-
-// Get retrieves the FRRConfiguration from the indexer for a given namespace and name.
-func (s fRRConfigurationNamespaceLister) Get(name string) (*v1beta1.FRRConfiguration, error) {
-	obj, exists, err := s.indexer.GetByKey(s.namespace + "/" + name)
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		return nil, errors.NewNotFound(v1beta1.Resource("frrconfiguration"), name)
-	}
-	return obj.(*v1beta1.FRRConfiguration), nil
+	listers.ResourceIndexer[*v1beta1.FRRConfiguration]
 }
