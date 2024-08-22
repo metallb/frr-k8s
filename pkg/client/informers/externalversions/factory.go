@@ -10,7 +10,7 @@ import (
 	time "time"
 
 	versioned "github.com/metallb/frr-k8s/pkg/client/clientset/versioned"
-	core "github.com/metallb/frr-k8s/pkg/client/informers/externalversions/core"
+	api "github.com/metallb/frr-k8s/pkg/client/informers/externalversions/api"
 	internalinterfaces "github.com/metallb/frr-k8s/pkg/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -214,6 +214,7 @@ type SharedInformerFactory interface {
 
 	// Start initializes all requested informers. They are handled in goroutines
 	// which run until the stop channel gets closed.
+	// Warning: Start does not block. When run in a go-routine, it will race with a later WaitForCacheSync.
 	Start(stopCh <-chan struct{})
 
 	// Shutdown marks a factory as shutting down. At that point no new
@@ -239,9 +240,9 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
-	Core() core.Interface
+	Api() api.Interface
 }
 
-func (f *sharedInformerFactory) Core() core.Interface {
-	return core.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Api() api.Interface {
+	return api.New(f, f.namespace, f.tweakListOptions)
 }

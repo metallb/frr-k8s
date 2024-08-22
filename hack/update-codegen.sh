@@ -77,13 +77,8 @@ readonly COMMON_FLAGS="${VERIFY_FLAG:-} --go-header-file ${SCRIPT_ROOT}/hack/boi
 new_report="$(mktemp -t "$(basename "$0").api_violations.XXXXXX")"
 
 
-# TEMPORARY FIX (sure!) until https://github.com/kubernetes/kubernetes/pull/125162
-# lands on a tagged release. See also https://github.com/kubernetes/code-generator/issues/167
-rm core || true
-ln -s api core
-
 echo "Generating clientset at ${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}"
-go run k8s.io/code-generator/cmd/client-gen@v0.30.2 \
+go run k8s.io/code-generator/cmd/client-gen@v0.31.0 \
   --clientset-name "${CLIENTSET_NAME}" \
   --input-base "${APIS_PKG}" \
   --input "${INPUT_DIRS_COMMA//${APIS_PKG}/}" \
@@ -92,14 +87,14 @@ go run k8s.io/code-generator/cmd/client-gen@v0.30.2 \
   ${COMMON_FLAGS}
 
 echo "Generating listers at ${OUTPUT_PKG}/listers"
-go run k8s.io/code-generator/cmd/lister-gen@v0.30.2 \
+go run k8s.io/code-generator/cmd/lister-gen@v0.31.0 \
   --output-dir "pkg/client/listers" \
   --output-pkg "${OUTPUT_PKG}/listers" \
   ${COMMON_FLAGS} \
   ${INPUT_DIRS_SPACE}
 
 echo "Generating informers at ${OUTPUT_PKG}/informers"
-go run k8s.io/code-generator/cmd/informer-gen@v0.30.2 \
+go run k8s.io/code-generator/cmd/informer-gen@v0.31.0 \
   --versioned-clientset-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}/${CLIENTSET_NAME}" \
   --listers-package "${OUTPUT_PKG}/listers" \
   --output-dir "pkg/client/informers" \
