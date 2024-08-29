@@ -88,6 +88,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 							ASN: 100,
 							Neighbors: []frrk8sv1beta1.Neighbor{
 								{
+									ASN:     100,
 									Address: "192.a.b.10",
 								},
 							},
@@ -102,6 +103,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 						{
 							Neighbors: []frrk8sv1beta1.Neighbor{
 								{
+									ASN:     100,
 									Address: "1.2.3.4",
 									ToAdvertise: frrk8sv1beta1.Advertise{
 										PrefixesWithLocalPref: []frrk8sv1beta1.LocalPrefPrefixes{
@@ -117,6 +119,36 @@ var _ = ginkgo.Describe("Webhooks", func() {
 					}
 				},
 				"localPref associated to non existing prefix",
+			),
+			ginkgo.Entry("both asn and dynamicASN not specified",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									Address: "1.2.3.4",
+								},
+							},
+						},
+					}
+				},
+				"has no ASN or DynamicASN specified",
+			),
+			ginkgo.Entry("both asn and dynamicASN specified",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:        100,
+									DynamicASN: frrk8sv1beta1.ExternalASNMode,
+									Address:    "1.2.3.4",
+								},
+							},
+						},
+					}
+				},
+				"has both ASN and DynamicASN specified",
 			),
 		)
 

@@ -263,5 +263,70 @@ var _ = ginkgo.Describe("Session", func() {
 			ginkgo.Entry("IPV4", ipfamily.IPv4),
 			ginkgo.Entry("IPV6", ipfamily.IPv6),
 		)
+
+		ginkgo.DescribeTable("Establishes sessions with dynamicASN", func(family ipfamily.Family) {
+			frrs := config.ContainersForVRF(infra.FRRContainers, "")
+			neighbors := []frrk8sv1beta1.Neighbor{}
+
+			for _, f := range frrs {
+				addresses := f.AddressesForFamily(family)
+				ebgpMultihop := false
+				if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
+					ebgpMultihop = true
+				}
+
+				dynamicASN := frrk8sv1beta1.InternalASNMode
+				if f.RouterConfig.ASN != infra.FRRK8sASN {
+					dynamicASN = frrk8sv1beta1.ExternalASNMode
+				}
+
+				for _, address := range addresses {
+					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+						DynamicASN:   dynamicASN,
+						Address:      address,
+						Password:     f.RouterConfig.Password,
+						Port:         &f.RouterConfig.BGPPort,
+						EBGPMultiHop: ebgpMultihop,
+					})
+				}
+			}
+
+			config := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       infra.FRRK8sASN,
+								VRF:       "",
+								Neighbors: neighbors,
+							},
+						},
+					},
+				},
+			}
+
+			ginkgo.By("pairing with nodes")
+			for _, c := range frrs {
+				err := frrcontainer.PairWithNodes(cs, c, family)
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := updater.Update([]corev1.Secret{}, config)
+			Expect(err).NotTo(HaveOccurred())
+
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, c := range frrs {
+				ValidateFRRPeeredWithNodes(nodes, c, family)
+			}
+		},
+			ginkgo.Entry("IPV4", ipfamily.IPv4),
+			ginkgo.Entry("IPV6", ipfamily.IPv6),
+		)
 	})
 })
