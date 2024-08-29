@@ -8,6 +8,7 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"strconv"
 	"time"
 
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
@@ -132,7 +133,7 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	for _, n := range r.Neighbors {
 		frrNeigh, err := neighborToFRR(n, routerPrefixes, alwaysBlock, r.VRF, secrets, bfdProfiles)
 		if err != nil {
-			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
+			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n), r.ASN, r.VRF, err)
 		}
 		res.Neighbors = append(res.Neighbors, frrNeigh)
 	}
@@ -149,11 +150,24 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
 	}
 	if _, ok := bfdProfiles[n.BFDProfile]; n.BFDProfile != "" && !ok {
-		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n.ASN, n.Address), n.BFDProfile)
+		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n), n.BFDProfile)
 	}
+
+	if n.ASN == 0 && n.DynamicASN == "" {
+		return nil, fmt.Errorf("neighbor %s has no ASN or DynamicASN specified", neighborName(n))
+	}
+
+	if n.ASN != 0 && n.DynamicASN != "" {
+		return nil, fmt.Errorf("neighbor %s has both ASN and DynamicASN specified", neighborName(n))
+	}
+
+	if n.DynamicASN != "" && n.DynamicASN != v1beta1.InternalASNMode && n.DynamicASN != v1beta1.ExternalASNMode {
+		return nil, fmt.Errorf("neighbor %s has invalid DynamicASN %s specified, must be one of %s,%s", neighborName(n), n.DynamicASN, v1beta1.InternalASNMode, v1beta1.ExternalASNMode)
+	}
+
 	res := &frr.NeighborConfig{
-		Name:            neighborName(n.ASN, n.Address),
-		ASN:             n.ASN,
+		Name:            neighborName(n),
+		ASN:             asnFor(n),
 		SrcAddr:         n.SourceAddress,
 		Addr:            n.Address,
 		Port:            n.Port,
@@ -167,7 +181,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	}
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {
-		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n.ASN, n.Address), err)
+		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n), err)
 	}
 
 	if n.ConnectTime != nil {
@@ -191,7 +205,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 
 func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
 	if n.Password != "" && n.PasswordSecret.Name != "" {
-		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n.ASN, n.Address))
+		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n))
 	}
 
 	if n.Password != "" {
@@ -204,7 +218,7 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 
 	secret, ok := passwordSecrets[n.PasswordSecret.Name]
 	if !ok {
-		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n.ASN, n.Address))}
+		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n))}
 	}
 	if secret.Type != corev1.SecretTypeBasicAuth {
 		return "", fmt.Errorf("secret type mismatch on %q/%q, type %q is expected ", secret.Namespace,
@@ -412,15 +426,24 @@ func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Ro
 		}
 		for _, p := range n.ToAdvertise.Allowed.Prefixes {
 			if !prefixesSet.Has(p) {
-				return fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s, vrf %s", p, neighborName(n.ASN, n.Address), routerConfig.VRF)
+				return fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s, vrf %s", p, neighborName(n), routerConfig.VRF)
 			}
 		}
 	}
 	return nil
 }
 
-func neighborName(ASN uint32, peerAddr string) string {
-	return fmt.Sprintf("%d@%s", ASN, peerAddr)
+func asnFor(n v1beta1.Neighbor) string {
+	asn := strconv.FormatUint(uint64(n.ASN), 10)
+	if n.DynamicASN != "" {
+		asn = string(n.DynamicASN)
+	}
+
+	return asn
+}
+
+func neighborName(n v1beta1.Neighbor) string {
+	return fmt.Sprintf("%s@%s", asnFor(n), n.Address)
 }
 
 type communityPrefixes struct {
