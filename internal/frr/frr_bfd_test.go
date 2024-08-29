@@ -25,7 +25,7 @@ func TestSingleSessionBFD(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:   ipfamily.IPv4,
-						ASN:        65001,
+						ASN:        "65001",
 						Addr:       "192.168.1.2",
 						BFDProfile: "test",
 					},
@@ -68,7 +68,7 @@ func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 					},
 				},
@@ -79,7 +79,7 @@ func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:   ipfamily.IPv4,
-						ASN:        65001,
+						ASN:        "65001",
 						Addr:       "192.168.1.3",
 						BFDProfile: "testdefault",
 					},
