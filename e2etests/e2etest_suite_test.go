@@ -9,6 +9,7 @@ import (
 
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
+	"github.com/metallb/frrk8stests/pkg/k8s"
 	"github.com/metallb/frrk8stests/pkg/k8sclient"
 	"github.com/metallb/frrk8stests/tests"
 	"github.com/onsi/ginkgo/v2"
@@ -38,6 +39,7 @@ func handleFlags() {
 	flag.StringVar(&externalContainers, "external-containers", "", "a comma separated list of external containers names to use for the test. (valid parameters are: ibgp-single-hop / ibgp-multi-hop / ebgp-single-hop / ebgp-multi-hop)")
 	flag.StringVar(&executor.Kubectl, "kubectl", "kubectl", "the path for the kubectl binary")
 	flag.StringVar(&frrImage, "frr-image", "quay.io/frrouting/frr:9.1.0", "the image to use for the external frr containers")
+	flag.StringVar(&k8s.FRRK8sNamespace, "frr-k8s-namespace", "frr-k8s-system", "the namespace frr-k8s is running in")
 
 	flag.Parse()
 
