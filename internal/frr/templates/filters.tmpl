@@ -49,11 +49,6 @@ route-map {{.neighbor.ID}}-out permit {{counter .neighbor.ID}}
 {{frrIPFamily $a.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$a.Prefix}}
 {{- end }}
 
-route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
-  match ip address prefix-list {{allowedPrefixList $.neighbor}}
-route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
-  match ipv6 address prefix-list {{allowedPrefixList $.neighbor}}
-
 {{/* If the neighbor does not have an advertisement, we need to add a prefix to deny
 for when we have a prefix but a given peer is not selected for any prefixes */}}
 {{$plistName:=allowedPrefixList $.neighbor}}
@@ -63,6 +58,11 @@ ip prefix-list {{$plistName}} seq {{counter $plistName}} deny any
 {{- if not .neighbor.Outgoing.PrefixesV6}}
 ipv6 prefix-list {{$plistName}} seq {{counter $plistName}} deny any
 {{- end }}
+
+route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
+  match ip address prefix-list {{allowedPrefixList $.neighbor}}
+route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{allowedPrefixList $.neighbor}}
 
 {{/* filtering incoming prefixes */}}
 {{$plistName:=allowedIncomingList $.neighbor}}
