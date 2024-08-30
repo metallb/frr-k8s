@@ -57,7 +57,7 @@ func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.In
 			ginkgo.GinkgoWriter.Printf("External frr ipall for container %s, failed to write to file %v", c.Name, err)
 			continue
 		}
-
+		f.Close()
 	}
 
 	frrk8sPods, err := k8s.FRRK8sPods(cs)
@@ -88,6 +88,21 @@ func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.In
 			ginkgo.GinkgoWriter.Printf("External frr ipall for pod %s, failed to write to file %v", pod.Name, err)
 			continue
 		}
+
+		fmt.Fprintf(f, "Dumping information for %s - reloader, local addresses: %s\n", pod.Name, pod.Status.PodIPs)
+
+		reloaderExec := executor.ForPod(pod.Namespace, pod.Name, "reloader")
+		dump, err = frr.RawDump(reloaderExec, "/etc/frr_reloader/frr.conf")
+		if err != nil {
+			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s - reloader failed %v", pod.Name, err)
+			continue
+		}
+		_, err = fmt.Fprint(f, dump)
+		if err != nil {
+			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s reloader, failed to write to file %v", pod.Name, err)
+			continue
+		}
+		f.Close()
 	}
 }
 
