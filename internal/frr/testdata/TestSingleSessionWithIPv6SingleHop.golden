@@ -9,14 +9,14 @@ ipv6 nht resolve-via-default
 
 ipv6 prefix-list 2001:db8::1-pl-ipv6 seq 1 permit 2001:db8:abcd::/48
 
+
+
+ip prefix-list 2001:db8::1-pl-ipv6 seq 2 deny any
+
 route-map 2001:db8::1-out permit 1
   match ip address prefix-list 2001:db8::1-pl-ipv6
 route-map 2001:db8::1-out permit 2
   match ipv6 address prefix-list 2001:db8::1-pl-ipv6
-
-
-
-ip prefix-list 2001:db8::1-pl-ipv6 seq 2 deny any
 
 
 
