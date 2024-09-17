@@ -8,12 +8,14 @@ import (
 	"net"
 	"reflect"
 	"sort"
+	"strconv"
 	"time"
 
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/safeconvert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -132,7 +134,7 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	for _, n := range r.Neighbors {
 		frrNeigh, err := neighborToFRR(n, routerPrefixes, alwaysBlock, r.VRF, secrets, bfdProfiles)
 		if err != nil {
-			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n.ASN, n.Address), r.ASN, r.VRF, err)
+			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n), r.ASN, r.VRF, err)
 		}
 		res.Neighbors = append(res.Neighbors, frrNeigh)
 	}
@@ -149,11 +151,24 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
 	}
 	if _, ok := bfdProfiles[n.BFDProfile]; n.BFDProfile != "" && !ok {
-		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n.ASN, n.Address), n.BFDProfile)
+		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n), n.BFDProfile)
 	}
+
+	if n.ASN == 0 && n.DynamicASN == "" {
+		return nil, fmt.Errorf("neighbor %s has no ASN or DynamicASN specified", neighborName(n))
+	}
+
+	if n.ASN != 0 && n.DynamicASN != "" {
+		return nil, fmt.Errorf("neighbor %s has both ASN and DynamicASN specified", neighborName(n))
+	}
+
+	if n.DynamicASN != "" && n.DynamicASN != v1beta1.InternalASNMode && n.DynamicASN != v1beta1.ExternalASNMode {
+		return nil, fmt.Errorf("neighbor %s has invalid DynamicASN %s specified, must be one of %s,%s", neighborName(n), n.DynamicASN, v1beta1.InternalASNMode, v1beta1.ExternalASNMode)
+	}
+
 	res := &frr.NeighborConfig{
-		Name:            neighborName(n.ASN, n.Address),
-		ASN:             n.ASN,
+		Name:            neighborName(n),
+		ASN:             asnFor(n),
 		SrcAddr:         n.SourceAddress,
 		Addr:            n.Address,
 		Port:            n.Port,
@@ -167,11 +182,11 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	}
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {
-		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n.ASN, n.Address), err)
+		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n), err)
 	}
 
 	if n.ConnectTime != nil {
-		res.ConnectTime = ptr.To(uint64(n.ConnectTime.Duration / time.Second))
+		res.ConnectTime = ptr.To(int64(n.ConnectTime.Duration / time.Second))
 	}
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
@@ -191,7 +206,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 
 func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
 	if n.Password != "" && n.PasswordSecret.Name != "" {
-		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n.ASN, n.Address))
+		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n))
 	}
 
 	if n.Password != "" {
@@ -204,7 +219,7 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 
 	secret, ok := passwordSecrets[n.PasswordSecret.Name]
 	if !ok {
-		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n.ASN, n.Address))}
+		return "", TransientError{Message: fmt.Sprintf("secret %s not found for neighbor %s", n.PasswordSecret.Name, neighborName(n))}
 	}
 	if secret.Type != corev1.SecretTypeBasicAuth {
 		return "", fmt.Errorf("secret type mismatch on %q/%q, type %q is expected ", secret.Namespace,
@@ -359,7 +374,11 @@ func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, err
 		return frr.IncomingFilter{}, fmt.Errorf("failed to parse prefix %s: %w", selector.Prefix, err)
 	}
 	maskLen, _ := cidr.Mask.Size()
-	err = validateSelectorLengths(maskLen, selector.LE, selector.GE)
+	maskLenUint, err := safeconvert.IntToUInt32(maskLen)
+	if err != nil {
+		return frr.IncomingFilter{}, fmt.Errorf("failed to convert maskLen from CIDR %s to uint32: %w", cidr, err)
+	}
+	err = validateSelectorLengths(maskLenUint, selector.LE, selector.GE)
 	if err != nil {
 		return frr.IncomingFilter{}, err
 	}
@@ -376,17 +395,17 @@ func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, err
 
 // validateSelectorLengths checks the lengths respect the following
 // condition: mask length <= ge <= le
-func validateSelectorLengths(mask int, le, ge uint32) error {
+func validateSelectorLengths(mask, le, ge uint32) error {
 	if ge == 0 && le == 0 {
 		return nil
 	}
 	if le > 0 && ge > le {
 		return fmt.Errorf("invalid selector lengths: ge %d is bigger than le %d", ge, le)
 	}
-	if le > 0 && uint32(mask) > le {
+	if le > 0 && mask > le {
 		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than le %d", mask, le)
 	}
-	if ge > 0 && uint32(mask) > ge {
+	if ge > 0 && mask > ge {
 		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than ge %d", mask, ge)
 	}
 	return nil
@@ -412,15 +431,24 @@ func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Ro
 		}
 		for _, p := range n.ToAdvertise.Allowed.Prefixes {
 			if !prefixesSet.Has(p) {
-				return fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s, vrf %s", p, neighborName(n.ASN, n.Address), routerConfig.VRF)
+				return fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s, vrf %s", p, neighborName(n), routerConfig.VRF)
 			}
 		}
 	}
 	return nil
 }
 
-func neighborName(ASN uint32, peerAddr string) string {
-	return fmt.Sprintf("%d@%s", ASN, peerAddr)
+func asnFor(n v1beta1.Neighbor) string {
+	asn := strconv.FormatUint(uint64(n.ASN), 10)
+	if n.DynamicASN != "" {
+		asn = string(n.DynamicASN)
+	}
+
+	return asn
+}
+
+func neighborName(n v1beta1.Neighbor) string {
+	return fmt.Sprintf("%s@%s", asnFor(n), n.Address)
 }
 
 type communityPrefixes struct {
@@ -581,7 +609,7 @@ func alwaysBlockToFRR(cidrs []net.IPNet) []frr.IncomingFilter {
 	return res
 }
 
-func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
+func parseTimers(ht, ka *v1.Duration) (*int64, *int64, error) {
 	if ht == nil && ka != nil || ht != nil && ka == nil {
 		return nil, nil, fmt.Errorf("one of KeepaliveTime/HoldTime specified, both must be set or none")
 	}
@@ -602,8 +630,8 @@ func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
 		return nil, nil, fmt.Errorf("invalid keepaliveTime %q, must be lower than holdTime %q", ka, ht)
 	}
 
-	htSeconds := uint64(holdTime / time.Second)
-	kaSeconds := uint64(keepaliveTime / time.Second)
+	htSeconds := int64(holdTime / time.Second)
+	kaSeconds := int64(keepaliveTime / time.Second)
 
 	return &htSeconds, &kaSeconds, nil
 }

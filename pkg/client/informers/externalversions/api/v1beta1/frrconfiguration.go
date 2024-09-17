@@ -11,7 +11,7 @@ import (
 	apiv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	versioned "github.com/metallb/frr-k8s/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/metallb/frr-k8s/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/metallb/frr-k8s/pkg/client/listers/core/v1beta1"
+	v1beta1 "github.com/metallb/frr-k8s/pkg/client/listers/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -48,13 +48,13 @@ func NewFilteredFRRConfigurationInformer(client versioned.Interface, namespace s
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1beta1().FRRConfigurations(namespace).List(context.TODO(), options)
+				return client.ApiV1beta1().FRRConfigurations(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.CoreV1beta1().FRRConfigurations(namespace).Watch(context.TODO(), options)
+				return client.ApiV1beta1().FRRConfigurations(namespace).Watch(context.TODO(), options)
 			},
 		},
 		&apiv1beta1.FRRConfiguration{},

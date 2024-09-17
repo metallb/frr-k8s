@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"net/http"
 
-	corev1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/core/v1beta1"
+	apiv1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/api/v1beta1"
 	discovery "k8s.io/client-go/discovery"
 	rest "k8s.io/client-go/rest"
 	flowcontrol "k8s.io/client-go/util/flowcontrol"
@@ -16,18 +16,18 @@ import (
 
 type Interface interface {
 	Discovery() discovery.DiscoveryInterface
-	CoreV1beta1() corev1beta1.CoreV1beta1Interface
+	ApiV1beta1() apiv1beta1.ApiV1beta1Interface
 }
 
 // Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
-	coreV1beta1 *corev1beta1.CoreV1beta1Client
+	apiV1beta1 *apiv1beta1.ApiV1beta1Client
 }
 
-// CoreV1beta1 retrieves the CoreV1beta1Client
-func (c *Clientset) CoreV1beta1() corev1beta1.CoreV1beta1Interface {
-	return c.coreV1beta1
+// ApiV1beta1 retrieves the ApiV1beta1Client
+func (c *Clientset) ApiV1beta1() apiv1beta1.ApiV1beta1Interface {
+	return c.apiV1beta1
 }
 
 // Discovery retrieves the DiscoveryClient
@@ -74,7 +74,7 @@ func NewForConfigAndClient(c *rest.Config, httpClient *http.Client) (*Clientset,
 
 	var cs Clientset
 	var err error
-	cs.coreV1beta1, err = corev1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
+	cs.apiV1beta1, err = apiv1beta1.NewForConfigAndClient(&configShallowCopy, httpClient)
 	if err != nil {
 		return nil, err
 	}
@@ -99,7 +99,7 @@ func NewForConfigOrDie(c *rest.Config) *Clientset {
 // New creates a new Clientset for the given RESTClient.
 func New(c rest.Interface) *Clientset {
 	var cs Clientset
-	cs.coreV1beta1 = corev1beta1.New(c)
+	cs.apiV1beta1 = apiv1beta1.New(c)
 
 	cs.DiscoveryClient = discovery.NewDiscoveryClient(c)
 	return &cs

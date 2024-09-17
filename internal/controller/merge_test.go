@@ -31,7 +31,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.20",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -68,7 +68,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.21",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -105,7 +105,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.22",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.22",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -153,7 +153,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.20",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -201,7 +201,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.21",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -249,7 +249,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.23",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.23",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -306,7 +306,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.20",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -356,7 +356,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.21",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -406,7 +406,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.22",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.22",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -443,7 +443,7 @@ func TestMergeRouters(t *testing.T) {
 					{
 						IPFamily: ipfamily.IPv4,
 						Name:     "65040@192.0.1.23",
-						ASN:      65040,
+						ASN:      "65040",
 						Addr:     "192.0.1.23",
 						Outgoing: frr.AllowedOut{
 							PrefixesV4: []frr.OutgoingFilter{
@@ -560,7 +560,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -599,7 +599,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -649,7 +649,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -705,7 +705,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -742,7 +742,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.21",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -779,7 +779,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.22",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.22",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -818,7 +818,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -866,7 +866,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.21",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -914,7 +914,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.23",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.23",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -964,7 +964,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1014,7 +1014,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.21",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1064,7 +1064,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.22",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.22",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1101,7 +1101,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.23",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.23",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1155,7 +1155,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Incoming: frr.AllowedIn{
 						All:        true,
@@ -1168,7 +1168,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Incoming: frr.AllowedIn{
 						All: false,
@@ -1186,7 +1186,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{},
@@ -1207,7 +1207,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Incoming: frr.AllowedIn{
 						All: false,
@@ -1225,7 +1225,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Incoming: frr.AllowedIn{
 						All:        true,
@@ -1238,7 +1238,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{},
@@ -1259,7 +1259,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1277,7 +1277,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{
@@ -1299,7 +1299,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 				},
 			},
@@ -1307,18 +1307,18 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily:      ipfamily.IPv4,
 					Name:          "65040@192.0.1.20",
-					ASN:           65040,
+					ASN:           "65040",
 					Addr:          "192.0.1.20",
-					HoldTime:      ptr.To(uint64(180)),
-					KeepaliveTime: ptr.To(uint64(60)),
-					ConnectTime:   ptr.To(uint64(60)),
+					HoldTime:      ptr.To(int64(180)),
+					KeepaliveTime: ptr.To(int64(60)),
+					ConnectTime:   ptr.To(int64(60)),
 				},
 			},
 			expected: []*frr.NeighborConfig{
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
 						PrefixesV4: []frr.OutgoingFilter{},
@@ -1339,18 +1339,18 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily:      ipfamily.IPv4,
 					Name:          "65040@192.0.1.20",
-					ASN:           65040,
+					ASN:           "65040",
 					Addr:          "192.0.1.20",
-					HoldTime:      ptr.To(uint64(180)),
-					KeepaliveTime: ptr.To(uint64(60)),
-					ConnectTime:   ptr.To(uint64(60)),
+					HoldTime:      ptr.To(int64(180)),
+					KeepaliveTime: ptr.To(int64(60)),
+					ConnectTime:   ptr.To(int64(60)),
 				},
 			},
 			toMerge: []*frr.NeighborConfig{
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 				},
 			},
@@ -1358,7 +1358,7 @@ func TestMergeNeighbors(t *testing.T) {
 				{
 					IPFamily: ipfamily.IPv4,
 					Name:     "65040@192.0.1.20",
-					ASN:      65040,
+					ASN:      "65040",
 					Addr:     "192.0.1.20",
 				},
 			},

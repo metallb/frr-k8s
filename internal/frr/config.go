@@ -65,13 +65,13 @@ type BFDProfile struct {
 type NeighborConfig struct {
 	IPFamily        ipfamily.Family
 	Name            string
-	ASN             uint32
+	ASN             string
 	SrcAddr         string
 	Addr            string
 	Port            *uint16
-	HoldTime        *uint64
-	KeepaliveTime   *uint64
-	ConnectTime     *uint64
+	HoldTime        *int64
+	KeepaliveTime   *int64
+	ConnectTime     *int64
 	Password        string
 	BFDProfile      string
 	GracefulRestart bool
@@ -187,11 +187,33 @@ func templateConfig(data interface{}) (string, error) {
 			"deniedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-denied-inpl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
-			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN, asn uint32, eBGPMultiHop bool) bool {
-				// return true only for IPv6 eBGP sessions
-				if ipFamily == "ipv6" && myASN != asn && !eBGPMultiHop {
+			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN uint32, asn string, eBGPMultiHop bool) bool {
+				// return true only for non-multihop IPv6 eBGP sessions
+
+				if ipFamily != ipfamily.IPv6 {
+					return false
+				}
+
+				if eBGPMultiHop {
+					return false
+				}
+
+				// internal means we expect the session to be iBGP
+				if asn == "internal" {
+					return false
+				}
+
+				// external means we expect the session to be eBGP
+				if asn == "external" {
 					return true
 				}
+
+				// the peer's asn is not dynamic (it is a number),
+				// we check if it is different than ours for eBGP
+				if strconv.FormatUint(uint64(myASN), 10) != asn {
+					return true
+				}
+
 				return false
 			},
 			"dict": func(values ...interface{}) (map[string]interface{}, error) {

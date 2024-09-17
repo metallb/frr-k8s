@@ -122,6 +122,19 @@ _Appears in:_
 | `community` _string_ | Community is the community associated to the prefixes. |  |  |
 
 
+#### DynamicASNMode
+
+_Underlying type:_ _string_
+
+
+
+
+
+_Appears in:_
+- [Neighbor](#neighbor)
+
+
+
 #### FRRConfiguration
 
 
@@ -268,7 +281,8 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `asn` _integer_ | ASN is the AS number to use for the local end of the session. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
+| `asn` _integer_ | ASN is the AS number to use for the local end of the session.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
+| `dynamicASN` _[DynamicASNMode](#dynamicasnmode)_ | DynamicASN detects the AS number to use for the local end of the session<br />without explicitly setting it via the ASN field. Limited to:<br />internal - if the neighbor's ASN is different than the router's the connection is denied.<br />external - if the neighbor's ASN is the same as the router's the connection is denied.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Enum: [internal external] <br /> |
 | `sourceaddress` _string_ | SourceAddress is the IPv4 or IPv6 source address to use for the BGP<br />session to this neighbour, may be specified as either an IP address<br />directly or as an interface name |  |  |
 | `address` _string_ | Address is the IP address to establish the session with. |  |  |
 | `port` _integer_ | Port is the port to dial when establishing the session.<br />Defaults to 179. |  | Maximum: 16384 <br />Minimum: 0 <br /> |

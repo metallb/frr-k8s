@@ -548,7 +548,7 @@ var _ = Describe("Frrk8s controller", func() {
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65012@192.0.2.7",
-								ASN:      65012,
+								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password2",
 								Outgoing: frr.AllowedOut{
@@ -585,7 +585,7 @@ var _ = Describe("Frrk8s controller", func() {
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65012@192.0.2.7",
-								ASN:      65012,
+								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password3",
 								Outgoing: frr.AllowedOut{

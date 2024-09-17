@@ -156,8 +156,9 @@ spec:
                                   the session with.
                                 type: string
                               asn:
-                                description: ASN is the AS number to use for the local
-                                  end of the session.
+                                description: |-
+                                  ASN is the AS number to use for the local end of the session.
+                                  ASN and DynamicASN are mutually exclusive and one of them must be specified.
                                 format: int32
                                 maximum: 4294967295
                                 minimum: 0
@@ -187,6 +188,17 @@ spec:
                                   will separate IPv4 and IPv6 route exchanges into
                                   distinct BGP sessions.
                                 type: boolean
+                              dynamicASN:
+                                description: |-
+                                  DynamicASN detects the AS number to use for the local end of the session
+                                  without explicitly setting it via the ASN field. Limited to:
+                                  internal - if the neighbor's ASN is different than the router's the connection is denied.
+                                  external - if the neighbor's ASN is the same as the router's the connection is denied.
+                                  ASN and DynamicASN are mutually exclusive and one of them must be specified.
+                                enum:
+                                - internal
+                                - external
+                                type: string
                               ebgpMultiHop:
                                 description: EBGPMultiHop indicates if the BGPPeer
                                   is multi-hops away.
@@ -366,7 +378,6 @@ spec:
                                 type: object
                             required:
                             - address
-                            - asn
                             type: object
                           type: array
                         prefixes:

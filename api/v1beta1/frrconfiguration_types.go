@@ -95,9 +95,20 @@ type Import struct {
 // Neighbor represents a BGP Neighbor we want FRR to connect to.
 type Neighbor struct {
 	// ASN is the AS number to use for the local end of the session.
+	// ASN and DynamicASN are mutually exclusive and one of them must be specified.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=4294967295
-	ASN uint32 `json:"asn"`
+	// +optional
+	ASN uint32 `json:"asn,omitempty"`
+
+	// DynamicASN detects the AS number to use for the local end of the session
+	// without explicitly setting it via the ASN field. Limited to:
+	// internal - if the neighbor's ASN is different than the router's the connection is denied.
+	// external - if the neighbor's ASN is the same as the router's the connection is denied.
+	// ASN and DynamicASN are mutually exclusive and one of them must be specified.
+	// +kubebuilder:validation:Enum=internal;external
+	// +optional
+	DynamicASN DynamicASNMode `json:"dynamicASN,omitempty"`
 
 	// SourceAddress is the IPv4 or IPv6 source address to use for the BGP
 	// session to this neighbour, may be specified as either an IP address
@@ -370,4 +381,11 @@ type AllowMode string
 const (
 	AllowAll        AllowMode = "all"
 	AllowRestricted AllowMode = "filtered"
+)
+
+type DynamicASNMode string
+
+const (
+	InternalASNMode DynamicASNMode = "internal"
+	ExternalASNMode DynamicASNMode = "external"
 )

@@ -110,7 +110,7 @@ func TestSingleSession(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
@@ -152,11 +152,11 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:      ipfamily.IPv4,
-						ASN:           65001,
+						ASN:           "65001",
 						Addr:          "192.168.1.2",
-						HoldTime:      ptr.To[uint64](80),
-						KeepaliveTime: ptr.To[uint64](40),
-						ConnectTime:   ptr.To(uint64(10)),
+						HoldTime:      ptr.To[int64](80),
+						KeepaliveTime: ptr.To[int64](40),
+						ConnectTime:   ptr.To(int64(10)),
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
@@ -189,7 +189,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.3",
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
@@ -226,14 +226,14 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Incoming: AllowedIn{
 							All: true,
 						},
 					}, {
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.3",
 						Incoming: AllowedIn{
 							All: true,
@@ -264,7 +264,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -276,7 +276,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 						},
 					}, {
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.3",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -316,7 +316,7 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -348,7 +348,7 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 						},
 					}, {
 						IPFamily: ipfamily.IPv4,
-						ASN:      65002,
+						ASN:      "65002",
 						Addr:     "192.168.1.3",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -376,7 +376,7 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 						},
 					}, {
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.4",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -434,7 +434,7 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:     ipfamily.IPv4,
-						ASN:          65001,
+						ASN:          "65001",
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -479,7 +479,7 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:     ipfamily.IPv6,
-						ASN:          65001,
+						ASN:          "65001",
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: false, // Single hop
 						Outgoing: AllowedOut{
@@ -520,7 +520,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						SrcAddr:  "192.168.1.50",
 						Addr:     "192.168.1.2",
 						Outgoing: AllowedOut{
@@ -534,7 +534,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 					},
 					{
 						IPFamily:     ipfamily.IPv6,
-						ASN:          65002,
+						ASN:          "65002",
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -576,7 +576,7 @@ func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:  ipfamily.IPv4,
-						ASN:       65001,
+						ASN:       "65001",
 						Addr:      "192.168.1.2",
 						DisableMP: true,
 						Outgoing: AllowedOut{
@@ -590,7 +590,7 @@ func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
 					},
 					{
 						IPFamily:     ipfamily.IPv6,
-						ASN:          65002,
+						ASN:          "65002",
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						DisableMP:    true,
@@ -633,7 +633,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:     ipfamily.IPv4,
-						ASN:          65001,
+						ASN:          "65001",
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -647,7 +647,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 					},
 					{
 						IPFamily:     ipfamily.IPv6,
-						ASN:          65002,
+						ASN:          "65002",
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -669,7 +669,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.170.1.2",
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
@@ -682,7 +682,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 					},
 					{
 						IPFamily:     ipfamily.IPv6,
-						ASN:          65002,
+						ASN:          "65002",
 						Addr:         "2001:db9::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -724,7 +724,7 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:     ipfamily.IPv4,
-						ASN:          65001,
+						ASN:          "65001",
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
@@ -770,7 +770,7 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Incoming: AllowedIn{
 							All: true,
@@ -790,7 +790,7 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 					},
 					{
 						IPFamily: ipfamily.IPv4,
-						ASN:      65001,
+						ASN:      "65001",
 						Addr:     "192.168.1.6",
 						Incoming: AllowedIn{
 							PrefixesV4: []IncomingFilter{
@@ -841,7 +841,7 @@ func TestSingleSessionWithGracefulRestart(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:        ipfamily.IPv4,
-						ASN:             65001,
+						ASN:             "65001",
 						Addr:            "192.168.1.2",
 						GracefulRestart: true,
 					},
@@ -873,7 +873,7 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 				Neighbors: []*NeighborConfig{
 					{
 						IPFamily:     ipfamily.IPv4,
-						ASN:          65001,
+						ASN:          "65001",
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 					},
@@ -897,6 +897,90 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 		},
 	}
 
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithInternalASN(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "internal",
+						Addr:     "192.168.1.2",
+						Port:     ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithExternalASN(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "external",
+						Addr:     "192.168.1.2",
+						Port:     ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
 		t.Fatalf("Failed to apply config: %s", err)

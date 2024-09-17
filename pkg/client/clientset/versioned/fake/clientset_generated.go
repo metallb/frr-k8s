@@ -6,8 +6,8 @@ package fake
 
 import (
 	clientset "github.com/metallb/frr-k8s/pkg/client/clientset/versioned"
-	corev1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/core/v1beta1"
-	fakecorev1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/core/v1beta1/fake"
+	apiv1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/api/v1beta1"
+	fakeapiv1beta1 "github.com/metallb/frr-k8s/pkg/client/clientset/versioned/typed/api/v1beta1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -17,8 +17,12 @@ import (
 
 // NewSimpleClientset returns a clientset that will respond with the provided objects.
 // It's backed by a very simple object tracker that processes creates, updates and deletions as-is,
-// without applying any validations and/or defaults. It shouldn't be considered a replacement
+// without applying any field management, validations and/or defaults. It shouldn't be considered a replacement
 // for a real clientset and is mostly useful in simple unit tests.
+//
+// DEPRECATED: NewClientset replaces this with support for field management, which significantly improves
+// server side apply testing. NewClientset is only available when apply configurations are generated (e.g.
+// via --with-applyconfig).
 func NewSimpleClientset(objects ...runtime.Object) *Clientset {
 	o := testing.NewObjectTracker(scheme, codecs.UniversalDecoder())
 	for _, obj := range objects {
@@ -65,7 +69,7 @@ var (
 	_ testing.FakeClient  = &Clientset{}
 )
 
-// CoreV1beta1 retrieves the CoreV1beta1Client
-func (c *Clientset) CoreV1beta1() corev1beta1.CoreV1beta1Interface {
-	return &fakecorev1beta1.FakeCoreV1beta1{Fake: &c.Fake}
+// ApiV1beta1 retrieves the ApiV1beta1Client
+func (c *Clientset) ApiV1beta1() apiv1beta1.ApiV1beta1Interface {
+	return &fakeapiv1beta1.FakeApiV1beta1{Fake: &c.Fake}
 }
