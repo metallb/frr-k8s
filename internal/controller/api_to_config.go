@@ -15,6 +15,7 @@ import (
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/safeconvert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -185,7 +186,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	}
 
 	if n.ConnectTime != nil {
-		res.ConnectTime = ptr.To(uint64(n.ConnectTime.Duration / time.Second))
+		res.ConnectTime = ptr.To(int64(n.ConnectTime.Duration / time.Second))
 	}
 
 	res.Password, err = passwordForNeighbor(n, passwordSecrets)
@@ -373,7 +374,11 @@ func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, err
 		return frr.IncomingFilter{}, fmt.Errorf("failed to parse prefix %s: %w", selector.Prefix, err)
 	}
 	maskLen, _ := cidr.Mask.Size()
-	err = validateSelectorLengths(maskLen, selector.LE, selector.GE)
+	maskLenUint, err := safeconvert.IntToUInt32(maskLen)
+	if err != nil {
+		return frr.IncomingFilter{}, fmt.Errorf("failed to convert maskLen from CIDR %s to uint32: %w", cidr, err)
+	}
+	err = validateSelectorLengths(maskLenUint, selector.LE, selector.GE)
 	if err != nil {
 		return frr.IncomingFilter{}, err
 	}
@@ -390,17 +395,17 @@ func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, err
 
 // validateSelectorLengths checks the lengths respect the following
 // condition: mask length <= ge <= le
-func validateSelectorLengths(mask int, le, ge uint32) error {
+func validateSelectorLengths(mask, le, ge uint32) error {
 	if ge == 0 && le == 0 {
 		return nil
 	}
 	if le > 0 && ge > le {
 		return fmt.Errorf("invalid selector lengths: ge %d is bigger than le %d", ge, le)
 	}
-	if le > 0 && uint32(mask) > le {
+	if le > 0 && mask > le {
 		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than le %d", mask, le)
 	}
-	if ge > 0 && uint32(mask) > ge {
+	if ge > 0 && mask > ge {
 		return fmt.Errorf("invalid selector lengths: cidr mask %d is bigger than ge %d", mask, ge)
 	}
 	return nil
@@ -604,7 +609,7 @@ func alwaysBlockToFRR(cidrs []net.IPNet) []frr.IncomingFilter {
 	return res
 }
 
-func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
+func parseTimers(ht, ka *v1.Duration) (*int64, *int64, error) {
 	if ht == nil && ka != nil || ht != nil && ka == nil {
 		return nil, nil, fmt.Errorf("one of KeepaliveTime/HoldTime specified, both must be set or none")
 	}
@@ -625,8 +630,8 @@ func parseTimers(ht, ka *v1.Duration) (*uint64, *uint64, error) {
 		return nil, nil, fmt.Errorf("invalid keepaliveTime %q, must be lower than holdTime %q", ka, ht)
 	}
 
-	htSeconds := uint64(holdTime / time.Second)
-	kaSeconds := uint64(keepaliveTime / time.Second)
+	htSeconds := int64(holdTime / time.Second)
+	kaSeconds := int64(keepaliveTime / time.Second)
 
 	return &htSeconds, &kaSeconds, nil
 }

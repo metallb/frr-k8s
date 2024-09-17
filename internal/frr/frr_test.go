@@ -154,9 +154,9 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						IPFamily:      ipfamily.IPv4,
 						ASN:           "65001",
 						Addr:          "192.168.1.2",
-						HoldTime:      ptr.To[uint64](80),
-						KeepaliveTime: ptr.To[uint64](40),
-						ConnectTime:   ptr.To(uint64(10)),
+						HoldTime:      ptr.To[int64](80),
+						KeepaliveTime: ptr.To[int64](40),
+						ConnectTime:   ptr.To(int64(10)),
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
