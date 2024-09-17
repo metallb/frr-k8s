@@ -1,5 +1,15 @@
 # FRRK8s Release Notes
 
+## Release v0.0.15
+
+### New Features
+
+- Add DynamicASN field for a neighbor, which allows the daemon to detect the AS number to use without explicitly setting it. The new field is mutually exclusive with the existing ASN field, and one of them must be specified for any given Neighbor. (#194, @oribon)
+
+### Bug fixes
+
+- Update the kubernetes api / codegen and get rid of the core symlink hack. (#186, @fedepaol)
+
 ## Release v0.0.14
 
 ### New Features
