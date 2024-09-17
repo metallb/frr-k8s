@@ -69,9 +69,9 @@ type NeighborConfig struct {
 	SrcAddr         string
 	Addr            string
 	Port            *uint16
-	HoldTime        *uint64
-	KeepaliveTime   *uint64
-	ConnectTime     *uint64
+	HoldTime        *int64
+	KeepaliveTime   *int64
+	ConnectTime     *int64
 	Password        string
 	BFDProfile      string
 	GracefulRestart bool
