@@ -124,8 +124,9 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				close(c)
 			}()
 
-			Consistently(check, 1*time.Minute, time.Second).ShouldNot(HaveOccurred())
-			Eventually(c).Should(BeClosed())
+			// 2*time.Minute is important because that is the Graceful Restart timer.
+			Consistently(check, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s pods are not yet ready")
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24"),
 			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64"),
