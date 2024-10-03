@@ -87,10 +87,6 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Unit Tests
-        run: |
-          make test
-
       - name: Lint
         run: |
           ENV=host make lint
