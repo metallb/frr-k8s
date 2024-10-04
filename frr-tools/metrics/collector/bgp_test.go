@@ -76,7 +76,7 @@ var (
 		{
 			desc:                 "Output contains only IPv4 advertisements",
 			vtyshOutput:          neighborsIPv4Only,
-			neighborIP:           "172.18.0.4:179",
+			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
 			announcedPrefixes:    3,
 			receivedPrefixes:     3,
@@ -95,7 +95,7 @@ var (
 		{
 			desc:                 "Output contains mixed IPv4 and IPv6 advertisements",
 			vtyshOutput:          neighborsDual,
-			neighborIP:           "172.18.0.4:180",
+			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
 			announcedPrefixes:    6,
 			receivedPrefixes:     6,

@@ -156,7 +156,7 @@ func updateNeighborsMetrics(ch chan<- prometheus.Metric, neighbors map[string][]
 			if !n.Connected {
 				sessionUp = 0
 			}
-			peerLabel := fmt.Sprintf("%s:%d", n.IP.String(), n.Port)
+			peerLabel := n.IP.String()
 
 			ch <- prometheus.MustNewConstMetric(sessionUpDesc, prometheus.GaugeValue, float64(sessionUp), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(prefixesDesc, prometheus.GaugeValue, float64(n.PrefixSent), peerLabel, vrf)
