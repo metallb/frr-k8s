@@ -384,20 +384,19 @@ func labelsForPeers(peers []*frrcontainer.FRR, ipFamily ipfamily.Family) []peerP
 		if ipFamily == ipfamily.IPv6 {
 			address = c.Ipv6
 		}
-		peerAddr := address + fmt.Sprintf(":%d", c.RouterConfig.BGPPort)
 
 		// Note: we deliberately don't add the vrf label in case of the default vrf to validate that
 		// it is still possible to list the metrics using only the peer label, which is what most users
 		// who don't care about vrfs should do.
-		labelsBGP := map[string]string{"peer": peerAddr}
-		labelsForQueryBGP := fmt.Sprintf(`peer="%s"`, peerAddr)
+		labelsBGP := map[string]string{"peer": address}
+		labelsForQueryBGP := fmt.Sprintf(`peer="%s"`, address)
 		labelsBFD := map[string]string{"peer": address}
 		labelsForQueryBFD := fmt.Sprintf(`peer="%s"`, address)
 		noEcho := c.NeighborConfig.MultiHop
 
 		if c.RouterConfig.VRF != "" {
 			labelsBGP["vrf"] = c.RouterConfig.VRF
-			labelsForQueryBGP = fmt.Sprintf(`peer="%s",vrf="%s"`, peerAddr, c.RouterConfig.VRF)
+			labelsForQueryBGP = fmt.Sprintf(`peer="%s",vrf="%s"`, address, c.RouterConfig.VRF)
 			labelsBFD["vrf"] = c.RouterConfig.VRF
 			labelsForQueryBFD = fmt.Sprintf(`peer="%s",vrf="%s"`, address, c.RouterConfig.VRF)
 		}
