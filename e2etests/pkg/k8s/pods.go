@@ -4,13 +4,11 @@ package k8s
 
 import (
 	"context"
-	"fmt"
 	"slices"
 	"time"
 
 	"errors"
 
-	"github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,13 +40,16 @@ func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
 	return res, nil
 }
 
-func RestartFRRK8sPods(cs clientset.Interface) error {
+func RestartFRRK8sPods(cs clientset.Interface, node string) error {
 	pods, err := FRRK8sPods(cs)
 	if err != nil {
 		return err
 	}
 	oldNames := []string{}
 	for _, p := range pods {
+		if p.Spec.NodeName != node {
+			continue
+		}
 		oldNames = append(oldNames, p.Name)
 		err := cs.CoreV1().Pods(FRRK8sNamespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{})
 		if err != nil {
@@ -70,7 +71,6 @@ func RestartFRRK8sPods(cs clientset.Interface) error {
 					return false, nil
 				}
 				if !podIsRunningAndReady(p) {
-					ginkgo.By(fmt.Sprintf("\t%v pod %s not ready", time.Now(), p.Name))
 					return false, nil
 				}
 			}

@@ -136,3 +136,14 @@ func ContainersForVRF(frrs []*frrcontainer.FRR, vrf string) []*frrcontainer.FRR 
 	}
 	return res
 }
+
+func ContainersForName(frrs []*frrcontainer.FRR, name string) []*frrcontainer.FRR {
+	res := make([]*frrcontainer.FRR, 0)
+	for _, f := range frrs {
+		if f.Name != name {
+			continue
+		}
+		res = append(res, f)
+	}
+	return res
+}
