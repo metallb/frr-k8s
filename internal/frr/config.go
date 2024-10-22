@@ -68,6 +68,7 @@ type NeighborConfig struct {
 	ASN             string
 	SrcAddr         string
 	Addr            string
+	Unnumbered      bool
 	Port            *uint16
 	HoldTime        *int64
 	KeepaliveTime   *int64
@@ -187,7 +188,7 @@ func templateConfig(data interface{}) (string, error) {
 			"deniedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-denied-inpl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
-			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN uint32, asn string, eBGPMultiHop bool) bool {
+			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN uint32, asn string, eBGPMultiHop, unnumbered bool) bool {
 				// return true only for non-multihop IPv6 eBGP sessions
 
 				if ipFamily != ipfamily.IPv6 {
@@ -195,6 +196,10 @@ func templateConfig(data interface{}) (string, error) {
 				}
 
 				if eBGPMultiHop {
+					return false
+				}
+
+				if unnumbered {
 					return false
 				}
 

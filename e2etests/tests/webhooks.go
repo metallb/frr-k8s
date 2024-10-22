@@ -150,6 +150,36 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				},
 				"has both ASN and DynamicASN specified",
 			),
+			ginkgo.Entry("no address and no interface is specified",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN: 100,
+								},
+							},
+						},
+					}
+				},
+				"has no Address and Interface specified",
+			),
+			ginkgo.Entry("both address and interface specified",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:       100,
+									Address:   "1.2.3.4",
+									Interface: "eth0",
+								},
+							},
+						},
+					}
+				},
+				"has both Address and Interface specified",
+			),
 		)
 
 		ginkgo.It("Should reject create/update when there is a conflict with an existing config", func() {

@@ -146,10 +146,15 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 }
 
 func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
-	neighborFamily, err := ipfamily.ForAddresses(n.Address)
-	if err != nil {
-		return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
+	neighborFamily := ipfamily.Unknown
+	if n.Address != "" && n.Interface == "" {
+		var err error
+		neighborFamily, err = ipfamily.ForAddresses(n.Address)
+		if err != nil {
+			return nil, fmt.Errorf("failed to find ipfamily for %s, %w", n.Address, err)
+		}
 	}
+
 	if _, ok := bfdProfiles[n.BFDProfile]; n.BFDProfile != "" && !ok {
 		return nil, fmt.Errorf("neighbor %s referencing non existing BFDProfile %s", neighborName(n), n.BFDProfile)
 	}
@@ -166,6 +171,14 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		return nil, fmt.Errorf("neighbor %s has invalid DynamicASN %s specified, must be one of %s,%s", neighborName(n), n.DynamicASN, v1beta1.InternalASNMode, v1beta1.ExternalASNMode)
 	}
 
+	if n.Address == "" && n.Interface == "" {
+		return nil, fmt.Errorf("neighbor %s has no Address and Interface specified", neighborName(n))
+	}
+
+	if n.Address != "" && n.Interface != "" {
+		return nil, fmt.Errorf("neighbor %s has both Address and Interface specified", neighborName(n))
+	}
+
 	res := &frr.NeighborConfig{
 		Name:            neighborName(n),
 		ASN:             asnFor(n),
@@ -180,6 +193,14 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		AlwaysBlock:     alwaysBlock,
 		DisableMP:       n.DisableMP,
 	}
+
+	if n.Address == "" && n.Interface != "" {
+		res.Addr = n.Interface
+		res.Unnumbered = true
+		res.IPFamily = ipfamily.DualStack
+	}
+
+	var err error
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
 	if err != nil {
 		return nil, fmt.Errorf("invalid timers for neighbor %s, err: %w", neighborName(n), err)
@@ -448,6 +469,9 @@ func asnFor(n v1beta1.Neighbor) string {
 }
 
 func neighborName(n v1beta1.Neighbor) string {
+	if n.Address == "" {
+		return fmt.Sprintf("%s@%s", asnFor(n), n.Interface)
+	}
 	return fmt.Sprintf("%s@%s", asnFor(n), n.Address)
 }
 

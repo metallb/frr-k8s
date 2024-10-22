@@ -2628,6 +2628,103 @@ func TestConversion(t *testing.T) {
 			secrets: map[string]v1.Secret{},
 			err:     nil,
 		},
+		{
+			name: "Neighbor with Interface and without Address",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											Interface:  "eth0",
+											DynamicASN: "internal",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						VRF:      "",
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:   ipfamily.DualStack,
+								Name:       "internal@eth0",
+								ASN:        "internal",
+								Addr:       "eth0",
+								Unnumbered: true,
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv4,
+											Prefix:   "192.0.2.0/24",
+										},
+									},
+									PrefixesV6: []frr.OutgoingFilter{
+										{
+											IPFamily: ipfamily.IPv6,
+											Prefix:   "2001:db8::/64",
+										},
+									},
+								},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     nil,
+		},
+		{
+			name: "Neighbor with no Address and no Interface",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN: 65010,
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
 	}
 
 	for _, test := range tests {
@@ -2637,6 +2734,10 @@ func TestConversion(t *testing.T) {
 				PasswordSecrets: test.secrets,
 			}
 			frr, err := apiToFRR(resources, test.alwaysBlock)
+			// DISCUSS do we need to enforce checking the err values/string?
+			// if test.err != err {
+			// 	t.Fatalf("\nexpected error %s,\n got %v", test.err, err)
+			// }
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}

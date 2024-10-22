@@ -117,7 +117,15 @@ type Neighbor struct {
 	SourceAddress string `json:"sourceaddress,omitempty"`
 
 	// Address is the IP address to establish the session with.
-	Address string `json:"address"`
+	Address string `json:"address,omitempty"`
+
+	// Interface is the node interface over which the unnumbered BGP peering will
+	// be established. No API validation takes place as that string value
+	// represents an interface name and if user provides an invalid value, only the
+	// actual BGP session will not be established. Address and Interface are
+	// mutually exclusive and one of them must be specified.
+	// +optional
+	Interface string `json:"interface,omitempty"`
 
 	// Port is the port to dial when establishing the session.
 	// Defaults to 179.
