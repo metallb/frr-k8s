@@ -32,23 +32,23 @@ func PodHasPrefixFromContainer(pod *v1.Pod, frr frrcontainer.FRR, vrf, prefix st
 func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, vrf, prefix string, nodes []v1.Node) error {
 	routesV4, routesV6, err := frr.Routes(neighbor)
 	if err != nil {
-		return err
+		return fmt.Errorf("Routes %w", err)
 	}
 
 	_, cidr, err := net.ParseCIDR(prefix)
 	if err != nil {
-		return err
+		return fmt.Errorf("ParseCIDR %w", err)
 	}
 
 	route, err := routeForCIDR(cidr, routesV4, routesV6)
 	if err != nil {
-		return err
+		return fmt.Errorf("routerForCIDR: %w", err)
 	}
 
 	cidrFamily := ipfamily.ForCIDR(cidr)
 	err = frr.RoutesMatchNodes(nodes, route, cidrFamily, vrf)
 	if err != nil {
-		return err
+		return fmt.Errorf("RoutesMatchNodes %w", err)
 	}
 	return nil
 }
@@ -62,7 +62,7 @@ type RouteNotFoundError struct {
 }
 
 func (e RouteNotFoundError) Error() string {
-	return fmt.Sprintf("route not found %s", e.Route)
+	return fmt.Sprintf("route not found for dst prefix %s", e.Route)
 }
 
 func routeForCIDR(cidr *net.IPNet, routesV4 map[string]frr.Route, routesV6 map[string]frr.Route) (frr.Route, error) {

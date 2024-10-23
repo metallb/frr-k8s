@@ -3,6 +3,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
@@ -135,4 +136,13 @@ func ContainersForVRF(frrs []*frrcontainer.FRR, vrf string) []*frrcontainer.FRR 
 		}
 	}
 	return res
+}
+
+func ContainerByName(frrs []*frrcontainer.FRR, name string) (*frrcontainer.FRR, error) {
+	for _, f := range frrs {
+		if f.Name == name {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("container with name %s not found", name)
 }

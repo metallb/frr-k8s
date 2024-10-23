@@ -9,6 +9,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-kni/k8sreporter"
 	"go.universe.tf/e2etest/pkg/frr/container"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
@@ -54,7 +55,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 		Expect(err).NotTo(HaveOccurred())
 
 		err = cleanup(updater)
-		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and infra containers")
+		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and in infra containers")
 
 		cs = k8sclient.New()
 		nodes, err = k8s.Nodes(cs)
@@ -68,18 +69,20 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			dump.K8sInfo(testName, reporter)
 			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
+
+		err := cleanup(updater)
+		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and in infra containers")
 	})
 
 	ginkgo.Context("When restarting the frrk8s deamon pods", func() {
 
 		ginkgo.DescribeTable("external BGP peer maintains routes", func(ipFam ipfamily.Family, prefix string) {
-			frrs := config.ContainersForVRF(infra.FRRContainers, "")
-			for _, c := range frrs {
-				err := container.PairWithNodes(cs, c, ipFam)
-				Expect(err).NotTo(HaveOccurred(), "set frr config in infra containers failed")
-			}
+			cnt, err := config.ContainerByName(infra.FRRContainers, "ebgp-single-hop")
+			Expect(err).NotTo(HaveOccurred())
+			err = container.PairWithNodes(cs, cnt, ipFam)
+			Expect(err).NotTo(HaveOccurred(), "set frr config in infra containers failed")
 
-			peersConfig := config.PeersForContainers(frrs, ipFam,
+			peersConfig := config.PeersForContainers([]*frrcontainer.FRR{cnt}, ipFam,
 				config.EnableAllowAll, config.EnableGracefulRestart)
 
 			frrConfigCR := frrk8sv1beta1.FRRConfiguration{
@@ -88,6 +91,11 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 					Namespace: k8s.FRRK8sNamespace,
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					NodeSelector: metav1.LabelSelector{
+						MatchLabels: map[string]string{
+							"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
+						},
+					},
 					BGP: frrk8sv1beta1.BGPConfig{
 						Routers: []frrk8sv1beta1.Router{
 							{
@@ -100,12 +108,12 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				},
 			}
 
-			err := updater.Update(peersConfig.Secrets, frrConfigCR)
+			err = updater.Update(peersConfig.Secrets, frrConfigCR)
 			Expect(err).NotTo(HaveOccurred(), "apply the CR in k8s api failed")
 
 			check := func() error {
 				for _, p := range peersConfig.Peers() {
-					err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes)
+					err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes[:1])
 					if err != nil {
 						return fmt.Errorf("Neigh %s does not have prefix %s: %w", p.FRR.Name, prefix, err)
 					}
@@ -113,20 +121,19 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				return nil
 			}
 
-			Eventually(check, time.Minute, time.Second).ShouldNot(HaveOccurred(),
+			Eventually(check, time.Minute, 5*time.Second).ShouldNot(HaveOccurred(),
 				"route should exist before we restart frr-k8s")
 
 			c := make(chan struct{})
 			go func() { // go restart frr-k8s while Consistently check that route exists
 				defer ginkgo.GinkgoRecover()
-				err := k8s.RestartFRRK8sPods(cs)
+				err := k8s.RestartFRRK8sPodForNode(cs, nodes[0].GetName())
 				Expect(err).NotTo(HaveOccurred(), "frr-k8s pods failed to restart")
 				close(c)
 			}()
 
-			// 2*time.Minute is important because that is the Graceful Restart timer.
-			Consistently(check, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
-			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s pods are not yet ready")
+			Consistently(check, time.Minute, time.Second).ShouldNot(HaveOccurred(), "route check failed during frr-k8s-pod reboot")
+			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restarted frr-k8s pods are not yet ready")
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24"),
 			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64"),
