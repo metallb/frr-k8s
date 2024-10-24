@@ -5,12 +5,10 @@ package k8s
 import (
 	"context"
 	"fmt"
-	"slices"
 	"time"
 
 	"errors"
 
-	"github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,40 +40,45 @@ func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
 	return res, nil
 }
 
-func RestartFRRK8sPods(cs clientset.Interface) error {
-	pods, err := FRRK8sPods(cs)
+func RestartFRRK8sPodForNode(cs clientset.Interface, nodeName string) error {
+	oldPod, err := podForNode(cs, nodeName)
 	if err != nil {
 		return err
 	}
-	oldNames := []string{}
-	for _, p := range pods {
-		oldNames = append(oldNames, p.Name)
-		err := cs.CoreV1().Pods(FRRK8sNamespace).Delete(context.Background(), p.Name, metav1.DeleteOptions{})
-		if err != nil {
-			return err
-		}
+	if err := cs.CoreV1().Pods(FRRK8sNamespace).Delete(context.Background(), oldPod.Name, metav1.DeleteOptions{}); err != nil {
+		return err
 	}
 
 	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second,
 		120*time.Second, false, func(context.Context) (bool, error) {
-			npods, err := FRRK8sPods(cs)
+			newPod, err := podForNode(cs, nodeName)
 			if err != nil {
 				return false, err
 			}
-			if len(npods) != len(pods) {
+
+			if newPod.Name == oldPod.Name {
+				return false, fmt.Errorf("pod was not deleted")
+			}
+
+			if !podIsRunningAndReady(newPod) {
 				return false, nil
 			}
-			for _, p := range npods {
-				if slices.Contains(oldNames, p.Name) {
-					return false, nil
-				}
-				if !podIsRunningAndReady(p) {
-					ginkgo.By(fmt.Sprintf("\t%v pod %s not ready", time.Now(), p.Name))
-					return false, nil
-				}
-			}
+
 			return true, nil
 		})
+}
+
+func podForNode(cs clientset.Interface, nodeName string) (*corev1.Pod, error) {
+	pods, err := FRRK8sPods(cs)
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range pods {
+		if p.Spec.NodeName == nodeName {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("no frr-k8s pod found on node %s", nodeName)
 }
 
 func podIsRunningAndReady(pod *v1.Pod) bool {
