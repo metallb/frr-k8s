@@ -3,6 +3,7 @@
 package config
 
 import (
+	"fmt"
 	"net"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
@@ -88,11 +89,18 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, options
 	return res
 }
 
-func EnableGracefulRestart(pc *PeersConfig) {
-	// for _,p := range pc.PeersV4 { // not working, go uses a copy of the value instead of the value itself within a range clause
-	//    p.Neigh.EnableGracefulRestart = true
-	// }
+func EnableSimpleBFD(pc *PeersConfig) {
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.BFDProfile = "simple"
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.BFDProfile = "simple"
+	}
+}
 
+func EnableGracefulRestart(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {
 		t[i].Neigh.EnableGracefulRestart = true
@@ -135,4 +143,13 @@ func ContainersForVRF(frrs []*frrcontainer.FRR, vrf string) []*frrcontainer.FRR 
 		}
 	}
 	return res
+}
+
+func ContainerByName(frrs []*frrcontainer.FRR, name string) (*frrcontainer.FRR, error) {
+	for _, f := range frrs {
+		if f.Name == name {
+			return f, nil
+		}
+	}
+	return nil, fmt.Errorf("container with name %s not found", name)
 }
