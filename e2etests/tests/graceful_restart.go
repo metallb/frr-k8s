@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -26,7 +27,7 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func() {
+var _ = ginkgo.FDescribe("Establish BGP session with EnableGracefulRestart", func() {
 	var (
 		cs       clientset.Interface
 		updater  *config.Updater
@@ -103,7 +104,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			err := updater.Update(peersConfig.Secrets, frrConfigCR)
 			Expect(err).NotTo(HaveOccurred(), "apply the CR in k8s api failed")
 
-			check := func() error {
+			Eventually(func() error {
 				for _, p := range peersConfig.Peers() {
 					err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes)
 					if err != nil {
@@ -111,11 +112,9 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 					}
 				}
 				return nil
-			}
+			}, time.Minute, time.Second).ShouldNot(HaveOccurred(), "route should exist before we restart frr-k8s")
 
-			Eventually(check, time.Minute, time.Second).ShouldNot(HaveOccurred(),
-				"route should exist before we restart frr-k8s")
-
+			time.Sleep(5 * time.Second)
 			c := make(chan struct{})
 			go func() { // go restart frr-k8s while Consistently check that route exists
 				defer ginkgo.GinkgoRecover()
@@ -124,12 +123,32 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				close(c)
 			}()
 
+			check := func() error {
+				var returnError error
+
+				for _, p := range peersConfig.Peers() {
+					err = routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes)
+					if err != nil {
+						returnError = errors.Join(returnError, fmt.Errorf("Neigh %s does not have prefix %s: %w", p.FRR.Name, prefix, err))
+						for i := 0; i < 5; i++ {
+							if err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes); err != nil {
+								ginkgo.By(fmt.Sprintf("%d Neigh %s does not have prefix %s: %s", i, p.FRR.Name, prefix, err))
+								time.Sleep(time.Second)
+							} else {
+								ginkgo.By(fmt.Sprintf("%d Neigh %s does have prefix %s: %s", i, p.FRR.Name, prefix, err))
+							}
+						}
+					}
+				}
+				return returnError
+			}
+
 			// 2*time.Minute is important because that is the Graceful Restart timer.
 			Consistently(check, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s pods are not yet ready")
 		},
-			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24"),
-			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64"),
+			ginkgo.Entry("IPV4", ipfamily.IPv4, "5.5.5.5/32"),
+			ginkgo.Entry("IPV6", ipfamily.IPv6, "2001:db8:5555::5/128"),
 		)
 	})
 })

@@ -74,6 +74,7 @@ func RestartFRRK8sPods(cs clientset.Interface) error {
 					return false, nil
 				}
 			}
+			ginkgo.By(fmt.Sprintf("\tfrrk8s pod ARE ready"))
 			return true, nil
 		})
 }

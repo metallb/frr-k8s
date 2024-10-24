@@ -238,7 +238,7 @@ $(APIDOCSGEN): $(LOCALBIN)
 
 .PHONY: e2etests
 e2etests: ginkgo kubectl
-	$(GINKGO) -v $(GINKGO_ARGS) --timeout=3h ./e2etests -- --kubectl=$(KUBECTL) $(TEST_ARGS)
+	$(GINKGO) -v $(GINKGO_ARGS) --repeat=50 --timeout=3h ./e2etests -- --kubectl=$(KUBECTL) $(TEST_ARGS)
 
 
 .PHONY: kind-cluster
