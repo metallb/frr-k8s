@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			Consistently(check, time.Minute, time.Second).ShouldNot(HaveOccurred(), "route check failed during frr-k8s-pod reboot")
 			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restarted frr-k8s pods are not yet ready")
 		},
-			ginkgo.FEntry("IPV4", ipfamily.IPv4, "5.5.5.5/32"),
+			ginkgo.Entry("IPV4", ipfamily.IPv4, "5.5.5.5/32"),
 			ginkgo.Entry("IPV6", ipfamily.IPv6, "2001:db8:5555::5/128"),
 		)
 	})

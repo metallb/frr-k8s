@@ -55,7 +55,7 @@ var _ = ginkgo.Describe("Session", func() {
 	})
 
 	ginkgo.Context("Session parameters", func() {
-		ginkgo.It("are set correctly", func() {
+		ginkgo.FIt("are set correctly", func() {
 			config := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
@@ -113,6 +113,7 @@ var _ = ginkgo.Describe("Session", func() {
 						if n.ConfiguredConnectTime != 3 {
 							return fmt.Errorf("expected connect time to be 3, got %d", n.ConfiguredConnectTime)
 						}
+						Expect(n.ConnectionsDropped).To(Equal(0))
 						neighborFamily := ipfamily.ForAddress(n.IP)
 						for _, family := range n.AddressFamilies {
 							if !strings.Contains(family, string(neighborFamily)) {

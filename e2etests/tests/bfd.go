@@ -107,6 +107,11 @@ var _ = ginkgo.Describe("BFD", func() {
 
 		for _, c := range infra.FRRContainers {
 			ValidateFRRPeeredWithNodes(nodes, c, pairingFamily)
+			neighbors, err := frr.NeighborsInfo(c)
+			Expect(err).NotTo(HaveOccurred())
+			for _, n := range neighbors {
+				Expect(n.ConnectionsDropped).To(Equal(0))
+			}
 		}
 
 		Eventually(func() error {
@@ -163,7 +168,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
 
 	},
-		ginkgo.Entry("IPV4 - default", simpleProfile, simpleProfile, ipfamily.IPv4),
+		ginkgo.FEntry("IPV4 - default", simpleProfile, simpleProfile, ipfamily.IPv4),
 		ginkgo.Entry("IPV4 - full params", fullProfile, fullProfile, ipfamily.IPv4),
 		ginkgo.Entry("IPV4 - echo mode enabled", withEchoMode, fullProfile, ipfamily.IPv4), // echo mode doesn't work with VRF
 		ginkgo.Entry("IPV6 - default", simpleProfile, simpleProfile, ipfamily.IPv6),
