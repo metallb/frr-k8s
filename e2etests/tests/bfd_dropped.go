@@ -22,7 +22,6 @@ import (
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	clientset "k8s.io/client-go/kubernetes"
 )
@@ -65,6 +64,8 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 
 		err = k8s.RestartFRRK8sPods(cs)
 		Expect(err).NotTo(HaveOccurred(), "frr-k8s pods failed to restart")
+
+		ginkgo.By("Start")
 	})
 
 	ginkgo.AfterEach(func() {
@@ -122,13 +123,13 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 			},
 		}
 		if bfd {
-			t := true
+			t := false
 			frrConfigCR.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{
 				{
-					Name:             "simple",
-					ReceiveInterval:  ptr.To[uint32](1000),
-					DetectMultiplier: ptr.To[uint32](3),
-					PassiveMode:      &t,
+					Name: "simple",
+					//					ReceiveInterval:  ptr.To[uint32](1000),
+					//					DetectMultiplier: ptr.To[uint32](5),
+					PassiveMode: &t,
 				},
 			}
 		}
@@ -144,6 +145,6 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 		}
 	},
 		ginkgo.Entry("IPV4 without BFD", false),
-		ginkgo.Entry("IPV4 with BFD", true),
+		ginkgo.FEntry("IPV4 with BFD", true),
 	)
 })
