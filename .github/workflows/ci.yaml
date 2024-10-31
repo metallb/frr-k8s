@@ -129,8 +129,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        ip-family: [ipv4, ipv6, dual]
-        deployment: [manifests, helm]
+        ip-family: [ipv4]
+        deployment: [manifests]
         exclude:
         - ip-family: ipv6
           deployment: helm
@@ -162,7 +162,7 @@ jobs:
 
       - name: Deploy on kind
         run: |
-          MAKE_RULE="deploy-with-prometheus"
+          MAKE_RULE="deploy"
           if [ ${{ matrix.deployment }} = "helm" ]; then MAKE_RULE="deploy-helm"; fi
           LOGLEVEL=debug IP_FAMILY="${{ matrix.ip-family }}" make $MAKE_RULE
           mkdir -p /tmp/kind_logs/

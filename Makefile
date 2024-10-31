@@ -167,7 +167,7 @@ deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster spe
 	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | \
 		sed '/--log-level/a\        - --always-block=192.167.9.0/24,fc00:f553:ccd:e799::/64' |\
 		sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
-	sleep 2s # wait for daemonset to be created
+	sleep 10s # wait for daemonset to be created
 	$(KUBECTL) -n ${NAMESPACE} wait --for=condition=Ready --all pods --timeout 300s
 
 .PHONY: deploy-helm

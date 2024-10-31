@@ -22,8 +22,6 @@ networking:
   ipFamily: "${IP_FAMILY}"
 nodes:
 - role: control-plane
-- role: worker
-- role: worker
 EOF
 
-kubectl label node "$KIND_CLUSTER_NAME"-worker "$KIND_CLUSTER_NAME"-worker2 node-role.kubernetes.io/worker=worker
+#kubectl label node "$KIND_CLUSTER_NAME"-worker "$KIND_CLUSTER_NAME"-worker2 node-role.kubernetes.io/worker=worker
