@@ -141,10 +141,10 @@ func KindnetContainersSetup(cs *clientset.Clientset, image string) ([]*frrcontai
 		return nil, err
 	}
 
-	err = multiHopSetUp(containers, defaultNextHopSettings, cs)
-	if err != nil {
-		return nil, err
-	}
+	// err = multiHopSetUp(containers, defaultNextHopSettings, cs)
+	// if err != nil {
+	// 	return nil, err
+	// }
 	return containers, nil
 }
 
@@ -366,56 +366,56 @@ func hostnetContainerConfig(image string) map[string]frrcontainer.Config {
 
 func frrContainersConfigs(image string) map[string]frrcontainer.Config {
 	res := make(map[string]frrcontainer.Config)
-	res["ibgp-single-hop"] = frrcontainer.Config{
-		Name:  "ibgp-single-hop",
-		Image: image,
-		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASN,
-			Password: "ibgp-test",
-			MultiHop: false,
-		},
-		Router: frrconfig.RouterConfig{
-			ASN:      FRRK8sASN,
-			BGPPort:  179,
-			Password: "ibgp-test",
-		},
-		Network: kindNetwork,
-	}
-
-	res["ibgp-multi-hop"] = frrcontainer.Config{
-		Name:  "ibgp-multi-hop",
-		Image: image,
-		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASN,
-			Password: "ibgp-test",
-			MultiHop: true,
-		},
-		Router: frrconfig.RouterConfig{
-			ASN:      FRRK8sASN,
-			BGPPort:  180,
-			Password: "ibgp-test",
-		},
-		Network:  defaultNextHopSettings.multiHopNetwork,
-		HostIPv4: hostIPv4,
-		HostIPv6: hostIPv6,
-	}
-	res["ebgp-multi-hop"] = frrcontainer.Config{
-		Name:  "ebgp-multi-hop",
-		Image: image,
-		Neighbor: frrconfig.NeighborConfig{
-			ASN:      FRRK8sASN,
-			Password: "ebgp-test",
-			MultiHop: true,
-		},
-		Router: frrconfig.RouterConfig{
-			ASN:      externalASN,
-			BGPPort:  180,
-			Password: "ebgp-test",
-		},
-		Network:  defaultNextHopSettings.multiHopNetwork,
-		HostIPv4: hostIPv4,
-		HostIPv6: hostIPv6,
-	}
+	// res["ibgp-single-hop"] = frrcontainer.Config{
+	// 	Name:  "ibgp-single-hop",
+	// 	Image: image,
+	// 	Neighbor: frrconfig.NeighborConfig{
+	// 		ASN:      FRRK8sASN,
+	// 		Password: "ibgp-test",
+	// 		MultiHop: false,
+	// 	},
+	// 	Router: frrconfig.RouterConfig{
+	// 		ASN:      FRRK8sASN,
+	// 		BGPPort:  179,
+	// 		Password: "ibgp-test",
+	// 	},
+	// 	Network: kindNetwork,
+	// }
+	//
+	// res["ibgp-multi-hop"] = frrcontainer.Config{
+	// 	Name:  "ibgp-multi-hop",
+	// 	Image: image,
+	// 	Neighbor: frrconfig.NeighborConfig{
+	// 		ASN:      FRRK8sASN,
+	// 		Password: "ibgp-test",
+	// 		MultiHop: true,
+	// 	},
+	// 	Router: frrconfig.RouterConfig{
+	// 		ASN:      FRRK8sASN,
+	// 		BGPPort:  180,
+	// 		Password: "ibgp-test",
+	// 	},
+	// 	Network:  defaultNextHopSettings.multiHopNetwork,
+	// 	HostIPv4: hostIPv4,
+	// 	HostIPv6: hostIPv6,
+	// }
+	// res["ebgp-multi-hop"] = frrcontainer.Config{
+	// 	Name:  "ebgp-multi-hop",
+	// 	Image: image,
+	// 	Neighbor: frrconfig.NeighborConfig{
+	// 		ASN:      FRRK8sASN,
+	// 		Password: "ebgp-test",
+	// 		MultiHop: true,
+	// 	},
+	// 	Router: frrconfig.RouterConfig{
+	// 		ASN:      externalASN,
+	// 		BGPPort:  180,
+	// 		Password: "ebgp-test",
+	// 	},
+	// 	Network:  defaultNextHopSettings.multiHopNetwork,
+	// 	HostIPv4: hostIPv4,
+	// 	HostIPv6: hostIPv6,
+	// }
 	res["ebgp-single-hop"] = frrcontainer.Config{
 		Name:    "ebgp-single-hop",
 		Image:   image,

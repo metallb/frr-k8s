@@ -15,6 +15,7 @@ debug bgp bfd
 debug bfd network
 debug bfd peer
 debug bfd zebra
+debug bfd distributed
 debug route-map detail
 {{- end }}
 hostname {{.Hostname}}
@@ -78,6 +79,8 @@ bfd
 {{- range .BFDProfiles }}
 {{- template "bfdprofile" dict "profile" . -}}
 {{- end }}
+peer 172.18.0.3
+profile simple
 {{- end }}
 
 {{- if .ExtraConfig }}

@@ -19,6 +19,14 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
+func TCPDump(testName string) (string, error) {
+	output := path.Join(ReportPath, strings.ReplaceAll(testName, " ", "_"))
+	err := os.Mkdir(output, 0755)
+	c := fmt.Sprintf("run --name tcpdump -d -v %s/:/tmp/dump/ --privileged --rm --net=container:ebgp-single-hop quay.io/karampok/snife:latest tcpdump -i any -nnn -w /tmp/dump/packets.pcap", output)
+	id, err := executor.Host.Exec("docker", strings.Split(c, " ")...)
+	return id, err
+}
+
 func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.Interface) {
 	if ReportPath == "" {
 		ginkgo.GinkgoWriter.Printf("ReportPath is not set")

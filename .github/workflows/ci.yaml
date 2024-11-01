@@ -123,9 +123,7 @@ jobs:
   e2e:
     runs-on: ubuntu-22.04
     needs:
-      - unit-tests
       - build-test-images
-      - commitlint
     strategy:
       fail-fast: false
       matrix:

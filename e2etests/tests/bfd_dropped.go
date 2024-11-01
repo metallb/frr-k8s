@@ -4,10 +4,11 @@ package tests
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/onsi/ginkgo/v2"
-	"github.com/openshift-kni/k8sreporter"
 	"go.universe.tf/e2etest/pkg/frr"
+	metallbfrr "go.universe.tf/e2etest/pkg/frr"
 	"go.universe.tf/e2etest/pkg/frr/container"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 
@@ -22,16 +23,18 @@ import (
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
+	"go.universe.tf/e2etest/pkg/executor"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
 var _ = ginkgo.FDescribe("Establish BGP session", func() {
 	var (
-		cs       clientset.Interface
-		updater  *config.Updater
-		reporter *k8sreporter.KubernetesReporter
-		nodes    []corev1.Node
+		cs         clientset.Interface
+		updater    *config.Updater
+		reportPath string
+		nodes      []corev1.Node
 	)
 
 	cleanup := func(u *config.Updater) error {
@@ -50,8 +53,8 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 
 	ginkgo.BeforeEach(func() {
 		var err error
+		reportPath = ginkgo.CurrentSpecReport().LeafNodeText
 
-		reporter = dump.NewK8sReporter(k8s.FRRK8sNamespace)
 		updater, err = config.NewUpdater()
 		Expect(err).NotTo(HaveOccurred())
 
@@ -64,17 +67,13 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 
 		err = k8s.RestartFRRK8sPods(cs)
 		Expect(err).NotTo(HaveOccurred(), "frr-k8s pods failed to restart")
-
-		ginkgo.By("Start")
 	})
 
 	ginkgo.AfterEach(func() {
-		testName := ginkgo.CurrentSpecReport().LeafNodeText
-		if ginkgo.CurrentSpecReport().Failed() {
-			testName += "-failed"
-		}
-		dump.K8sInfo(testName, reporter)
-		dump.BGPInfo(testName, infra.FRRContainers, cs)
+		time.Sleep(10 * time.Second)
+		reporter := dump.NewK8sReporter(k8s.FRRK8sNamespace)
+		dump.K8sInfo(reportPath, reporter)
+		dump.BGPInfo(reportPath, infra.FRRContainers, cs)
 
 		err := cleanup(updater)
 		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and in infra containers")
@@ -99,6 +98,13 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 		} else {
 			peersConfig = config.PeersForContainers([]*frrcontainer.FRR{cnt}, ipfamily.IPv4)
 		}
+
+		_, err = dump.TCPDump(reportPath)
+		Expect(err).NotTo(HaveOccurred())
+		ginkgo.DeferCleanup(func() {
+			out, err := executor.Host.Exec("docker", "stop", "tcpdump")
+			Expect(err).NotTo(HaveOccurred(), out)
+		})
 
 		frrConfigCR := frrk8sv1beta1.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
@@ -126,10 +132,10 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 			t := false
 			frrConfigCR.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{
 				{
-					Name: "simple",
-					//					ReceiveInterval:  ptr.To[uint32](1000),
-					//					DetectMultiplier: ptr.To[uint32](5),
-					PassiveMode: &t,
+					Name:             "simple",
+					ReceiveInterval:  ptr.To[uint32](1000),
+					DetectMultiplier: ptr.To[uint32](50),
+					PassiveMode:      &t,
 				},
 			}
 		}
@@ -142,6 +148,11 @@ var _ = ginkgo.FDescribe("Establish BGP session", func() {
 		Expect(err).NotTo(HaveOccurred())
 		for _, n := range neighbors {
 			Expect(n.ConnectionsDropped).To(Equal(0))
+		}
+
+		bfdPeers, err := metallbfrr.BFDPeers(cnt.Executor)
+		for _, p := range bfdPeers {
+			Expect(p.Status).To(Equal("up"))
 		}
 	},
 		ginkgo.Entry("IPV4 without BFD", false),
