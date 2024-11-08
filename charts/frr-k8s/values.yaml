@@ -157,8 +157,8 @@ frrk8s:
   # frr contains configuration specific to the FRR container,
   frr:
     image:
-      repository: quay.io/frrouting/frr
-      tag: 9.1.0
+      repository: quay.io/karampok/frr
+      tag: 9.1-fixbfd
       pullPolicy:
     metricsBindAddress: 127.0.0.1
     metricsPort: 7573

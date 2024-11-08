@@ -88,11 +88,18 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, options
 	return res
 }
 
-func EnableGracefulRestart(pc *PeersConfig) {
-	// for _,p := range pc.PeersV4 { // not working, go uses a copy of the value instead of the value itself within a range clause
-	//    p.Neigh.EnableGracefulRestart = true
-	// }
+func EnableSimpleBFD(pc *PeersConfig) {
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.BFDProfile = "simple"
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.BFDProfile = "simple"
+	}
+}
 
+func EnableGracefulRestart(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {
 		t[i].Neigh.EnableGracefulRestart = true

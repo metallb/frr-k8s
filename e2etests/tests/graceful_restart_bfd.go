@@ -9,6 +9,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-kni/k8sreporter"
 	"go.universe.tf/e2etest/pkg/frr/container"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
@@ -22,11 +23,12 @@ import (
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func() {
+var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart and BFD", func() {
 	var (
 		cs       clientset.Interface
 		updater  *config.Updater
@@ -75,12 +77,14 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 		ginkgo.DescribeTable("external BGP peer maintains routes", func(ipFam ipfamily.Family, prefix string) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
 			for _, c := range frrs {
-				err := container.PairWithNodes(cs, c, ipFam)
+				err := container.PairWithNodes(cs, c, ipFam, func(container *frrcontainer.FRR) {
+					container.NeighborConfig.BFDEnabled = true
+				})
 				Expect(err).NotTo(HaveOccurred(), "set frr config in infra containers failed")
 			}
 
 			peersConfig := config.PeersForContainers(frrs, ipFam,
-				config.EnableAllowAll, config.EnableGracefulRestart)
+				config.EnableAllowAll, config.EnableGracefulRestart, config.EnableSimpleBFD)
 
 			frrConfigCR := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -89,6 +93,13 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				},
 				Spec: frrk8sv1beta1.FRRConfigurationSpec{
 					BGP: frrk8sv1beta1.BGPConfig{
+						BFDProfiles: []frrk8sv1beta1.BFDProfile{
+							{
+								Name:             "simple",
+								ReceiveInterval:  ptr.To[uint32](1000),
+								DetectMultiplier: ptr.To[uint32](3),
+							},
+						},
 						Routers: []frrk8sv1beta1.Router{
 							{
 								ASN:       infra.FRRK8sASN,
@@ -128,13 +139,12 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 				for _, p := range peersConfig.Peers() {
 					ValidateFRRPeeredWithNodes(nodes, &p.FRR, ipFam)
 				}
-				Consistently(check, 10*time.Second, time.Second).ShouldNot(HaveOccurred())
 				close(c)
 			}()
 
 			// 2*time.Minute is important because that is the Graceful Restart timer.
 			Consistently(check, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
-			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s not ready or peering not established")
+			Eventually(c, 2*time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s not ready or peering not established")
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24"),
 			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64"),

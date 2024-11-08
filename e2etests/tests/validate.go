@@ -40,7 +40,7 @@ func ValidateFRRPeeredWithNodes(nodes []corev1.Node, c *frrcontainer.FRR, ipFami
 			return fmt.Errorf("failed to match neighbors for %s, %w", c.Name, err)
 		}
 		return nil
-	}, 4*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
+	}, 2*time.Minute, 1*time.Second).ShouldNot(HaveOccurred())
 }
 
 func ValidatePrefixesForNeighbor(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
