@@ -37,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
@@ -70,7 +69,6 @@ func init() {
 func main() {
 	var (
 		metricsAddr                   string
-		probeAddr                     string
 		logLevel                      string
 		nodeName                      string
 		namespace                     string
@@ -84,7 +82,6 @@ func main() {
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
-	flag.StringVar(&probeAddr, "health-probe-bind-address", "127.0.0.1:8081", "The address the probe endpoint binds to.")
 	flag.StringVar(&logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
 	flag.StringVar(&nodeName, "node-name", "", "The node this daemon is running on.")
 	flag.StringVar(&namespace, "namespace", "", "The namespace this daemon is deployed in")
@@ -114,7 +111,7 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
-		HealthProbeBindAddress: probeAddr,
+		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}: namespaceSelector,
@@ -138,15 +135,6 @@ func main() {
 	ctx := ctrl.SetupSignalHandler()
 
 	//+kubebuilder:scaffold:builder
-
-	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
-		os.Exit(1)
-	}
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
-		os.Exit(1)
-	}
 
 	enableWebhook := webhookMode == "onlywebhook"
 	startListeners := make(chan struct{})

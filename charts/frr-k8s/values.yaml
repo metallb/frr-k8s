@@ -128,7 +128,6 @@ frrk8s:
   podAnnotations: {}
   labels:
     app: frr-k8s
-  healthPort: 8081
   livenessProbe:
     enabled: true
     failureThreshold: 3
