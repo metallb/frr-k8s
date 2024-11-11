@@ -35,7 +35,6 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.resources | object | `{}` |  |
 | frrk8s.frr.secureMetricsPort | int | `9141` |  |
 | frrk8s.frrMetrics.resources | object | `{}` |  |
-| frrk8s.healthPort | int | `8081` |  |
 | frrk8s.image.pullPolicy | string | `nil` |  |
 | frrk8s.image.repository | string | `"quay.io/metallb/frr-k8s"` |  |
 | frrk8s.image.tag | string | `nil` |  |
