@@ -1,0 +1,65 @@
+log file /etc/frr/frr.log informational
+log timestamp precision 3
+hostname dummyhostname
+ip nht resolve-via-default
+ipv6 nht resolve-via-default
+
+
+
+
+ip prefix-list net0-pl-ipv4 seq 1 permit 192.169.1.0/24
+
+
+
+ip prefix-list net0-pl-ipv4 seq 2 permit 192.170.1.0/22
+
+route-map net0-out permit 1
+  match ip address prefix-list net0-pl-ipv4
+route-map net0-out permit 2
+  match ipv6 address prefix-list net0-pl-ipv4
+
+
+
+ipv6 prefix-list net0-pl-ipv4 seq 3 deny any
+
+
+
+
+
+
+ip prefix-list net0-inpl-ipv4 seq 1 deny any
+
+ipv6 prefix-list net0-inpl-ipv4 seq 2 deny any
+route-map net0-in permit 3
+  match ip address prefix-list net0-inpl-ipv4
+route-map net0-in permit 4
+  match ipv6 address prefix-list net0-inpl-ipv4
+
+router bgp 65000
+  no bgp ebgp-requires-policy
+  no bgp network import-check
+  no bgp default ipv4-unicast
+  bgp graceful-restart preserve-fw-state
+
+  neighbor net0 interface remote-as external
+  neighbor net0 port 4567
+  
+  
+  
+
+  address-family ipv4 unicast
+    neighbor net0 activate
+    neighbor net0 route-map net0-in in
+    neighbor net0 route-map net0-out out
+  exit-address-family
+  address-family ipv6 unicast
+    neighbor net0 activate
+    neighbor net0 route-map net0-in in
+    neighbor net0 route-map net0-out out
+  exit-address-family
+  address-family ipv4 unicast
+    network 192.169.1.0/24
+    network 192.170.1.0/22
+  exit-address-family
+
+
