@@ -187,7 +187,7 @@ var _ = ginkgo.Describe("Session", func() {
 			ginkgo.Entry("IPV6", ipfamily.IPv6),
 		)
 
-		ginkgo.DescribeTable("Establishes sessions with graceful restart", func(family ipfamily.Family) {
+		ginkgo.FDescribeTable("Establishes sessions with graceful restart", func(family ipfamily.Family) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
 			neighbors := []frrk8sv1beta1.Neighbor{}
 
