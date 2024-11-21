@@ -163,6 +163,7 @@ frrk8s:
     metricsPort: 7573
     resources: {}
     secureMetricsPort: 9141
+    acceptIncomingBGPConnections: false
   reloader:
     resources: {}
   frrMetrics:

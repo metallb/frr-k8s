@@ -27,6 +27,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.affinity | object | `{}` |  |
 | frrk8s.alwaysBlock | string | `""` |  |
 | frrk8s.disableCertRotation | bool | `false` |  |
+| frrk8s.frr.acceptIncomingBGPConnections | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
 | frrk8s.frr.image.tag | string | `"9.1.0"` |  |
