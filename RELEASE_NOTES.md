@@ -1,5 +1,16 @@
 # FRRK8s Release Notes
 
+## Release v0.0.16
+
+### New Features
+
+- Make the acceptance of incoming BGP connections optional via an helm parameter. (#229, @fedepaol)
+
+### Bug fixes
+
+- Bug: throw better error when prefix for same localPref is added twice (#221, @karampok)
+- The BGP metrics label corresponding to the peer does not have the port anymore. Because now FRR-K8S allow incoming connections, the port might be source port of the tcp connection, making the metrics label not reliable. Additionally, we can only have one peer per VRF, so the port is not relevant. (#206, @fedepaol)
+
 ## Release v0.0.15
 
 ### New Features
