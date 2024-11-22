@@ -4,11 +4,13 @@ package k8s
 
 import (
 	"context"
+	"fmt"
 	"slices"
 	"time"
 
 	"errors"
 
+	"github.com/onsi/ginkgo/v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -54,7 +56,7 @@ func RestartFRRK8sPods(cs clientset.Interface) error {
 		}
 	}
 
-	return wait.PollUntilContextTimeout(context.Background(), time.Second,
+	return wait.PollUntilContextTimeout(context.Background(), 10*time.Second,
 		120*time.Second, false, func(context.Context) (bool, error) {
 			npods, err := FRRK8sPods(cs)
 			if err != nil {
@@ -68,6 +70,7 @@ func RestartFRRK8sPods(cs clientset.Interface) error {
 					return false, nil
 				}
 				if !podIsRunningAndReady(p) {
+					ginkgo.By(fmt.Sprintf("\t%v pod %s not ready", time.Now(), p.Name))
 					return false, nil
 				}
 			}

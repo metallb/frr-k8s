@@ -125,7 +125,7 @@ export KUBECONFIG=$(KUBECONFIG_PATH)
 KUSTOMIZE_VERSION ?= v5.0.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 KUBECTL_VERSION ?= v1.27.0
-GINKGO_VERSION ?= v2.11.0
+GINKGO_VERSION ?= v2.19.0
 KIND_VERSION ?= v0.23.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
@@ -237,7 +237,7 @@ $(APIDOCSGEN): $(LOCALBIN)
 	GOBIN=$(LOCALBIN) go install github.com/elastic/crd-ref-docs@$(APIDOCSGEN_VERSION)
 
 .PHONY: e2etests
-e2etests: ginkgo
+e2etests: ginkgo kubectl
 	$(GINKGO) -v $(GINKGO_ARGS) --timeout=3h ./e2etests -- --kubectl=$(KUBECTL) $(TEST_ARGS)
 
 

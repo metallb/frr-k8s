@@ -27,6 +27,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.affinity | object | `{}` |  |
 | frrk8s.alwaysBlock | string | `""` |  |
 | frrk8s.disableCertRotation | bool | `false` |  |
+| frrk8s.frr.acceptIncomingBGPConnections | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
 | frrk8s.frr.image.tag | string | `"9.1.0"` |  |
@@ -35,7 +36,6 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.resources | object | `{}` |  |
 | frrk8s.frr.secureMetricsPort | int | `9141` |  |
 | frrk8s.frrMetrics.resources | object | `{}` |  |
-| frrk8s.healthPort | int | `8081` |  |
 | frrk8s.image.pullPolicy | string | `nil` |  |
 | frrk8s.image.repository | string | `"quay.io/metallb/frr-k8s"` |  |
 | frrk8s.image.tag | string | `nil` |  |
