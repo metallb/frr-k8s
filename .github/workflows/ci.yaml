@@ -32,7 +32,7 @@ jobs:
           args: -exclude-dir e2etest -severity medium ./...
 
       - name: Golang Vulncheck
-        uses: Templum/govulncheck-action@v1.0.0
+        uses: Templum/govulncheck-action@v1.0.1
         with:
           skip-upload: true
           go-version: latest
