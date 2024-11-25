@@ -1141,10 +1141,25 @@ spec:
         - mountPath: /etc/frr_reloader
           name: reloader
       - command:
-        - /bin/sh
-        - -c
+        - /bin/bash
+        - -cx
         - |
-          /sbin/tini -- /usr/lib/frr/docker-start &
+          if [ -r "/lib/lsb/init-functions" ]; then
+                  . /lib/lsb/init-functions
+          else
+                  log_success_msg() {
+                          echo "$@"
+                  }
+                  log_warning_msg() {
+                          echo "$@" >&2
+                  }
+                  log_failure_msg() {
+                          echo "$@" >&2
+                  }
+          fi
+
+          source /usr/lib/frr/frrcommon.sh
+          /usr/lib/frr/watchfrr -l 7 $(daemon_list) &
           attempts=0
           until [[ -f /etc/frr/frr.log || $attempts -eq 60 ]]; do
             sleep 1
@@ -1178,6 +1193,8 @@ spec:
             port: 7573
           periodSeconds: 5
         volumeMounts:
+        - mountPath: /tmp/cores
+          name: core-path
         - mountPath: /var/run/frr
           name: frr-sockets
         - mountPath: /etc/frr
@@ -1255,6 +1272,9 @@ spec:
         key: node-role.kubernetes.io/control-plane
         operator: Exists
       volumes:
+      - hostPath:
+          path: /home/core-dump
+        name: core-path
       - emptyDir: {}
         name: frr-sockets
       - configMap:
