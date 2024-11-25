@@ -272,6 +272,9 @@ KIND_EXPORT_LOGS ?=/tmp/kind_logs
 .PHONY: kind-export-logs
 kind-export-logs:
 	$(LOCALBIN)/kind export logs --name ${KIND_CLUSTER_NAME} ${KIND_EXPORT_LOGS}
+	for node in $(shell docker ps -q); do \
+	  docker cp "$$node:/home" "$(KIND_EXPORT_LOGS)/home-$$node"; \
+	done
 
 .PHONY: generate-all-in-one
 generate-all-in-one: manifests kustomize ## Create manifests
