@@ -11,13 +11,13 @@ cleanup() {
 
 reload_frr() {
   flock 200
-  echo "Caught SIGHUP and acquired lock! Reloading FRR.."
+  echo -n "$(date +%s) Caught SIGHUP and acquired lock! Reloading FRR.."
   SECONDS=0
 
   kill_sleep
 
   echo "Checking the configuration file syntax"
-  if ! python3 /usr/lib/frr/frr-reload.py --test --stdout "$FILE_TO_RELOAD" 2>"$LAST_ERROR_FILE" | sed 's/password.*/password <retracted>/g'; then
+  if ! python3 /usr/lib/frr/frr-reload.py --log-level=debug --test --stdout "$FILE_TO_RELOAD" 2>"$LAST_ERROR_FILE" | sed 's/password.*/password <retracted>/g'; then
     echo "Syntax error spotted: aborting.. $SECONDS seconds"
     cat "$LAST_ERROR_FILE" | sed 's/password.*/password <retracted>/g'
     echo -n "$(date +%s) failure"  > "$STATUSFILE"
@@ -26,7 +26,7 @@ reload_frr() {
   fi
 
   echo "Applying the configuration file"
-  if ! python3 /usr/lib/frr/frr-reload.py --reload --overwrite --stdout "$FILE_TO_RELOAD" 2>&1 | sed 's/password.*/password <retracted>/g'; then
+  if ! python3 /usr/lib/frr/frr-reload.py --log-level=debug --reload --overwrite --stdout "$FILE_TO_RELOAD" 2>&1 | sed 's/password.*/password <retracted>/g'; then
     echo "Failed to fully apply configuration file $SECONDS seconds"
     echo -n "$(date +%s) failure"  > "$STATUSFILE"
     save_status
@@ -70,6 +70,18 @@ clean_files
 echo "PID is: $$, writing to $PIDFILE"
 printf "$$" > "$PIDFILE"
 touch "$LOCKFILE"
+
+is_bgpd_up() {
+    vtysh -c 'show watchfrr' | grep -q 'bgpd *Up'
+    return $? # Return 0 if found, non-zero otherwise
+}
+
+echo "Waiting for bgpd to be Up..."
+while ! is_bgpd_up; do
+    echo "bgpd is not Up yet. Retrying in 1 seconds..."
+    sleep 1
+done
+echo "bgpd is Up ..."
 
 while true
 do

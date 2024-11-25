@@ -26,4 +26,8 @@ nodes:
 - role: worker
 EOF
 
+for node in $(kind get nodes); do
+  docker exec "$node" sysctl -w kernel.core_pattern=/tmp/core/core.%e.%p.%t
+done
+
 kubectl label node "$KIND_CLUSTER_NAME"-worker "$KIND_CLUSTER_NAME"-worker2 node-role.kubernetes.io/worker=worker
