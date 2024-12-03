@@ -103,6 +103,8 @@ spec:
           - name: TINI_SUBREAPER
             value: "true"
         volumeMounts:
+          - mountPath: /tmp/cores
+            name: core-path
           - name: frr-sockets
             mountPath: /var/run/frr
           - name: frr-conf
@@ -169,6 +171,9 @@ spec:
         key: node-role.kubernetes.io/control-plane
         operator: Exists
       volumes:
+        - name: core-path
+          hostPath:
+            path: /home/core-dump
         - name: frr-sockets
           emptyDir: {}
         - name: frr-startup
