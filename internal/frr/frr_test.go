@@ -988,3 +988,45 @@ func TestSingleSessionWithExternalASN(t *testing.T) {
 
 	testCheckConfigFile(t)
 }
+func TestSingleUnnumberedSession(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:   ipfamily.IPv4,
+						ASN:        "external",
+						Addr:       "net0",
+						Unnumbered: true,
+						Port:       ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []OutgoingFilter{
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.169.1.0/24",
+								},
+								{
+									IPFamily: ipfamily.IPv4,
+									Prefix:   "192.170.1.0/22",
+								},
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
