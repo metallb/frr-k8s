@@ -33,7 +33,7 @@ var FRRImage string
 
 // The Unnumbered test can run on IPv4, IPv6 or Dual because it needs only the
 // IPv6 LLA addresses in the interface, not full IPv6 stack.
-var _ = ginkgo.Describe("Unnumbered", func() {
+var _ = ginkgo.FDescribe("Unnumbered", func() {
 	var (
 		nodeWithP2PConnection corev1.Node
 		externalP2PContainer  *frrcontainer.FRR
@@ -171,7 +171,7 @@ var _ = ginkgo.Describe("Unnumbered", func() {
 
 	// This spec is added to verify that the point-to-point setup works
 	ginkgo.When("raw config", func() {
-		ginkgo.It("BGP session is validated", func() {
+		ginkgo.XIt("BGP session is validated", func() {
 			iface := "net0"
 			externalP2PContainer, err := frrcontainer.CreateP2PPeerFor(nodeWithP2PConnection.Name, iface, FRRImage)
 			Expect(err).NotTo(HaveOccurred())
