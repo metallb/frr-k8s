@@ -80,3 +80,12 @@ func (u *Updater) Clean() error {
 
 	return nil
 }
+
+func (u *Updater) DeleteFRRConfiguration(cr frrk8sv1beta1.FRRConfiguration) error {
+	err := u.client.Delete(context.Background(), &cr)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	return nil
+}

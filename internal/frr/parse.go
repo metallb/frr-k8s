@@ -35,6 +35,7 @@ type Route struct {
 const bgpConnected = "Established"
 
 type FRRNeighbor struct {
+	BGPNeighborAddr   string       `json:"bgpNeighborAddr"`
 	RemoteAs          int          `json:"remoteAs"`
 	LocalAs           int          `json:"localAs"`
 	RemoteRouterID    string       `json:"remoteRouterId"`
@@ -119,7 +120,11 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 	for k, n := range res {
 		ip := net.ParseIP(k)
 		if ip == nil {
-			return nil, fmt.Errorf("failed to parse %s as ip", ip)
+			// if ip is nil we try n.BGPNeighborAddr. This is Unnumbered BGP.
+			ip = net.ParseIP(n.BGPNeighborAddr)
+			if ip == nil {
+				return nil, fmt.Errorf("failed to parse %s as ip", k)
+			}
 		}
 		connected := true
 		if n.BgpState != bgpConnected {
@@ -159,7 +164,11 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 	for k, n := range toParse {
 		ip := net.ParseIP(k)
 		if ip == nil {
-			return nil, fmt.Errorf("failed to parse %s as ip", ip)
+			// if ip is nil we try n.BGPNeighborAddr. This is Unnumbered BGP.
+			ip = net.ParseIP(n.BGPNeighborAddr)
+			if ip == nil {
+				return nil, fmt.Errorf("failed to parse %s as ip", k)
+			}
 		}
 		connected := true
 		if n.BgpState != bgpConnected {
