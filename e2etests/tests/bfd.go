@@ -153,9 +153,9 @@ var _ = ginkgo.Describe("BFD", func() {
 				Expect(neighbors).To(HaveLen(len(previousNeighbors[c.Name])))
 
 				for _, n := range neighbors {
-					previousDropped := previousNeighbors[c.Name][n.IP.String()].ConnectionsDropped
+					previousDropped := previousNeighbors[c.Name][n.ID].ConnectionsDropped
 					if n.ConnectionsDropped > previousDropped {
-						return fmt.Errorf("increased connections dropped from %s to %s, previous: %d current %d", c.Name, n.IP.String(), previousDropped, n.ConnectionsDropped)
+						return fmt.Errorf("increased connections dropped from %s to %s, previous: %d current %d", c.Name, n.ID, previousDropped, n.ConnectionsDropped)
 					}
 				}
 			}

@@ -4,6 +4,7 @@ package tests
 
 import (
 	"fmt"
+	"net"
 	"strings"
 	"time"
 
@@ -113,10 +114,10 @@ var _ = ginkgo.Describe("Session", func() {
 						if n.ConfiguredConnectTime != 3 {
 							return fmt.Errorf("expected connect time to be 3, got %d", n.ConfiguredConnectTime)
 						}
-						neighborFamily := ipfamily.ForAddress(n.IP)
+						neighborFamily := ipfamily.ForAddress(net.ParseIP(n.ID))
 						for _, family := range n.AddressFamilies {
 							if !strings.Contains(family, string(neighborFamily)) {
-								return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", n.IP, neighborFamily, family)
+								return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", n.ID, neighborFamily, family)
 							}
 						}
 					}
