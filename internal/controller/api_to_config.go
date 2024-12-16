@@ -514,7 +514,17 @@ func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPre
 		localPrefForPrefixV6: map[string]uint32{},
 	}
 
+	seen := make(map[uint32]bool)
 	for _, pfxs := range withLocalPref {
+		if _, exists := seen[pfxs.LocalPref]; exists {
+			// error when input is withLocalPref = []v1beta1.LocalPrefPrefixes{
+			//	                      Prefixes:  []string{"192.0.2.0/24"},LocalPref: 100}, []string{"100.0.0.0/24"},LocalPref: 100}}
+			// so we enforce       withLocalPref = []v1beta1.LocalPrefPrefixes{
+			//	                      Prefixes:  []string{"192.0.2.0/24, "100.0.0.0/24"},LocalPref: 100}}
+			return localPrefPrefixes{}, fmt.Errorf("multiple entries with the same localPref: %d", pfxs.LocalPref)
+		}
+		seen[pfxs.LocalPref] = true
+
 		for _, p := range pfxs.Prefixes {
 			family := ipfamily.ForCIDRString(p)
 			lpMap := res.localPrefForPrefixV4
@@ -522,12 +532,18 @@ func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPre
 				lpMap = res.localPrefForPrefixV6
 			}
 
-			_, ok := lpMap[p]
-			if ok {
-				return localPrefPrefixes{}, fmt.Errorf("multiple local prefs specified for prefix %s", p)
+			v, ok := lpMap[p]
+			if !ok {
+				lpMap[p] = pfxs.LocalPref
+				continue
 			}
 
-			lpMap[p] = pfxs.LocalPref
+			if v != pfxs.LocalPref {
+				return localPrefPrefixes{}, fmt.Errorf("multiple local prefs (%d,%d) specified for prefix %s", v, pfxs.LocalPref, p)
+			}
+			if v == pfxs.LocalPref {
+				return localPrefPrefixes{}, fmt.Errorf("prefix %s with local prefs %d defined twice", p, v)
+			}
 		}
 	}
 

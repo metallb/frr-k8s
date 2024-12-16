@@ -73,7 +73,6 @@ spec:
             - ALL
       - name: frr-k8s
         args:
-        - "--health-probe-bind-address=127.0.0.1:8081"
         - "--metrics-bind-address=127.0.0.1:7572"
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"

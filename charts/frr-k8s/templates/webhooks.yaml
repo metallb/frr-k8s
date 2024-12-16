@@ -42,7 +42,7 @@ spec:
         - "--restart-on-rotator-secret-refresh=true"
         {{- end }}
         - "--namespace=$(NAMESPACE)"
-        - --health-probe-bind-address=:8081
+        - "--metrics-bind-address=:{{ .Values.prometheus.metricsPort }}"
         env:
         - name: NAMESPACE
           valueFrom:
@@ -59,11 +59,14 @@ spec:
             drop:
               - ALL
           readOnlyRootFilesystem: true
+        ports:
+        - containerPort: {{ .Values.prometheus.metricsPort }}
+          name: monitoring
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
-            path: /healthz
-            port: 8081
+            path: /metrics
+            port: monitoring
           initialDelaySeconds: {{ .Values.frrk8s.livenessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.frrk8s.livenessProbe.periodSeconds }}
           failureThreshold: {{ .Values.frrk8s.livenessProbe.failureThreshold }}
@@ -71,8 +74,8 @@ spec:
         {{- if .Values.frrk8s.readinessProbe.enabled }}
         readinessProbe:
           httpGet:
-            path: /readyz
-            port: 8081
+            path: /metrics
+            port: monitoring
           initialDelaySeconds: {{ .Values.frrk8s.readinessProbe.initialDelaySeconds }}
           periodSeconds: {{ .Values.frrk8s.readinessProbe.periodSeconds }}
           failureThreshold: {{ .Values.frrk8s.readinessProbe.failureThreshold }}
