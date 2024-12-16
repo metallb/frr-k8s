@@ -42,6 +42,20 @@ func FRRK8sPods(cs clientset.Interface) ([]*corev1.Pod, error) {
 	return res, nil
 }
 
+// FRRK8sPodOnNode returns the pods related to FRR-K8s for specific node.
+func FRRK8sPodOnNode(cs clientset.Interface, nodeName string) (*corev1.Pod, error) {
+	pods, err := FRRK8sPods(cs)
+	if err != nil {
+		return nil, nil
+	}
+	for _, p := range pods {
+		if p.Spec.NodeName == nodeName {
+			return p, nil
+		}
+	}
+	return nil, fmt.Errorf("no pod was found on node %s", nodeName)
+}
+
 func RestartFRRK8sPods(cs clientset.Interface) error {
 	pods, err := FRRK8sPods(cs)
 	if err != nil {
