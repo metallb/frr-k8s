@@ -1178,6 +1178,8 @@ spec:
             port: 7573
           periodSeconds: 5
         volumeMounts:
+        - mountPath: /tmp/cores
+          name: core-path
         - mountPath: /var/run/frr
           name: frr-sockets
         - mountPath: /etc/frr
@@ -1255,6 +1257,9 @@ spec:
         key: node-role.kubernetes.io/control-plane
         operator: Exists
       volumes:
+      - hostPath:
+          path: /home/core-dump
+        name: core-path
       - emptyDir: {}
         name: frr-sockets
       - configMap:
