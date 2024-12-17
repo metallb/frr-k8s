@@ -68,6 +68,8 @@ type NeighborConfig struct {
 	ASN             string
 	SrcAddr         string
 	Addr            string
+	Iface           string
+	Unnumbered      bool
 	Port            *uint16
 	HoldTime        *int64
 	KeepaliveTime   *int64
@@ -84,10 +86,15 @@ type NeighborConfig struct {
 }
 
 func (n *NeighborConfig) ID() string {
-	if n.VRFName == "" {
-		return n.Addr
+	id := n.Addr
+	if n.Iface != "" {
+		id = n.Iface
 	}
-	return fmt.Sprintf("%s-%s", n.Addr, n.VRFName)
+	vrf := ""
+	if n.VRFName != "" {
+		vrf = "-" + n.VRFName
+	}
+	return id + vrf
 }
 
 type AllowedIn struct {
@@ -187,7 +194,7 @@ func templateConfig(data interface{}) (string, error) {
 			"deniedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-denied-inpl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
-			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN uint32, asn string, eBGPMultiHop bool) bool {
+			"mustDisableConnectedCheck": func(ipFamily ipfamily.Family, myASN uint32, asn, iface string, eBGPMultiHop bool) bool {
 				// return true only for non-multihop IPv6 eBGP sessions
 
 				if ipFamily != ipfamily.IPv6 {
@@ -196,6 +203,10 @@ func templateConfig(data interface{}) (string, error) {
 
 				if eBGPMultiHop {
 					return false
+				}
+
+				if iface != "" {
+					return true
 				}
 
 				// internal means we expect the session to be iBGP

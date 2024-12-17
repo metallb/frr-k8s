@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net"
 	"sort"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -159,8 +160,8 @@ func TestNeighbour(t *testing.T) {
 			if err != nil {
 				t.Fatal("Failed to parse ", err)
 			}
-			if !n.IP.Equal(net.ParseIP(tt.neighborIP)) {
-				t.Fatal("Expected neighbour ip", tt.neighborIP, "got", n.IP.String())
+			if n.ID != tt.neighborIP {
+				t.Fatal("Expected neighbour ip", tt.neighborIP, "got", n.ID)
 			}
 			if n.RemoteAS != tt.remoteAS {
 				t.Fatal("Expected remote as", tt.remoteAS, "got", n.RemoteAS)
@@ -510,17 +511,226 @@ func TestNeighbours(t *testing.T) {
 		t.Fatalf("Expected 4 neighbours, got %d", len(nn))
 	}
 	sort.Slice(nn, func(i, j int) bool {
-		return (bytes.Compare(nn[i].IP, nn[j].IP) < 0)
+		return (strings.Compare(nn[i].ID, nn[j].ID) < 0)
 	})
 
-	if !nn[0].IP.Equal(net.ParseIP("172.18.0.2")) {
+	if nn[0].ID != "172.18.0.2" {
 		t.Fatal("neighbour ip not matching")
 	}
-	if !nn[1].IP.Equal(net.ParseIP("172.18.0.3")) {
+	if nn[1].ID != "172.18.0.3" {
 		t.Fatal("neighbour ip not matching")
 	}
-	if !nn[2].IP.Equal(net.ParseIP("172.18.0.4")) {
+	if nn[2].ID != "172.18.0.4" {
 		t.Fatal("neighbour ip not matching")
+	}
+
+	for i, n := range nn {
+		if !cmp.Equal(expectedStats, n.MsgStats) {
+			t.Fatal("unexpected BGP messages stats for neightbor", i, "(-want +got)\n", cmp.Diff(expectedStats, n.MsgStats))
+		}
+	}
+}
+
+const unnumberedNeighbors = `
+{
+  "net1":{
+    "bgpNeighborAddr":"fe80::3c53:3fff:fe22:77ce",
+    "remoteAs":64512,
+    "localAs":64512,
+    "nbrInternalLink":true,
+    "localRole":"undefined",
+    "remoteRole":"undefined",
+    "hostname":"945b3a6c8c64",
+    "bgpVersion":4,
+    "remoteRouterId":"1.1.1.1",
+    "localRouterId":"172.18.0.2",
+    "bgpState":"Established",
+    "bgpTimerUpMsec":37000,
+    "bgpTimerUpString":"00:00:37",
+    "bgpTimerUpEstablishedEpoch":1733743632,
+    "bgpTimerLastRead":1000,
+    "bgpTimerLastWrite":1000,
+    "bgpInUpdateElapsedTimeMsecs":36000,
+    "bgpTimerConfiguredHoldTimeMsecs":180000,
+    "bgpTimerConfiguredKeepAliveIntervalMsecs":60000,
+    "bgpTimerHoldTimeMsecs":9000,
+    "bgpTimerKeepAliveIntervalMsecs":3000,
+    "bgpTcpMssConfigured":0,
+    "bgpTcpMssSynced":1428,
+    "extendedOptionalParametersLength":false,
+    "bgpTimerConfiguredConditionalAdvertisementsSec":60,
+    "neighborCapabilities":{
+      "4byteAs":"advertisedAndReceived",
+      "extendedMessage":"advertisedAndReceived",
+      "addPath":{
+        "ipv4Unicast":{
+          "rxAdvertisedAndReceived":true
+        },
+        "ipv6Unicast":{
+          "rxAdvertisedAndReceived":true
+        }
+      },
+      "extendedNexthop":"advertisedAndReceived",
+      "extendedNexthopFamililesByPeer":{
+        "ipv4Unicast":"received"
+      },
+      "longLivedGracefulRestart":"advertisedAndReceived",
+      "longLivedGracefulRestartByPeer":{
+        "ipv4Unicast":"received"
+      },
+      "routeRefresh":"advertisedAndReceived",
+      "enhancedRouteRefresh":"advertisedAndReceived",
+      "multiprotocolExtensions":{
+        "ipv4Unicast":{
+          "advertisedAndReceived":true
+        },
+        "ipv6Unicast":{
+          "advertisedAndReceived":true
+        }
+      },
+      "hostName":{
+        "advHostName":"frr-k8s-control-plane",
+        "advDomainName":"n\/a",
+        "rcvHostName":"945b3a6c8c64",
+        "rcvDomainName":"n\/a"
+      },
+      "softwareVersion":{
+        "advertisedSoftwareVersion":"FRRouting\/9.1_git",
+        "receivedSoftwareVersion":"FRRouting\/9.1_git"
+      },
+      "gracefulRestart":"advertisedAndReceived",
+      "gracefulRestartRemoteTimerMsecs":120000,
+      "addressFamiliesByPeer":"none"
+    },
+    "gracefulRestartInfo":{
+      "endOfRibSend":{
+        "ipv4Unicast":true,
+        "ipv6Unicast":true
+      },
+      "endOfRibRecv":{
+        "ipv4Unicast":true,
+        "ipv6Unicast":true
+      },
+      "localGrMode":"Helper*",
+      "remoteGrMode":"Helper",
+      "rBit":true,
+      "nBit":true,
+      "timers":{
+        "configuredRestartTimer":120,
+        "configuredLlgrStaleTime":0,
+        "receivedRestartTimer":120
+      },
+      "ipv4Unicast":{
+        "fBit":false,
+        "endOfRibStatus":{
+          "endOfRibSend":true,
+          "endOfRibSentAfterUpdate":true,
+          "endOfRibRecv":true
+        },
+        "timers":{
+          "stalePathTimer":360,
+          "llgrStaleTime":0
+        }
+      },
+      "ipv6Unicast":{
+        "fBit":false,
+        "endOfRibStatus":{
+          "endOfRibSend":true,
+          "endOfRibSentAfterUpdate":true,
+          "endOfRibRecv":true
+        },
+        "timers":{
+          "stalePathTimer":360,
+          "llgrStaleTime":0
+        }
+      }
+    },
+    "messageStats":{
+      "depthInq":0,
+      "depthOutq":0,
+      "opensSent":1,
+      "opensRecv":2,
+      "notificationsSent":3,
+      "notificationsRecv":0,
+      "updatesSent":4,
+      "updatesRecv":5,
+      "keepalivesSent":6,
+      "keepalivesRecv":7,
+      "routeRefreshSent":8,
+      "routeRefreshRecv":2,
+      "capabilitySent":0,
+      "capabilityRecv":0,
+      "totalSent":9,
+      "totalRecv":10
+    },
+    "minBtwnAdvertisementRunsTimerMsecs":0,
+    "addressFamilyInfo":{
+      "ipv4Unicast":{
+        "updateGroupId":27,
+        "subGroupId":27,
+        "packetQueueLength":0,
+        "commAttriSentToNbr":"extendedAndStandard",
+        "inboundPathPolicyConfig":true,
+        "outboundPathPolicyConfig":true,
+        "routeMapForIncomingAdvertisements":"net1-in",
+        "routeMapForOutgoingAdvertisements":"net1-out",
+        "acceptedPrefixCounter":1,
+        "sentPrefixCounter":1
+      },
+      "ipv6Unicast":{
+        "updateGroupId":28,
+        "subGroupId":28,
+        "packetQueueLength":0,
+        "commAttriSentToNbr":"extendedAndStandard",
+        "inboundPathPolicyConfig":true,
+        "outboundPathPolicyConfig":true,
+        "routeMapForIncomingAdvertisements":"net1-in",
+        "routeMapForOutgoingAdvertisements":"net1-out",
+        "acceptedPrefixCounter":1,
+        "sentPrefixCounter":1
+      }
+    },
+    "connectionsEstablished":1,
+    "connectionsDropped":0,
+    "lastResetTimerMsecs":41000,
+    "lastResetDueTo":"Waiting for peer OPEN",
+    "lastResetCode":32,
+    "softwareVersion":"FRRouting\/9.1_git",
+    "internalBgpNbrMaxHopsAway":255,
+    "hostLocal":"fe80::40d2:eff:fe4c:68f9",
+    "portLocal":57144,
+    "hostForeign":"fe80::3c53:3fff:fe22:77ce",
+    "portForeign":179,
+    "nexthop":"172.18.0.2",
+    "nexthopGlobal":"fe80::40d2:eff:fe4c:68f9",
+    "nexthopLocal":"fe80::40d2:eff:fe4c:68f9",
+    "bgpConnection":"sharedNetwork",
+    "connectRetryTimer":120,
+    "estimatedRttInMsecs":1,
+    "readThread":"on",
+    "writeThread":"on",
+    "peerBfdInfo":{
+      "type":"single hop",
+      "detectMultiplier":3,
+      "rxMinInterval":300,
+      "txMinInterval":300,
+      "status":"Up",
+      "lastUpdate":"0:00:00:35"
+    }
+  }
+}`
+
+func TestUnnumberedNeighbours(t *testing.T) {
+	nn, err := ParseNeighbours(unnumberedNeighbors)
+	if err != nil {
+		t.Fatalf("Failed to parse %s", err)
+	}
+	if len(nn) != 1 {
+		t.Fatalf("Expected 1 neighbours, got %d", len(nn))
+	}
+
+	if nn[0].ID != "net1" {
+		t.Fatal("neighbour ID not matching")
 	}
 
 	for i, n := range nn {
