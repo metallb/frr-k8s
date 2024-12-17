@@ -4,13 +4,16 @@ package tests
 
 import (
 	"fmt"
+	"net/netip"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-kni/k8sreporter"
-	"go.universe.tf/e2etest/pkg/frr/container"
+	"go.universe.tf/e2etest/pkg/container"
+	"go.universe.tf/e2etest/pkg/executor"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frrk8stests/pkg/address"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -19,6 +22,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/routes"
 	. "github.com/onsi/gomega"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,19 +72,25 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			dump.K8sInfo(testName, reporter)
 			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
+
+		err := cleanup(updater)
+		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and infra containers")
 	})
 
 	ginkgo.Context("When restarting the frrk8s deamon pods", func() {
+		ginkgo.DescribeTable("both routes on nodes and on the external peers are maintained", func(ipFam ipfamily.Family, prefix, learnRoute string) {
 
-		ginkgo.DescribeTable("external BGP peer maintains routes", func(ipFam ipfamily.Family, prefix string) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
 			for _, c := range frrs {
-				err := container.PairWithNodes(cs, c, ipFam)
+				err := frrcontainer.PairWithNodes(cs, c, ipFam, func(frr *frrcontainer.FRR) {
+					frr.NeighborConfig.ToAdvertiseV4 = address.FilterForFamily([]string{learnRoute}, ipFam)
+					frr.NeighborConfig.ToAdvertiseV6 = address.FilterForFamily([]string{learnRoute}, ipFam)
+				})
 				Expect(err).NotTo(HaveOccurred(), "set frr config in infra containers failed")
 			}
 
 			peersConfig := config.PeersForContainers(frrs, ipFam,
-				config.EnableAllowAll, config.EnableGracefulRestart)
+				config.EnableAllowAll, config.EnableReceiveAllowAll, config.EnableGracefulRestart)
 
 			frrConfigCR := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -110,12 +120,16 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 						return fmt.Errorf("Neigh %s does not have prefix %s: %w", p.FRR.Name, prefix, err)
 					}
 				}
+				if err := checkPrefixOnNodes(nodes, learnRoute); err != nil {
+					return err
+				}
 				return nil
 			}
 
 			Eventually(check, time.Minute, time.Second).ShouldNot(HaveOccurred(),
 				"route should exist before we restart frr-k8s")
 
+			ginkgo.By("GR started")
 			c := make(chan struct{})
 			go func() { // go restart frr-k8s while Consistently check that route exists
 				defer ginkgo.GinkgoRecover()
@@ -128,8 +142,33 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			Consistently(check, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s pods are not yet ready")
 		},
-			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24"),
-			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64"),
+			ginkgo.Entry("IPV4", ipfamily.IPv4, "192.168.2.0/24", "200.200.200.0/24"),
+			ginkgo.Entry("IPV6", ipfamily.IPv6, "fc00:f853:ccd:e799::/64", "2001:db8::/64"),
 		)
 	})
 })
+
+// checkPrefixOnNodes checks that a prefix has at least one route on the
+// each node. There is no check on nexthops because not all routes are install
+// on the host (iBGP yes, eBGP no when iBGP exist for example) and there is a
+// different behavior between ipv4,ipv6.
+// This function get routes directly from the node and not from `vtysh show route`
+// because we want to get routes while FRR process restarts.
+func checkPrefixOnNodes(nodes []corev1.Node, prefix string) error {
+	want, err := netip.ParsePrefix(prefix)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range nodes {
+		exc := executor.ForContainer(n.Name)
+		m, err := container.BGPRoutes(exc, "eth0")
+		if err != nil {
+			return err
+		}
+		if _, exist := m[want]; !exist {
+			return fmt.Errorf("local k8s node route %s was not found", prefix)
+		}
+	}
+	return nil
+}
