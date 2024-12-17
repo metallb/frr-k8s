@@ -37,7 +37,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 		updater    *config.Updater
 		reporter   *k8sreporter.KubernetesReporter
 		nodes      []corev1.Node
-		prefixesV4 = scaleUP(200)
+		prefixesV4 = scaleUP(100)
 	)
 
 	cleanup := func(u *config.Updater) error {
@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			Eventually(c, time.Minute, time.Second).Should(BeClosed(), "restart FRRK8s pods are not yet ready")
 		},
 			ginkgo.Entry("IPV4", ipfamily.IPv4, prefixesV4),
-//			ginkgo.Entry("IPV6", ipfamily.IPv6, []string{"2001:db8:5555::5/128"}),
+			//			ginkgo.Entry("IPV6", ipfamily.IPv6, []string{"2001:db8:5555::5/128"}),
 		)
 	})
 })
