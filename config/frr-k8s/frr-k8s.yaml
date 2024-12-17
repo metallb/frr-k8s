@@ -113,25 +113,10 @@ spec:
         # If the log file isn't created in 60 seconds the tail fails and the container is restarted.
         # This workaround is needed to have the frr logs as part of kubectl logs -c frr < k8s-frr-podname >.
         command:
-          - /bin/bash
-          - -cx
+          - /bin/sh
+          - -c
           - |
-            if [ -r "/lib/lsb/init-functions" ]; then
-                    . /lib/lsb/init-functions
-            else
-                    log_success_msg() {
-                            echo "$@"
-                    }
-                    log_warning_msg() {
-                            echo "$@" >&2
-                    }
-                    log_failure_msg() {
-                            echo "$@" >&2
-                    }
-            fi
-
-            source /usr/lib/frr/frrcommon.sh
-            /usr/lib/frr/watchfrr -l 7 $(daemon_list) &
+            /sbin/tini -- /usr/lib/frr/docker-start &
             attempts=0
             until [[ -f /etc/frr/frr.log || $attempts -eq 60 ]]; do
               sleep 1
