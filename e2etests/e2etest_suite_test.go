@@ -47,6 +47,7 @@ func handleFlags() {
 		runOnHost = true
 	}
 	dump.ReportPath = reportPath
+	tests.FRRImage = frrImage
 }
 
 func TestMain(m *testing.M) {

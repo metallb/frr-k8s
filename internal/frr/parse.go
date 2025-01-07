@@ -13,7 +13,7 @@ import (
 )
 
 type Neighbor struct {
-	IP             net.IP
+	ID             string
 	VRF            string
 	Connected      bool
 	LocalAS        string
@@ -23,6 +23,10 @@ type Neighbor struct {
 	Port           int
 	RemoteRouterID string
 	MsgStats       MessageStats
+}
+
+func (n Neighbor) MetricName() string {
+	return n.ID
 }
 
 type Route struct {
@@ -35,6 +39,7 @@ type Route struct {
 const bgpConnected = "Established"
 
 type FRRNeighbor struct {
+	BGPNeighborAddr   string       `json:"bgpNeighborAddr"`
 	RemoteAs          int          `json:"remoteAs"`
 	LocalAs           int          `json:"localAs"`
 	RemoteRouterID    string       `json:"remoteRouterId"`
@@ -117,10 +122,6 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 		return nil, errors.New("no peers were returned")
 	}
 	for k, n := range res {
-		ip := net.ParseIP(k)
-		if ip == nil {
-			return nil, fmt.Errorf("failed to parse %s as ip", ip)
-		}
 		connected := true
 		if n.BgpState != bgpConnected {
 			connected = false
@@ -132,7 +133,7 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 			prefixReceived += s.AcceptedPrefixCounter
 		}
 		return &Neighbor{
-			IP:             ip,
+			ID:             k,
 			Connected:      connected,
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
@@ -157,10 +158,6 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 
 	res := make([]*Neighbor, 0)
 	for k, n := range toParse {
-		ip := net.ParseIP(k)
-		if ip == nil {
-			return nil, fmt.Errorf("failed to parse %s as ip", ip)
-		}
 		connected := true
 		if n.BgpState != bgpConnected {
 			connected = false
@@ -172,7 +169,7 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 			prefixReceived += s.AcceptedPrefixCounter
 		}
 		res = append(res, &Neighbor{
-			IP:             ip,
+			ID:             k,
 			Connected:      connected,
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),

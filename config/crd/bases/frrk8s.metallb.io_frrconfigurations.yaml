@@ -215,6 +215,14 @@ spec:
                                   HoldTime is the requested BGP hold time, per RFC4271.
                                   Defaults to 180s.
                                 type: string
+                              interface:
+                                description: |-
+                                  Interface is the node interface over which the unnumbered BGP peering will
+                                  be established. No API validation takes place as that string value
+                                  represents an interface name on the host and if user provides an invalid
+                                  value, only the actual BGP session will not be established.
+                                  Address and Interface are mutually exclusive and one of them must be specified.
+                                type: string
                               keepaliveTime:
                                 description: |-
                                   KeepaliveTime is the requested BGP keepalive time, per RFC4271.
@@ -376,8 +384,6 @@ spec:
                                         type: array
                                     type: object
                                 type: object
-                            required:
-                            - address
                             type: object
                           type: array
                         prefixes:
