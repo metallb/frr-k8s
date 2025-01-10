@@ -1,5 +1,11 @@
 # FRRK8s Release Notes
 
+## Release v0.0.17
+
+### New Features
+
+Support unnumbered BGP peering (#212, @karampok)
+
 ## Release v0.0.16
 
 ### New Features

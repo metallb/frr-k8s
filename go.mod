@@ -13,8 +13,8 @@ require (
 	github.com/open-policy-agent/cert-controller v0.10.2-0.20240531181455-2649f121ab97
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/prometheus/client_golang v1.19.1
-	k8s.io/api v0.31.0
-	k8s.io/apimachinery v0.31.0
+	k8s.io/api v0.31.4
+	k8s.io/apimachinery v0.31.4
 	k8s.io/client-go v0.31.0
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
