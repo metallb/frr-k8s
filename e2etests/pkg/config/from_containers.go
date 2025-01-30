@@ -103,6 +103,17 @@ func EnableGracefulRestart(pc *PeersConfig) {
 	}
 }
 
+func EnableReceiveAllowAll(pc *PeersConfig) {
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+	}
+}
+
 func EnableAllowAll(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {

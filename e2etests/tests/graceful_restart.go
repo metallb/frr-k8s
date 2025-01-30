@@ -4,11 +4,13 @@ package tests
 
 import (
 	"fmt"
+	"net/netip"
 	"time"
 
 	"github.com/onsi/ginkgo/v2"
 	"github.com/openshift-kni/k8sreporter"
-	"go.universe.tf/e2etest/pkg/frr/container"
+	"go.universe.tf/e2etest/pkg/container"
+	"go.universe.tf/e2etest/pkg/executor"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
@@ -19,6 +21,7 @@ import (
 	"github.com/metallb/frrk8stests/pkg/routes"
 	. "github.com/onsi/gomega"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -68,19 +71,35 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			dump.K8sInfo(testName, reporter)
 			dump.BGPInfo(testName, infra.FRRContainers, cs)
 		}
+
+		err := cleanup(updater)
+		Expect(err).NotTo(HaveOccurred(), "cleanup config in API and infra containers")
 	})
 
 	ginkgo.Context("When restarting the frrk8s deamon pods", func() {
-
-		ginkgo.DescribeTable("external BGP peer maintains routes", func(ipFam ipfamily.Family, prefix string) {
+		ginkgo.DescribeTable("both routes on nodes and on the external peers are maintained", func(ipFam ipfamily.Family, prefix string) {
+			externalPrefixes := []string{}
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
-			for _, c := range frrs {
-				err := container.PairWithNodes(cs, c, ipFam)
+			for i, c := range frrs {
+				l := fmt.Sprintf("200.200.%d.0/24", i)
+				modify := func(frr *frrcontainer.FRR) {
+					frr.NeighborConfig.ToAdvertiseV4 = []string{l}
+				}
+
+				if ipFam == ipfamily.IPv6 {
+					l = fmt.Sprintf("2001:db%d::/64", i)
+					modify = func(frr *frrcontainer.FRR) {
+						frr.NeighborConfig.ToAdvertiseV6 = []string{l}
+					}
+				}
+
+				err := frrcontainer.PairWithNodes(cs, c, ipFam, modify)
 				Expect(err).NotTo(HaveOccurred(), "set frr config in infra containers failed")
+				externalPrefixes = append(externalPrefixes, l)
 			}
 
 			peersConfig := config.PeersForContainers(frrs, ipFam,
-				config.EnableAllowAll, config.EnableGracefulRestart)
+				config.EnableAllowAll, config.EnableReceiveAllowAll, config.EnableGracefulRestart)
 
 			frrConfigCR := frrk8sv1beta1.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
@@ -105,17 +124,22 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 
 			check := func() error {
 				for _, p := range peersConfig.Peers() {
-					err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes)
-					if err != nil {
+					if err := routes.CheckNeighborHasPrefix(p.FRR, p.FRR.RouterConfig.VRF, prefix, nodes); err != nil {
 						return fmt.Errorf("Neigh %s does not have prefix %s: %w", p.FRR.Name, prefix, err)
+					}
+				}
+				for _, n := range nodes {
+					if err := checkPrefixesOnNode(n.Name, externalPrefixes); err != nil {
+						return err
 					}
 				}
 				return nil
 			}
 
 			Eventually(check, time.Minute, time.Second).ShouldNot(HaveOccurred(),
-				"route should exist before we restart frr-k8s")
+				"routes should exist before we restart frr-k8s")
 
+			ginkgo.By("GR started")
 			c := make(chan struct{})
 			go func() { // go restart frr-k8s while Consistently check that route exists
 				defer ginkgo.GinkgoRecover()
@@ -133,3 +157,27 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 		)
 	})
 })
+
+// checkPrefixesOnNode checks that prefixes have at one kernel route on the
+// the node. This function get routes directly from the node `docker exec ip
+// route` and not from `vtysh show route` because we need to get routes while
+// FRR process restarts.
+func checkPrefixesOnNode(node string, prefixes []string) error {
+	exc := executor.ForContainer(node)
+	routes, err := container.BGPRoutes(exc, "")
+	if err != nil {
+		return err
+	}
+
+	for _, prefix := range prefixes {
+		want, err := netip.ParsePrefix(prefix)
+		if err != nil {
+			return err
+		}
+
+		if _, exist := routes[want]; !exist {
+			return fmt.Errorf("no route for prefix %s was found on node %s", prefix, node)
+		}
+	}
+	return nil
+}
