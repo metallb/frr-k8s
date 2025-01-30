@@ -118,8 +118,8 @@ github.com/mailru/easyjson v0.7.7 h1:UGYAvKxe3sBsEDzO8ZeWOSlIQfWFlxbzLZe7hwFURr0
 github.com/mailru/easyjson v0.7.7/go.mod h1:xzfreul335JAWq5oZzymOObrkdz5UnU4kGfJJLY9Nlc=
 github.com/metallb/metallb v0.14.5 h1:2KHXaqoHWh924YTb5aJ9VRahXtO+V2DxvVrH5WQgsHI=
 github.com/metallb/metallb v0.14.5/go.mod h1:ZraHgX0iQnmWMK9CBpgs/5zXV0SkGjiXpPOxHKNO/9s=
-github.com/metallb/metallb/e2etest v0.0.0-20241212081358-ee34c275145f h1:mj1tlV5E1W7B7RZ2ZJKEzijcNIYhQQrwXdvixs694FI=
-github.com/metallb/metallb/e2etest v0.0.0-20241212081358-ee34c275145f/go.mod h1:IhiGMcXxWTzsB2uxlTY60EWA922dqCBz69ncXjedA+c=
+github.com/metallb/metallb/e2etest v0.0.0-20250127152015-3f9e99adbb0e h1:JkwM2+RAbO+5yGlurRipSUAJedTUkX8pn7TwMlA1Esg=
+github.com/metallb/metallb/e2etest v0.0.0-20250127152015-3f9e99adbb0e/go.mod h1:EypEwGSpHBaI4fvPN03BaZRiu2bR06c10nZaFK1nwt8=
 github.com/mitchellh/go-wordwrap v1.0.1 h1:TLuKupo69TCn6TQSyGxwI1EblZZEsQ0vMlAFQflz0v0=
 github.com/mitchellh/go-wordwrap v1.0.1/go.mod h1:R62XHJLzvMFRBbcrT7m7WgmE1eOyTSsCt+hzestvNj0=
 github.com/moby/spdystream v0.4.0 h1:Vy79D6mHeJJjiPdFEL2yku1kl0chZpJfZcPpb16BRl8=
