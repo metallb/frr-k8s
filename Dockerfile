@@ -13,6 +13,7 @@ COPY cmd/main.go cmd/main.go
 COPY api/ api/
 COPY internal/ internal/
 COPY frr-tools/metrics ./frr-tools/metrics/
+COPY frr-tools/status ./frr-tools/status/
 
 ARG TARGETARCH
 ARG TARGETOS
@@ -35,6 +36,12 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
   -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
   frr-tools/metrics/exporter.go \
   && \
+  # build frr status
+  CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
+  go build -v -o /build/frr-status \
+  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
+  frr-tools/status/exporter.go \
+  && \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-k8s \
   -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
@@ -45,6 +52,7 @@ FROM docker.io/alpine:latest
 
 COPY --from=builder /build/frr-k8s /frr-k8s
 COPY --from=builder /build/frr-metrics /frr-metrics
+COPY --from=builder /build/frr-status /frr-status
 COPY frr-tools/reloader/frr-reloader.sh /frr-reloader.sh
 COPY LICENSE /
 
