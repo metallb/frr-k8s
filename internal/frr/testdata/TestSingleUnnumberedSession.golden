@@ -13,15 +13,14 @@ ip prefix-list net0-pl-ipv4 seq 1 permit 192.169.1.0/24
 
 ip prefix-list net0-pl-ipv4 seq 2 permit 192.170.1.0/22
 
-route-map net0-out permit 1
-  match ip address prefix-list net0-pl-ipv4
-route-map net0-out permit 2
-  match ipv6 address prefix-list net0-pl-ipv4
-
 
 
 ipv6 prefix-list net0-pl-ipv4 seq 3 deny any
 
+route-map net0-out permit 1
+  match ip address prefix-list net0-pl-ipv4
+route-map net0-out permit 2
+  match ipv6 address prefix-list net0-pl-ipv4
 
 
 
