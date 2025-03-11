@@ -7,7 +7,6 @@ linters:
   - gofmt
   - ginkgolinter
   - dogsled
-  - exportloopref
   - gocritic
   - misspell
   - nolintlint
