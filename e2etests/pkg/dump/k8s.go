@@ -49,6 +49,7 @@ func NewK8sReporter(namespace string) *k8sreporter.KubernetesReporter {
 	crds := []k8sreporter.CRData{
 		{Cr: &frrk8sv1beta1.FRRConfigurationList{}},
 		{Cr: &frrk8sv1beta1.FRRNodeStateList{}},
+		{Cr: &frrk8sv1beta1.BGPSessionStateList{}},
 	}
 
 	reporter, err := k8sreporter.New(kubeconfig, addToScheme, dumpNamespace, ReportPath, crds...)

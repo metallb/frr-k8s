@@ -168,6 +168,9 @@ frrk8s:
     resources: {}
   frrMetrics:
     resources: {}
+  frrStatus:
+    pollInterval: "2m"
+    resources: {}
 crds:
   enabled: true
   validationFailurePolicy: Fail

@@ -9,6 +9,7 @@
 Package v1alpha1 contains API Schema definitions for the frrk8s v1alpha1 API group
 
 ### Resource Types
+- [BGPSessionState](#bgpsessionstate)
 - [FRRConfiguration](#frrconfiguration)
 - [FRRNodeState](#frrnodestate)
 
@@ -103,6 +104,58 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `routers` _[Router](#router) array_ | Routers is the list of routers we want FRR to configure (one per VRF). |  |  |
 | `bfdProfiles` _[BFDProfile](#bfdprofile) array_ | BFDProfiles is the list of bfd profiles to be used when configuring the neighbors. |  |  |
+
+
+#### BGPSessionState
+
+
+
+BGPSessionState exposes the status of a BGP Session from the FRR instance running on the node.
+
+
+
+
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `frrk8s.metallb.io/v1beta1` | | |
+| `kind` _string_ | `BGPSessionState` | | |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[BGPSessionStateSpec](#bgpsessionstatespec)_ |  |  |  |
+| `status` _[BGPSessionStateStatus](#bgpsessionstatestatus)_ |  |  |  |
+
+
+#### BGPSessionStateSpec
+
+
+
+BGPSessionStateSpec defines the desired state of BGPSessionState.
+
+
+
+_Appears in:_
+- [BGPSessionState](#bgpsessionstate)
+
+
+
+#### BGPSessionStateStatus
+
+
+
+BGPSessionStateStatus defines the observed state of BGPSessionState.
+
+
+
+_Appears in:_
+- [BGPSessionState](#bgpsessionstate)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `bgpStatus` _string_ |  |  |  |
+| `bfdStatus` _string_ |  |  |  |
+| `node` _string_ |  |  |  |
+| `peer` _string_ |  |  |  |
+| `vrf` _string_ |  |  |  |
 
 
 #### CommunityPrefixes
