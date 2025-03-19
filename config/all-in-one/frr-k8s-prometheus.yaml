@@ -29,7 +29,23 @@ spec:
     singular: bgpsessionstate
   scope: Namespaced
   versions:
-  - name: v1beta1
+  - additionalPrinterColumns:
+    - jsonPath: .status.node
+      name: Node
+      type: string
+    - jsonPath: .status.peer
+      name: Peer
+      type: string
+    - jsonPath: .status.vrf
+      name: VRF
+      type: string
+    - jsonPath: .status.bgpStatus
+      name: BGP
+      type: string
+    - jsonPath: .status.bfdStatus
+      name: BFD
+      type: string
+    name: v1beta1
     schema:
       openAPIV3Schema:
         description: BGPSessionState exposes the status of a BGP Session from the
