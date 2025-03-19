@@ -3,8 +3,6 @@
 package collector
 
 import (
-	"fmt"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/metallb/frr-k8s/internal/frr"
@@ -140,7 +138,7 @@ func (c *bgp) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *bgp) Collect(ch chan<- prometheus.Metric) {
-	neighbors, err := getBGPNeighbors(c.frrCli)
+	neighbors, err := vtysh.GetBGPNeighbors(c.frrCli)
 	if err != nil {
 		level.Error(c.Log).Log("error", err, "msg", "failed to fetch BGP neighbors from FRR")
 		return
@@ -173,25 +171,4 @@ func updateNeighborsMetrics(ch chan<- prometheus.Metric, neighbors map[string][]
 			ch <- prometheus.MustNewConstMetric(totalReceivedDesc, prometheus.CounterValue, float64(n.MsgStats.TotalReceived), peerLabel, vrf)
 		}
 	}
-}
-
-func getBGPNeighbors(frrCli vtysh.Cli) (map[string][]*frr.Neighbor, error) {
-	vrfs, err := vtysh.VRFs(frrCli)
-	if err != nil {
-		return nil, err
-	}
-	neighbors := make(map[string][]*frr.Neighbor, 0)
-	for _, vrf := range vrfs {
-		res, err := frrCli(fmt.Sprintf("show bgp vrf %s neighbors json", vrf))
-		if err != nil {
-			return nil, err
-		}
-
-		neighborsPerVRF, err := frr.ParseNeighbours(res)
-		if err != nil {
-			return nil, err
-		}
-		neighbors[vrf] = neighborsPerVRF
-	}
-	return neighbors, nil
 }

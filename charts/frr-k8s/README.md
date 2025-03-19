@@ -36,6 +36,8 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.resources | object | `{}` |  |
 | frrk8s.frr.secureMetricsPort | int | `9141` |  |
 | frrk8s.frrMetrics.resources | object | `{}` |  |
+| frrk8s.frrStatus.pollInterval | string | `"2m"` |  |
+| frrk8s.frrStatus.resources | object | `{}` |  |
 | frrk8s.image.pullPolicy | string | `nil` |  |
 | frrk8s.image.repository | string | `"quay.io/metallb/frr-k8s"` |  |
 | frrk8s.image.tag | string | `nil` |  |

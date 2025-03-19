@@ -96,7 +96,15 @@ func TestNeighbour(t *testing.T) {
       "connectRetryTimer":120,
       "nextConnectTimerDueInMsecs":107000,
       "readThread":"off",
-      "writeThread":"off"
+      "writeThread":"off",
+      "peerBfdInfo":{
+        "type":"multi hop",
+        "detectMultiplier":3,
+        "rxMinInterval":300,
+        "txMinInterval":300,
+        "status":"%s",
+        "lastUpdate":"0:00:01:00"
+      }
     }
   }`
 
@@ -111,6 +119,7 @@ func TestNeighbour(t *testing.T) {
 		ipv4PrefixReceived int
 		ipv6PrefixReceived int
 		port               int
+		bfdStatus          string
 		expectedError      string
 	}{
 		{
@@ -124,6 +133,7 @@ func TestNeighbour(t *testing.T) {
 			1,
 			0,
 			179,
+			"Up",
 			"",
 		},
 		{
@@ -137,6 +147,7 @@ func TestNeighbour(t *testing.T) {
 			0,
 			0,
 			180,
+			"Down",
 			"",
 		},
 		{
@@ -150,13 +161,14 @@ func TestNeighbour(t *testing.T) {
 			2,
 			1,
 			181,
+			"Up",
 			"",
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			n, err := ParseNeighbour(fmt.Sprintf(sample, tt.neighborIP, tt.remoteAS, tt.localAS, tt.status, tt.ipv4PrefixReceived, tt.ipv4PrefixSent, tt.ipv6PrefixSent, tt.ipv6PrefixReceived, tt.port))
+			n, err := ParseNeighbour(fmt.Sprintf(sample, tt.neighborIP, tt.remoteAS, tt.localAS, tt.status, tt.ipv4PrefixReceived, tt.ipv4PrefixSent, tt.ipv6PrefixSent, tt.ipv6PrefixReceived, tt.port, tt.bfdStatus))
 			if err != nil {
 				t.Fatal("Failed to parse ", err)
 			}
@@ -168,6 +180,9 @@ func TestNeighbour(t *testing.T) {
 			}
 			if n.LocalAS != tt.localAS {
 				t.Fatal("Expected local as", tt.localAS, "got", n.LocalAS)
+			}
+			if tt.status != n.BGPState {
+				t.Fatal("Expected state", tt.status, "got", n.BGPState)
 			}
 			if tt.status == "Established" && n.Connected != true {
 				t.Fatal("Expected connected", true, "got", n.Connected)
@@ -189,6 +204,9 @@ func TestNeighbour(t *testing.T) {
 			}
 			if !cmp.Equal(expectedStats, n.MsgStats) {
 				t.Fatal("unexpected BGP messages stats (-want +got)\n", cmp.Diff(expectedStats, n.MsgStats))
+			}
+			if n.BFDStatus != tt.bfdStatus {
+				t.Fatal("Expected bfdStatus", tt.bfdStatus, "got", n.BFDStatus)
 			}
 		})
 	}
@@ -256,7 +274,15 @@ const threeNeighbours = `
     "connectRetryTimer":120,
     "nextConnectTimerDueInMsecs":107000,
     "readThread":"off",
-    "writeThread":"off"
+    "writeThread":"off",
+    "peerBfdInfo":{
+      "type":"multi hop",
+      "detectMultiplier":3,
+      "rxMinInterval":300,
+      "txMinInterval":300,
+      "status":"Up",
+      "lastUpdate":"0:00:01:00"
+      }
   },
   "172.18.0.3":{
     "remoteAs":64512,
@@ -318,7 +344,15 @@ const threeNeighbours = `
     "connectRetryTimer":120,
     "nextConnectTimerDueInMsecs":107000,
     "readThread":"off",
-    "writeThread":"off"
+    "writeThread":"off",
+    "peerBfdInfo":{
+      "type":"multi hop",
+      "detectMultiplier":3,
+      "rxMinInterval":300,
+      "txMinInterval":300,
+      "status":"Down",
+      "lastUpdate":"0:00:01:00"
+      }
   },
   "172.18.0.4":{
     "remoteAs":64512,
@@ -522,6 +556,15 @@ func TestNeighbours(t *testing.T) {
 	}
 	if nn[2].ID != "172.18.0.4" {
 		t.Fatal("neighbour ip not matching")
+	}
+	if nn[0].BFDStatus != "Up" {
+		t.Fatal("first neighbour bfd not matching")
+	}
+	if nn[1].BFDStatus != "Down" {
+		t.Fatal("second neighbour bfd not matching")
+	}
+	if nn[2].BFDStatus != "" {
+		t.Fatal("third neighbour bfd not matching")
 	}
 
 	for i, n := range nn {

@@ -3,26 +3,12 @@
 package collector
 
 import (
-	"encoding/json"
-	"fmt"
-
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-type bfdPeerCounters struct {
-	Peer                string `json:"peer"`
-	ControlPacketInput  int    `json:"control-packet-input"`
-	ControlPacketOutput int    `json:"control-packet-output"`
-	EchoPacketInput     int    `json:"echo-packet-input"`
-	EchoPacketOutput    int    `json:"echo-packet-output"`
-	SessionUpEvents     int    `json:"session-up"`
-	SessionDownEvents   int    `json:"session-down"`
-	ZebraNotifications  int    `json:"zebra-notifications"`
-}
 
 const subsystem = "bfd"
 
@@ -111,7 +97,7 @@ func (c *bfd) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *bfd) Collect(ch chan<- prometheus.Metric) {
-	peers, err := getBFDPeers(c.frrCli)
+	peers, err := vtysh.GetBFDPeers(c.frrCli)
 	if err != nil {
 		level.Error(c.Log).Log("error", err, "msg", "failed to fetch BFD peers from FRR")
 		return
@@ -119,7 +105,7 @@ func (c *bfd) Collect(ch chan<- prometheus.Metric) {
 
 	updatePeersMetrics(ch, peers)
 
-	peersCounters, err := getBFDPeersCounters(c.frrCli)
+	peersCounters, err := vtysh.GetBFDPeersCounters(c.frrCli)
 	if err != nil {
 		level.Error(c.Log).Log("error", err, "msg", "failed to fetch BFD peers counters from FRR")
 		return
@@ -141,7 +127,7 @@ func updatePeersMetrics(ch chan<- prometheus.Metric, peersPerVRF map[string][]fr
 	}
 }
 
-func updatePeersCountersMetrics(ch chan<- prometheus.Metric, peersCountersPerVRF map[string][]bfdPeerCounters) {
+func updatePeersCountersMetrics(ch chan<- prometheus.Metric, peersCountersPerVRF map[string][]frr.BFDPeerCounters) {
 	for vrf, peersCounters := range peersCountersPerVRF {
 		for _, p := range peersCounters {
 			ch <- prometheus.MustNewConstMetric(controlPacketInputDesc, prometheus.CounterValue, float64(p.ControlPacketInput), p.Peer, vrf)
@@ -153,47 +139,4 @@ func updatePeersCountersMetrics(ch chan<- prometheus.Metric, peersCountersPerVRF
 			ch <- prometheus.MustNewConstMetric(zebraNotificationsDesc, prometheus.CounterValue, float64(p.ZebraNotifications), p.Peer, vrf)
 		}
 	}
-}
-
-func getBFDPeers(frrCli vtysh.Cli) (map[string][]frr.BFDPeer, error) {
-	vrfs, err := vtysh.VRFs(frrCli)
-	if err != nil {
-		return nil, err
-	}
-	res := make(map[string][]frr.BFDPeer)
-	for _, vrf := range vrfs {
-		peersJSON, err := frrCli(fmt.Sprintf("show bfd vrf %s peers json", vrf))
-		if err != nil {
-			return nil, err
-		}
-		peers, err := frr.ParseBFDPeers(peersJSON)
-		if err != nil {
-			return nil, err
-		}
-		res[vrf] = peers
-	}
-	return res, nil
-}
-
-func getBFDPeersCounters(frrCli vtysh.Cli) (map[string][]bfdPeerCounters, error) {
-	vrfs, err := vtysh.VRFs(frrCli)
-	if err != nil {
-		return nil, err
-	}
-
-	res := make(map[string][]bfdPeerCounters)
-	for _, vrf := range vrfs {
-		countersJSON, err := frrCli(fmt.Sprintf("show bfd vrf %s peers counters json", vrf))
-		if err != nil {
-			return nil, err
-		}
-
-		parseRes := []bfdPeerCounters{}
-		err = json.Unmarshal([]byte(countersJSON), &parseRes)
-		if err != nil {
-			return nil, err
-		}
-		res[vrf] = parseRes
-	}
-	return res, nil
 }

@@ -31,6 +31,26 @@ rules:
 - apiGroups:
   - frrk8s.metallb.io
   resources:
+  - bgpsessionstates
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - bgpsessionstates/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
   - frrconfigurations
   verbs:
   - create

@@ -15,6 +15,7 @@ import (
 type Neighbor struct {
 	ID             string
 	VRF            string
+	BGPState       string
 	Connected      bool
 	LocalAS        string
 	RemoteAS       string
@@ -23,6 +24,7 @@ type Neighbor struct {
 	Port           int
 	RemoteRouterID string
 	MsgStats       MessageStats
+	BFDStatus      string
 }
 
 func (n Neighbor) MetricName() string {
@@ -52,6 +54,7 @@ type FRRNeighbor struct {
 		SentPrefixCounter     int `json:"sentPrefixCounter"`
 		AcceptedPrefixCounter int `json:"acceptedPrefixCounter"`
 	} `json:"addressFamilyInfo"`
+	BFDInfo PeerBFDInfo `json:"peerBfdInfo"`
 }
 
 type MessageStats struct {
@@ -65,6 +68,10 @@ type MessageStats struct {
 	RouteRefreshSent   int `json:"routeRefreshSent"`
 	TotalSent          int `json:"totalSent"`
 	TotalReceived      int `json:"totalRecv"`
+}
+
+type PeerBFDInfo struct {
+	Status string `json:"status"`
 }
 
 type IPInfo struct {
@@ -107,6 +114,17 @@ type BFDPeer struct {
 	RemoteDetectMultiplier    int    `json:"remote-detect-multiplier"`
 }
 
+type BFDPeerCounters struct {
+	Peer                string `json:"peer"`
+	ControlPacketInput  int    `json:"control-packet-input"`
+	ControlPacketOutput int    `json:"control-packet-output"`
+	EchoPacketInput     int    `json:"echo-packet-input"`
+	EchoPacketOutput    int    `json:"echo-packet-output"`
+	SessionUpEvents     int    `json:"session-up"`
+	SessionDownEvents   int    `json:"session-down"`
+	ZebraNotifications  int    `json:"zebra-notifications"`
+}
+
 // parseNeighbour takes the result of a show bgp neighbor x.y.w.z
 // and parses the informations related to the neighbour.
 func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
@@ -134,6 +152,7 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 		}
 		return &Neighbor{
 			ID:             k,
+			BGPState:       n.BgpState,
 			Connected:      connected,
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
@@ -142,6 +161,7 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,
+			BFDStatus:      n.BFDInfo.Status,
 		}, nil
 	}
 	return nil, errors.New("no peers were returned")
@@ -170,6 +190,7 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 		}
 		res = append(res, &Neighbor{
 			ID:             k,
+			BGPState:       n.BgpState,
 			Connected:      connected,
 			LocalAS:        strconv.Itoa(n.LocalAs),
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
@@ -178,6 +199,7 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,
+			BFDStatus:      n.BFDInfo.Status,
 		})
 	}
 	return res, nil
