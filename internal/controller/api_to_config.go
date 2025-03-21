@@ -97,6 +97,15 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 			if err != nil {
 				return nil, err
 			}
+			//
+			// a := routerCfg.Neighbors
+			// for i := range len(routerCfg.Neighbors) - 1 {
+			// 	for j := i + 1; j < len(routerCfg.Neighbors); j++ {
+			// 		if err := neighborsAreCompatible(a[i], a[j]); err != nil {
+			// 			return nil, err
+			// 		}
+			// 	}
+			// }
 
 			curr, ok := routersForVRF[r.VRF]
 			if !ok {
