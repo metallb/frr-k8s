@@ -37,6 +37,11 @@ type BGPSessionStateStatus struct {
 //+kubebuilder:subresource:status
 
 // BGPSessionState exposes the status of a BGP Session from the FRR instance running on the node.
+// +kubebuilder:printcolumn:name="Node",type=string,JSONPath=`.status.node`
+// +kubebuilder:printcolumn:name="Peer",type=string,JSONPath=`.status.peer`
+// +kubebuilder:printcolumn:name="VRF",type=string,JSONPath=`.status.vrf`
+// +kubebuilder:printcolumn:name="BGP",type=string,JSONPath=`.status.bgpStatus`
+// +kubebuilder:printcolumn:name="BFD",type=string,JSONPath=`.status.bfdStatus`
 type BGPSessionState struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
