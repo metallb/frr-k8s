@@ -71,6 +71,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.tolerateMaster | bool | `true` |  |
 | frrk8s.tolerations | list | `[]` |  |
 | frrk8s.updateStrategy.type | string | `"RollingUpdate"` |  |
+| frrk8s.webhookPort | int | `9443` |  |
 | fullnameOverride | string | `""` |  |
 | nameOverride | string | `""` |  |
 | prometheus.metricsBindAddress | string | `"127.0.0.1"` |  |

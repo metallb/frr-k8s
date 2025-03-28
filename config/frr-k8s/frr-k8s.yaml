@@ -296,16 +296,20 @@ spec:
         ports:
         - containerPort: 7572
           name: monitoring
+        - containerPort: 9443
+          name: webhook
         livenessProbe:
           httpGet:
-            path: /metrics
-            port: monitoring
+            path: /healthz
+            port: webhook
+            scheme: HTTPS
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
-            path: /metrics
-            port: monitoring
+            path: /healthz
+            port: webhook
+            scheme: HTTPS
           initialDelaySeconds: 5
           periodSeconds: 10
         # TODO(user): Configure the resources accordingly based on the project requirements.
