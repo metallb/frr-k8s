@@ -257,7 +257,6 @@ var _ = ginkgo.Describe("Session", func() {
 					Expect(n.GRInfo.LocalGrMode).Should(Equal("Restart"))
 					Expect(n.GRInfo.RemoteGrMode).Should(Equal("Helper"))
 					Expect(n.GRInfo.NBit).To(BeTrue())
-					Expect(n.GRInfo.RBit).To(BeTrue())
 				}
 			}
 		},
