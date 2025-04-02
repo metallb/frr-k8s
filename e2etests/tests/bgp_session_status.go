@@ -73,6 +73,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 		}
 		err = updater.Clean()
 		Expect(err).NotTo(HaveOccurred())
+		waitForFRRCleanState(cl) // TODO: remove when we move to FRR 10.x
 
 		cs = k8sclient.New()
 	})
@@ -407,4 +408,23 @@ func statusFormatFor(ip string) string {
 
 func ipFor(statusIP string) string {
 	return strings.ReplaceAll(statusIP, "-", ":")
+}
+
+// Ensures that all the frr-k8s daemons run a clean FRR config.
+// TODO: this is needed for a CI flake, remove once we move to FRR 10.x
+func waitForFRRCleanState(cl client.Client) {
+	ginkgo.GinkgoHelper()
+	Eventually(func() error {
+		statuses := frrk8sv1beta1.FRRNodeStateList{}
+		err := cl.List(context.Background(), &statuses)
+		if err != nil {
+			return err
+		}
+		for _, status := range statuses.Items {
+			if strings.Contains(status.Status.RunningConfig, "router bgp") {
+				return fmt.Errorf("node %s has a non-clean config: \n %v", status.Name, status)
+			}
+		}
+		return nil
+	}, 2*time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 }
