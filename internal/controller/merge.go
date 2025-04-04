@@ -55,9 +55,9 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 	mergedNeighbors := map[string]*frr.NeighborConfig{}
 
 	for _, n := range all {
-		curr, found := mergedNeighbors[n.Addr]
+		curr, found := mergedNeighbors[n.ID()]
 		if !found {
-			mergedNeighbors[n.Addr] = n
+			mergedNeighbors[n.ID()] = n
 			continue
 		}
 
@@ -74,7 +74,7 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 		curr.Incoming = mergeAllowedIn(curr.Incoming, n.Incoming)
 
 		cleanNeighborDefaults(curr)
-		mergedNeighbors[n.Addr] = curr
+		mergedNeighbors[n.ID()] = curr
 	}
 
 	return sortMapPtr(mergedNeighbors), nil
@@ -215,15 +215,12 @@ func routersAreCompatible(r, toMerge *frr.RouterConfig) error {
 
 // Verifies that two neighbors are compatible for merging, assuming they belong to the same router.
 func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
-	if n1.Addr != n2.Addr {
-		return fmt.Errorf("neighbors with different addresses (%s != %s) are not compatible for merging", n1.Addr, n2.Addr)
+	// we shouldn't reach this
+	if n1.ID() != n2.ID() {
+		return fmt.Errorf("only neighbors with same ID (%s, %s) are compatible for merging", n1.ID(), n2.ID())
 	}
 
-	if n1.VRFName != n2.VRFName {
-		return fmt.Errorf("neighbors using a different VRF (%s != %s) are not compatible for merging", n1.VRFName, n2.VRFName)
-	}
-
-	neighborKey := fmt.Sprintf("neighbor %s at vrf %s", n1.Addr, n1.VRFName)
+	neighborKey := n1.ID()
 	if n1.ASN != n2.ASN {
 		return fmt.Errorf("multiple asns specified for %s", neighborKey)
 	}
