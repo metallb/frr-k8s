@@ -69,7 +69,6 @@ type NeighborConfig struct {
 	SrcAddr         string
 	Addr            string
 	Iface           string
-	Unnumbered      bool
 	Port            *uint16
 	HoldTime        *int64
 	KeepaliveTime   *int64
