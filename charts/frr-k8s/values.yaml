@@ -172,6 +172,9 @@ frrk8s:
   frrStatus:
     pollInterval: "2m"
     resources: {}
+  # webhook contains configuration specific to the webhook deployment
+  webhook:
+    nodeSelector: {}
 crds:
   enabled: true
   validationFailurePolicy: Fail
