@@ -83,6 +83,8 @@ If you are using frr-k8s with a kubernetes version that enforces pod security ad
 The CRD to configure `FRR-K8s` is the `FRRConfiguration`. A comprehensive documentation of the API can be found in
 the [API Docs file](./API-DOCS.md)
 
+**Note: the FRRConfiguration instances must be created in the same namespace FRR-K8s is running into.**
+
 ### BGP Configuration
 
 The `BGP` section of the FRRConfiguration spec is in charge of configuring the details related to the BGP protocol.
