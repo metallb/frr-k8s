@@ -50,6 +50,7 @@ type FRRConfigurationReconciler struct {
 	Scheme             *runtime.Scheme
 	FRRHandler         frr.ConfigHandler
 	Logger             log.Logger
+	DumpResources      bool
 	NodeName           string
 	Namespace          string
 	ReloadStatus       func()
@@ -95,7 +96,11 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", dumpK8sConfigs(configs))
+	k8sDump := ""
+	if r.DumpResources {
+		k8sDump = dumpK8sConfigs(configs)
+	}
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", k8sDump)
 
 	if len(configs.Items) == 0 {
 		err := r.applyEmptyConfig()
@@ -141,7 +146,11 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", dumpFRRConfig(config))
+	frrDump := ""
+	if r.DumpResources {
+		frrDump = dumpFRRConfig(config)
+	}
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", frrDump)
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()

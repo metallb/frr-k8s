@@ -177,6 +177,10 @@ func main() {
 			os.Exit(1)
 		}
 
+		dumpResources := false
+		if logLevel == logging.LevelDebug || logLevel == logging.LevelAll {
+			dumpResources = true
+		}
 		configReconciler := &controller.FRRConfigurationReconciler{
 			Client:           mgr.GetClient(),
 			Scheme:           mgr.GetScheme(),
@@ -185,6 +189,7 @@ func main() {
 			NodeName:         nodeName,
 			ReloadStatus:     reloadStatus,
 			AlwaysBlockCIDRS: alwaysBlock,
+			DumpResources:    dumpResources,
 		}
 		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
