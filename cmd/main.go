@@ -67,6 +67,7 @@ func init() {
 }
 
 func main() {
+	fmt.Println("hello")
 	var (
 		metricsAddr                   string
 		logLevel                      string
