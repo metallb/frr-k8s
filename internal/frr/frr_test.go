@@ -561,7 +561,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
-func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
+func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 	testSetup(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -575,10 +575,9 @@ func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
 				MyASN: 65000,
 				Neighbors: []*NeighborConfig{
 					{
-						IPFamily:  ipfamily.IPv4,
-						ASN:       "65001",
-						Addr:      "192.168.1.2",
-						DisableMP: true,
+						IPFamily: ipfamily.DualStack,
+						ASN:      "65001",
+						Addr:     "192.168.1.2",
 						Outgoing: AllowedOut{
 							PrefixesV4: []OutgoingFilter{
 								{
@@ -589,11 +588,10 @@ func TestMultipleNeighborsOneV4AndOneV6DisableMP(t *testing.T) {
 						},
 					},
 					{
-						IPFamily:     ipfamily.IPv6,
+						IPFamily:     ipfamily.DualStack,
 						ASN:          "65002",
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
-						DisableMP:    true,
 						Outgoing: AllowedOut{
 							PrefixesV6: []OutgoingFilter{
 								{

@@ -66,7 +66,7 @@ router bgp 65000
   
   
   
-  neighbor 192.168.1.2 update-source 192.168.1.50
+  
   neighbor 2001:db8::1 remote-as 65002
   neighbor 2001:db8::1 ebgp-multihop
   
@@ -79,7 +79,17 @@ router bgp 65000
     neighbor 192.168.1.2 route-map 192.168.1.2-in in
     neighbor 192.168.1.2 route-map 192.168.1.2-out out
   exit-address-family
+  address-family ipv6 unicast
+    neighbor 192.168.1.2 activate
+    neighbor 192.168.1.2 route-map 192.168.1.2-in in
+    neighbor 192.168.1.2 route-map 192.168.1.2-out out
+  exit-address-family
 
+  address-family ipv4 unicast
+    neighbor 2001:db8::1 activate
+    neighbor 2001:db8::1 route-map 2001:db8::1-in in
+    neighbor 2001:db8::1 route-map 2001:db8::1-out out
+  exit-address-family
   address-family ipv6 unicast
     neighbor 2001:db8::1 activate
     neighbor 2001:db8::1 route-map 2001:db8::1-in in
