@@ -128,6 +128,7 @@ frrk8s:
   podAnnotations: {}
   labels:
     app: frr-k8s
+  webhookPort: 9443
   livenessProbe:
     enabled: true
     failureThreshold: 3
@@ -167,6 +168,9 @@ frrk8s:
   reloader:
     resources: {}
   frrMetrics:
+    resources: {}
+  frrStatus:
+    pollInterval: "2m"
     resources: {}
 crds:
   enabled: true

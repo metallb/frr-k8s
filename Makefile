@@ -126,7 +126,7 @@ KUSTOMIZE_VERSION ?= v5.0.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 KUBECTL_VERSION ?= v1.27.0
 GINKGO_VERSION ?= v2.19.0
-KIND_VERSION ?= v0.23.0
+KIND_VERSION ?= v0.27.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
 HELM_DOCS_VERSION ?= v1.10.0
@@ -166,7 +166,8 @@ deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster spe
 
 	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | \
 		sed '/--log-level/a\        - --always-block=192.167.9.0/24,fc00:f553:ccd:e799::/64' |\
-		sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' | $(KUBECTL) apply -f -
+		sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' |\
+		sed '/--pod-name/a\        - --poll-interval=5s' | $(KUBECTL) apply -f -
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n ${NAMESPACE} wait --for=condition=Ready --all pods --timeout 300s
 
@@ -175,8 +176,8 @@ deploy-helm: helm deploy-cluster deploy-prometheus
 	$(KUBECTL) create ns ${NAMESPACE} || true
 	$(KUBECTL) label ns ${NAMESPACE} pod-security.kubernetes.io/enforce=privileged
 	$(HELM) install frrk8s charts/frr-k8s/ --set frrk8s.image.tag=${IMG_TAG} --set frrk8s.logLevel=debug --set prometheus.rbacPrometheus=true \
-	--set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring --set prometheus.serviceMonitor.enabled=true --namespace ${NAMESPACE} \
-	--set frrk8s.alwaysBlock='192.167.9.0/24\,fc00:f553:ccd:e799::/64' --namespace ${NAMESPACE} $(HELM_ARGS)
+	--set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring --set prometheus.serviceMonitor.enabled=true \
+	--set frrk8s.alwaysBlock='192.167.9.0/24\,fc00:f553:ccd:e799::/64' --set frrk8s.frrStatus.pollInterval='5s' --namespace ${NAMESPACE} $(HELM_ARGS)
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n ${NAMESPACE} wait --for=condition=Ready --all pods --timeout 300s
 

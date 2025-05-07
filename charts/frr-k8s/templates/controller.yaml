@@ -49,8 +49,8 @@ data:
     # Check /etc/pam.d/frr if you intend to use "vtysh"!
     #
     vtysh_enable=yes
-    zebra_options="  -A 127.0.0.1 -s 90000000"
-    bgpd_options="   -A 127.0.0.1 {{ if not .Values.frrk8s.frr.acceptIncomingBGPConnections }} -p 0 {{- end }}"
+    zebra_options="  -A 127.0.0.1 -K 120 -s 90000000 --limit-fds 100000"
+    bgpd_options="   -A 127.0.0.1 {{ if not .Values.frrk8s.frr.acceptIncomingBGPConnections }} -p 0 {{- end }} --limit-fds 100000"
     ospfd_options="  -A 127.0.0.1"
     ospf6d_options=" -A ::1"
     ripd_options="   -A 127.0.0.1"
@@ -63,8 +63,8 @@ data:
     babeld_options=" -A 127.0.0.1"
     sharpd_options=" -A 127.0.0.1"
     pbrd_options="   -A 127.0.0.1"
-    staticd_options="-A 127.0.0.1"
-    bfdd_options="   -A 127.0.0.1"
+    staticd_options="-A 127.0.0.1 --limit-fds 100000"
+    bfdd_options="   -A 127.0.0.1 --limit-fds 100000"
     fabricd_options="-A 127.0.0.1"
     vrrpd_options="  -A 127.0.0.1"
 
@@ -151,6 +151,8 @@ spec:
           emptyDir: {}
         - name: metrics
           emptyDir: {}
+        - name: frr-status
+          emptyDir: {}
       {{- if .Values.prometheus.metricsTLSSecret }}
         - name: metrics-certs
           secret:
@@ -183,6 +185,12 @@ spec:
           volumeMounts:
             - name: metrics
               mountPath: /etc/frr_metrics
+        - name: cp-frr-status
+          image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
+          command: ["/bin/sh", "-c", "cp -f /frr-status /etc/frr_status/"]
+          volumeMounts:
+            - name: frr-status
+              mountPath: /etc/frr_status
       shareProcessNamespace: true
       containers:
       - name: controller
@@ -347,6 +355,41 @@ spec:
           - name: metrics
             mountPath: /etc/frr_metrics
         {{- with .Values.frrk8s.frrMetrics.resources }}
+        resources:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
+      - name: frr-status
+        args:
+          - --node-name=$(NODE_NAME)
+          - --namespace=$(NAMESPACE)
+          - --pod-name=$(POD_NAME)
+          {{- if .Values.frrk8s.frrStatus.pollInterval }}
+          - --poll-interval={{ .Values.frrk8s.frrStatus.pollInterval }}
+          {{- end }}
+        command:
+          - /etc/frr_status/frr-status
+        env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
+          - name: NAMESPACE
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.namespace
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+        image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
+        volumeMounts:
+          - mountPath: /var/run/frr
+            name: frr-sockets
+          - mountPath: /etc/frr
+            name: frr-conf
+          - mountPath: /etc/frr_status
+            name: frr-status
+        {{- with .Values.frrk8s.frrStatus.resources }}
         resources:
           {{- toYaml . | nindent 12 }}
         {{- end }}

@@ -79,6 +79,7 @@ func main() {
 		webhookMode                   string
 		pprofAddr                     string
 		alwaysBlockCIDRs              string
+		webhookPort                   int
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
@@ -92,6 +93,7 @@ func main() {
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
+	flag.IntVar(&webhookPort, "webhook-port", 9443, "the port we listen the webhook calls on")
 
 	opts := zap.Options{
 		Development: true,
@@ -119,7 +121,7 @@ func main() {
 		},
 		WebhookServer: webhook.NewServer(
 			webhook.Options{
-				Port: 9443,
+				Port: webhookPort,
 			},
 		),
 		Metrics: metricsserver.Options{
@@ -175,6 +177,10 @@ func main() {
 			os.Exit(1)
 		}
 
+		dumpResources := false
+		if logLevel == logging.LevelDebug || logLevel == logging.LevelAll {
+			dumpResources = true
+		}
 		configReconciler := &controller.FRRConfigurationReconciler{
 			Client:           mgr.GetClient(),
 			Scheme:           mgr.GetScheme(),
@@ -183,6 +189,7 @@ func main() {
 			NodeName:         nodeName,
 			ReloadStatus:     reloadStatus,
 			AlwaysBlockCIDRS: alwaysBlock,
+			DumpResources:    dumpResources,
 		}
 		if err = configReconciler.SetupWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")

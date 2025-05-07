@@ -4,6 +4,7 @@
 resources:
 - bases/frrk8s.metallb.io_frrconfigurations.yaml
 - bases/frrk8s.metallb.io_frrnodestates.yaml
+- bases/frrk8s.metallb.io_bgpsessionstates.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

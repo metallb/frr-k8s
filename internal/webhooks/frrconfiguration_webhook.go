@@ -28,7 +28,10 @@ var (
 	Validate      func(resources ...client.ObjectList) error
 )
 
-const frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+const (
+	frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+	healthPath           = "/healthz"
+)
 
 type FRRConfigValidator struct {
 	ClusterResourceNamespace string
@@ -44,6 +47,11 @@ func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	mgr.GetWebhookServer().Register(
 		frrConfigWebhookPath,
 		&webhook.Admission{Handler: v})
+
+	mgr.GetWebhookServer().Register(
+		healthPath,
+		&healthHandler{})
+
 	return nil
 }
 
@@ -89,6 +97,22 @@ func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) 
 		warnings = w
 	}
 	return admission.Allowed("").WithWarnings(warnings...)
+}
+
+type healthHandler struct{}
+
+func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte(`{"status": "ok"}`))
+	if err != nil {
+		level.Error(Logger).Log("webhook", "healthcheck", "error when writing reply", err)
+	}
 }
 
 type nodeAndConfigs struct {

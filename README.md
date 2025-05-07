@@ -315,6 +315,36 @@ This includes:
 - `lastReloadResult`: the status of the last configuration update operation by FRR, contains "success" or an error.
 - `lastConversionResult`: the status of the last translation between the `FRRConfiguration`s resources and FRR's configuration, contains "success" or an error.
 
+## Checking the status of the BGP sessions
+The `BGPSessionState` resource exposes the status of a BGP Session from the FRR instance running on the node.
+
+This includes:
+- `node`: The node of the BGP session.
+- `peer`: The peer of the BGP session.
+- `vrf`: The VRF of the peer, empty if VRF is not configured.
+- `bgpStatus`: The BGP status of the session, can be Idle/Connect/Active/OpenSent/OpenConfirm/Established.
+- `bfdStatus`: The BFD status of the session, can be Up/Down or N/A if BFD is not configured for the session.
+
+For example:
+```
+$ kubectl get bgpsessionstates -o wide
+NAMESPACE        NAME                          NODE                    PEER         VRF   BGP           BFD
+frr-k8s-system   frr-k8s-worker-2gjfq          frr-k8s-worker          10.89.0.64         Active        N/A
+frr-k8s-system   frr-k8s-worker-9gtnb          frr-k8s-worker          10.89.0.63         Established   N/A
+frr-k8s-system   frr-k8s-worker-rlzjk          frr-k8s-worker          172.30.0.2         Established   Down
+frr-k8s-system   frr-k8s-worker-v4ddd          frr-k8s-worker          172.30.0.3         Established   Up
+```
+
+In addition, each resource is labeled with `frrk8s.metallb.io/node`, `frrk8s.metallb.io/peer`,`frrk8s.metallb.io/vrf`, with the matching node/peer/vrf respectively. This makes it easier to list the status of all sessions related to a given combination of node / peer / vrf, e.g:
+```
+$ kubectl get bgpsessionstates -o wide -l frrk8s.metallb.io/node=frr-k8s-worker2
+NAMESPACE        NAME                    NODE              PEER         VRF   BGP           BFD
+frr-k8s-system   frr-k8s-worker2-26kks   frr-k8s-worker2   172.30.0.3         Established   Up
+frr-k8s-system   frr-k8s-worker2-llxqc   frr-k8s-worker2   10.89.0.65         Established   Up
+frr-k8s-system   frr-k8s-worker2-rknwg   frr-k8s-worker2   10.89.0.66         Established   Up
+frr-k8s-system   frr-k8s-worker2-t7rbf   frr-k8s-worker2   172.30.0.2         Established   Up
+```
+
 ## Blocking prefixes that may break the cluster
 
 The controller accepts a --always-block parameter that accepts a list of comma separated cidrs. When enabled, FRR-K8s will instruct the FRR instance to always refuse those prefixes. It is useful to reject prefixes that might harm the cluster, overriding routes to ClusterIPs or the IPs of the Pods.

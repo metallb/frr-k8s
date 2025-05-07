@@ -4,7 +4,7 @@ set -o errexit
 KIND_BIN="${KIND_BIN:-kind}"
 KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME:-frr-k8s}"
 IP_FAMILY="${IP_FAMILY:-ipv4}"
-NODE_IMAGE="${NODE_IMAGE:-kindest/node:v1.26.0}"
+NODE_IMAGE="${NODE_IMAGE:-kindest/node:v1.32.2}"
 
 clusters=$("${KIND_BIN}" get clusters)
 for cluster in $clusters; do
