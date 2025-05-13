@@ -67,11 +67,6 @@ router bgp 65000
     neighbor 192.168.1.2 route-map 192.168.1.2-in in
     neighbor 192.168.1.2 route-map 192.168.1.2-out out
   exit-address-family
-  address-family ipv6 unicast
-    neighbor 192.168.1.2 activate
-    neighbor 192.168.1.2 route-map 192.168.1.2-in in
-    neighbor 192.168.1.2 route-map 192.168.1.2-out out
-  exit-address-family
 router bgp 65000 vrf red
   no bgp ebgp-requires-policy
   no bgp network import-check
@@ -87,11 +82,6 @@ router bgp 65000 vrf red
   neighbor 192.168.1.3 bfd profile testdefault
 
   address-family ipv4 unicast
-    neighbor 192.168.1.3 activate
-    neighbor 192.168.1.3 route-map 192.168.1.3-in in
-    neighbor 192.168.1.3 route-map 192.168.1.3-out out
-  exit-address-family
-  address-family ipv6 unicast
     neighbor 192.168.1.3 activate
     neighbor 192.168.1.3 route-map 192.168.1.3-in in
     neighbor 192.168.1.3 route-map 192.168.1.3-out out
