@@ -1,5 +1,19 @@
 # FRRK8s Release Notes
 
+## Release v0.0.18
+
+### New Features
+
+- Added the BGPSessionState resource, which exposes the status of a BGP session from the FRR instance running on the node. (#257, @oribon)
+
+### Bugs or Regressions
+
+- Add by default the -K (graceful_restart) argument in Zebra so that learnt routes are maintained on the host when zebra process restart. (#231, @karampok)
+- Better handling of high number of FRRConfigurations.
+- Memory improvements. (#291, @fedepaol)
+- Declare the webhook pod to be ready only when it can serve requests, checking the webhook endpoint as readiness probe. (#284, @fedepaol)
+- Limit the number of file descriptors for the FRR daemons instead of defaulting to ulimit. (#272, @fedepaol)
+
 ## Release v0.0.17
 
 ### New Features

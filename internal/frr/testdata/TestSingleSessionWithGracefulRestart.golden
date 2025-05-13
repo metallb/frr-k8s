@@ -45,9 +45,4 @@ router bgp 65000
     neighbor 192.168.1.2 route-map 192.168.1.2-in in
     neighbor 192.168.1.2 route-map 192.168.1.2-out out
   exit-address-family
-  address-family ipv6 unicast
-    neighbor 192.168.1.2 activate
-    neighbor 192.168.1.2 route-map 192.168.1.2-in in
-    neighbor 192.168.1.2 route-map 192.168.1.2-out out
-  exit-address-family
 

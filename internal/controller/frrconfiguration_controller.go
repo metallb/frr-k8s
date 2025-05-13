@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
@@ -49,6 +50,7 @@ type FRRConfigurationReconciler struct {
 	Scheme             *runtime.Scheme
 	FRRHandler         frr.ConfigHandler
 	Logger             log.Logger
+	DumpResources      bool
 	NodeName           string
 	Namespace          string
 	ReloadStatus       func()
@@ -94,10 +96,14 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", dumpK8sConfigs(configs))
+	k8sDump := ""
+	if r.DumpResources {
+		k8sDump = dumpK8sConfigs(configs)
+	}
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", k8sDump)
 
 	if len(configs.Items) == 0 {
-		err := r.applyEmptyConfig(req)
+		err := r.applyEmptyConfig()
 		if err != nil {
 			updateErrors.Inc()
 			configStale.Set(1)
@@ -135,18 +141,22 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to convert the config, error", err)
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, nil
 	}
 
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", dumpFRRConfig(config))
+	frrDump := ""
+	if r.DumpResources {
+		frrDump = dumpFRRConfig(config)
+	}
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", frrDump)
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
 		conversionResult = fmt.Sprintf("failed: %v", err)
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config", req.NamespacedName.String(), "error", err)
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config, error", err)
 		return ctrl.Result{}, err
 	}
 
@@ -156,15 +166,15 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *FRRConfigurationReconciler) applyEmptyConfig(req ctrl.Request) error {
+func (r *FRRConfigurationReconciler) applyEmptyConfig() error {
 	config, err := apiToFRR(ClusterResources{}, []net.IPNet{})
 	if err != nil {
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config", req.NamespacedName.String(), "error", err)
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config, error", err)
 		panic("failed to translate empty config")
 	}
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config", req.NamespacedName.String(), "error", err)
+		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config, error", err)
 		return err
 	}
 	return nil
@@ -200,8 +210,20 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&frrk8sv1beta1.FRRConfiguration{}).
-		Watches(&corev1.Node{}, &handler.EnqueueRequestForObject{}).
+		Watches(&frrk8sv1beta1.FRRConfiguration{},
+			// The controller is level driven, so we squash all the frrconfiguration changes to a single key.
+			// By doing this, the controller will throttle when there are a large amount of configurations generated
+			// at the same time.
+			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
+				return []reconcile.Request{
+					{NamespacedName: types.NamespacedName{
+						Name:      "frrconfig",
+						Namespace: obj.GetNamespace(),
+					}},
+				}
+			}),
+		).
+		For(&corev1.Node{}).
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)

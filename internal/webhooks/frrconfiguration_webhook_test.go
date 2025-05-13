@@ -211,6 +211,57 @@ func TestValidateFRRConfiguration(t *testing.T) {
 			failValidate: false,
 			warnings:     []string{"Graceful restart configuration changed, it will be available on the next restart"},
 		},
+		{
+			desc:   "warning when disableMP is set",
+			before: &existingConfig,
+			config: &v1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: TestNamespace,
+				},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{
+							{
+								Neighbors: []v1beta1.Neighbor{
+									{
+										ASN:       65002,
+										DisableMP: true,
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			isNew: true,
+			expected: &v1beta1.FRRConfigurationList{
+				Items: []v1beta1.FRRConfiguration{
+					{
+						ObjectMeta: metav1.ObjectMeta{
+							Name:      "test-config",
+							Namespace: TestNamespace,
+						},
+						Spec: v1beta1.FRRConfigurationSpec{
+							BGP: v1beta1.BGPConfig{
+								Routers: []v1beta1.Router{
+									{
+										Neighbors: []v1beta1.Neighbor{
+											{
+												ASN:       65002,
+												DisableMP: true,
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			failValidate: false,
+			warnings:     []string{"disableMP is deprecated and will be removed in a future release"},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {

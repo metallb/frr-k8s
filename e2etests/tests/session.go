@@ -24,6 +24,7 @@ import (
 	"go.universe.tf/e2etest/pkg/ipfamily"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/util/sets"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
@@ -80,7 +81,6 @@ var _ = ginkgo.Describe("Session", func() {
 										ConnectTime: &metav1.Duration{
 											Duration: 3 * time.Second,
 										},
-										DisableMP: true,
 									},
 								},
 							},
@@ -115,9 +115,12 @@ var _ = ginkgo.Describe("Session", func() {
 							return fmt.Errorf("expected connect time to be 3, got %d", n.ConfiguredConnectTime)
 						}
 						neighborFamily := ipfamily.ForAddress(net.ParseIP(n.ID))
+						families := sets.Set[string]{}
+						families.Insert(n.AddressFamilies...)
+
 						for _, family := range n.AddressFamilies {
 							if !strings.Contains(family, string(neighborFamily)) {
-								return fmt.Errorf("expected %s neigbour to contain only %s families but contains %s", n.ID, neighborFamily, family)
+								return fmt.Errorf("expected %s neighbor to contain only %s families but contains %s", n.ID, neighborFamily, family)
 							}
 						}
 					}

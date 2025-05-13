@@ -152,6 +152,10 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 		return warnings, err
 	}
 
+	if containsDisableMP(frrConfig.Spec.BGP.Routers) {
+		warnings = append(warnings, "disableMP is deprecated and will be removed in a future release")
+	}
+
 	existingFRRConfigurations, err := getFRRConfigurations()
 	if err != nil {
 		return warnings, err
@@ -232,4 +236,15 @@ var getNodes = func() ([]corev1.Node, error) {
 		return nil, errors.Join(err, errors.New("failed to get existing Node objects"))
 	}
 	return nodesList.Items, nil
+}
+
+func containsDisableMP(routers []v1beta1.Router) bool {
+	for _, r := range routers {
+		for _, n := range r.Neighbors {
+			if n.DisableMP {
+				return true
+			}
+		}
+	}
+	return false
 }

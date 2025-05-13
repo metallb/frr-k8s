@@ -57,8 +57,8 @@ func TestConversion(t *testing.T) {
 											ConnectTime: &metav1.Duration{
 												Duration: 2 * time.Second,
 											},
-											DisableMP:             true,
-											EnableGracefulRestart: true,
+											DualStackAddressFamily: true,
+											EnableGracefulRestart:  true,
 										},
 									},
 									VRF:      "",
@@ -77,7 +77,7 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.1",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:        ipfamily.IPv4,
+								IPFamily:        ipfamily.DualStack,
 								Name:            "65002@192.0.2.2",
 								ASN:             "65002",
 								SrcAddr:         "192.1.1.1",
@@ -85,7 +85,6 @@ func TestConversion(t *testing.T) {
 								KeepaliveTime:   ptr.To[int64](20),
 								HoldTime:        ptr.To[int64](40),
 								ConnectTime:     ptr.To(int64(2)),
-								DisableMP:       true,
 								GracefulRestart: true,
 							},
 						},
@@ -119,7 +118,6 @@ func TestConversion(t *testing.T) {
 											ConnectTime: &metav1.Duration{
 												Duration: 2 * time.Second,
 											},
-											DisableMP: true,
 										},
 									},
 									VRF:      "",
@@ -146,7 +144,6 @@ func TestConversion(t *testing.T) {
 								KeepaliveTime: ptr.To[int64](20),
 								HoldTime:      ptr.To[int64](40),
 								ConnectTime:   ptr.To(int64(2)),
-								DisableMP:     true,
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},

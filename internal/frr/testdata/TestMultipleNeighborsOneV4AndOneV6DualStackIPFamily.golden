@@ -7,54 +7,54 @@ ipv6 nht resolve-via-default
 
 
 
-ip prefix-list 192.168.1.2-pl-ipv4 seq 1 permit 192.169.1.0/24
+ip prefix-list 192.168.1.2-pl-dual seq 1 permit 192.169.1.0/24
 
 
 
-ipv6 prefix-list 192.168.1.2-pl-ipv4 seq 2 deny any
+ipv6 prefix-list 192.168.1.2-pl-dual seq 2 deny any
 
 route-map 192.168.1.2-out permit 1
-  match ip address prefix-list 192.168.1.2-pl-ipv4
+  match ip address prefix-list 192.168.1.2-pl-dual
 route-map 192.168.1.2-out permit 2
-  match ipv6 address prefix-list 192.168.1.2-pl-ipv4
+  match ipv6 address prefix-list 192.168.1.2-pl-dual
 
 
 
 
 
-ip prefix-list 192.168.1.2-inpl-ipv4 seq 1 deny any
+ip prefix-list 192.168.1.2-inpl-dual seq 1 deny any
 
-ipv6 prefix-list 192.168.1.2-inpl-ipv4 seq 2 deny any
+ipv6 prefix-list 192.168.1.2-inpl-dual seq 2 deny any
 route-map 192.168.1.2-in permit 3
-  match ip address prefix-list 192.168.1.2-inpl-ipv4
+  match ip address prefix-list 192.168.1.2-inpl-dual
 route-map 192.168.1.2-in permit 4
-  match ipv6 address prefix-list 192.168.1.2-inpl-ipv4
+  match ipv6 address prefix-list 192.168.1.2-inpl-dual
 
 
 
 
-ipv6 prefix-list 2001:db8::1-pl-ipv6 seq 1 permit 2001:db8:abcd::/48
+ipv6 prefix-list 2001:db8::1-pl-dual seq 1 permit 2001:db8:abcd::/48
 
 
 
-ip prefix-list 2001:db8::1-pl-ipv6 seq 2 deny any
+ip prefix-list 2001:db8::1-pl-dual seq 2 deny any
 
 route-map 2001:db8::1-out permit 1
-  match ip address prefix-list 2001:db8::1-pl-ipv6
+  match ip address prefix-list 2001:db8::1-pl-dual
 route-map 2001:db8::1-out permit 2
-  match ipv6 address prefix-list 2001:db8::1-pl-ipv6
+  match ipv6 address prefix-list 2001:db8::1-pl-dual
 
 
 
 
 
-ip prefix-list 2001:db8::1-inpl-ipv6 seq 1 deny any
+ip prefix-list 2001:db8::1-inpl-dual seq 1 deny any
 
-ipv6 prefix-list 2001:db8::1-inpl-ipv6 seq 2 deny any
+ipv6 prefix-list 2001:db8::1-inpl-dual seq 2 deny any
 route-map 2001:db8::1-in permit 3
-  match ip address prefix-list 2001:db8::1-inpl-ipv6
+  match ip address prefix-list 2001:db8::1-inpl-dual
 route-map 2001:db8::1-in permit 4
-  match ipv6 address prefix-list 2001:db8::1-inpl-ipv6
+  match ipv6 address prefix-list 2001:db8::1-inpl-dual
 
 router bgp 65000
   no bgp ebgp-requires-policy
@@ -66,7 +66,7 @@ router bgp 65000
   
   
   
-  neighbor 192.168.1.2 update-source 192.168.1.50
+  
   neighbor 2001:db8::1 remote-as 65002
   neighbor 2001:db8::1 ebgp-multihop
   
@@ -79,7 +79,17 @@ router bgp 65000
     neighbor 192.168.1.2 route-map 192.168.1.2-in in
     neighbor 192.168.1.2 route-map 192.168.1.2-out out
   exit-address-family
+  address-family ipv6 unicast
+    neighbor 192.168.1.2 activate
+    neighbor 192.168.1.2 route-map 192.168.1.2-in in
+    neighbor 192.168.1.2 route-map 192.168.1.2-out out
+  exit-address-family
 
+  address-family ipv4 unicast
+    neighbor 2001:db8::1 activate
+    neighbor 2001:db8::1 route-map 2001:db8::1-in in
+    neighbor 2001:db8::1 route-map 2001:db8::1-out out
+  exit-address-family
   address-family ipv6 unicast
     neighbor 2001:db8::1 activate
     neighbor 2001:db8::1 route-map 2001:db8::1-in in
