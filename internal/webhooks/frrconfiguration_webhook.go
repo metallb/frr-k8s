@@ -28,7 +28,10 @@ var (
 	Validate      func(resources ...client.ObjectList) error
 )
 
-const frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+const (
+	frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+	healthPath           = "/healthz"
+)
 
 type FRRConfigValidator struct {
 	ClusterResourceNamespace string
@@ -44,6 +47,11 @@ func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	mgr.GetWebhookServer().Register(
 		frrConfigWebhookPath,
 		&webhook.Admission{Handler: v})
+
+	mgr.GetWebhookServer().Register(
+		healthPath,
+		&healthHandler{})
+
 	return nil
 }
 
@@ -91,6 +99,22 @@ func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) 
 	return admission.Allowed("").WithWarnings(warnings...)
 }
 
+type healthHandler struct{}
+
+func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, err := w.Write([]byte(`{"status": "ok"}`))
+	if err != nil {
+		level.Error(Logger).Log("webhook", "healthcheck", "error when writing reply", err)
+	}
+}
+
 type nodeAndConfigs struct {
 	name   string
 	labels map[string]string
@@ -126,6 +150,10 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	existingNodes, err := getNodes()
 	if err != nil {
 		return warnings, err
+	}
+
+	if containsDisableMP(frrConfig.Spec.BGP.Routers) {
+		warnings = append(warnings, "disableMP is deprecated and will be removed in a future release")
 	}
 
 	existingFRRConfigurations, err := getFRRConfigurations()
@@ -208,4 +236,15 @@ var getNodes = func() ([]corev1.Node, error) {
 		return nil, errors.Join(err, errors.New("failed to get existing Node objects"))
 	}
 	return nodesList.Items, nil
+}
+
+func containsDisableMP(routers []v1beta1.Router) bool {
+	for _, r := range routers {
+		for _, n := range r.Neighbors {
+			if n.DisableMP {
+				return true
+			}
+		}
+	}
+	return false
 }

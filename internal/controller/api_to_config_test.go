@@ -57,8 +57,8 @@ func TestConversion(t *testing.T) {
 											ConnectTime: &metav1.Duration{
 												Duration: 2 * time.Second,
 											},
-											DisableMP:             true,
-											EnableGracefulRestart: true,
+											DualStackAddressFamily: true,
+											EnableGracefulRestart:  true,
 										},
 									},
 									VRF:      "",
@@ -77,16 +77,14 @@ func TestConversion(t *testing.T) {
 						RouterID: "192.0.2.1",
 						Neighbors: []*frr.NeighborConfig{
 							{
-								IPFamily:        ipfamily.IPv4,
+								IPFamily:        ipfamily.DualStack,
 								Name:            "65002@192.0.2.2",
 								ASN:             "65002",
-								Port:            ptr.To[uint16](179),
 								SrcAddr:         "192.1.1.1",
 								Addr:            "192.0.2.2",
 								KeepaliveTime:   ptr.To[int64](20),
 								HoldTime:        ptr.To[int64](40),
 								ConnectTime:     ptr.To(int64(2)),
-								DisableMP:       true,
 								GracefulRestart: true,
 							},
 						},
@@ -109,7 +107,7 @@ func TestConversion(t *testing.T) {
 									Neighbors: []v1beta1.Neighbor{
 										{
 											ASN:     65002,
-											Port:    ptr.To[uint16](179),
+											Port:    ptr.To[uint16](178),
 											Address: "192.0.2.2",
 											KeepaliveTime: &metav1.Duration{
 												Duration: 20 * time.Second,
@@ -120,7 +118,6 @@ func TestConversion(t *testing.T) {
 											ConnectTime: &metav1.Duration{
 												Duration: 2 * time.Second,
 											},
-											DisableMP: true,
 										},
 									},
 									VRF:      "",
@@ -142,12 +139,11 @@ func TestConversion(t *testing.T) {
 								IPFamily:      ipfamily.IPv4,
 								Name:          "65002@192.0.2.2",
 								ASN:           "65002",
-								Port:          ptr.To[uint16](179),
+								Port:          ptr.To[uint16](178),
 								Addr:          "192.0.2.2",
 								KeepaliveTime: ptr.To[int64](20),
 								HoldTime:      ptr.To[int64](40),
 								ConnectTime:   ptr.To(int64(2)),
-								DisableMP:     true,
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -2806,6 +2802,221 @@ func TestConversion(t *testing.T) {
 			},
 			secrets: map[string]v1.Secret{},
 			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "Single router two neighbors same address different ASN",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+										},
+										{
+											ASN:     65042,
+											Address: "192.0.2.21",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: nil,
+			err:      errors.New("a not nil error"),
+		},
+		{
+			name: "Single router two neighbors same interface different ASN",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65010,
+											Interface: "eth0",
+										},
+										{
+											ASN:       65011,
+											Interface: "eth0",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "Single router two neighbors different interface",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65010,
+											Interface: "eth0",
+										},
+										{
+											ASN:       65010,
+											Interface: "eth1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						VRF:      "",
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: "dual",
+								Name:     "65010@eth0",
+								ASN:      "65010",
+								Iface:    "eth0",
+								Addr:     "",
+							},
+							{
+								IPFamily: "dual",
+								Name:     "65010@eth1",
+								ASN:      "65010",
+								Iface:    "eth1",
+								Addr:     "",
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     nil,
+		},
+		{
+			name: "Multiple routers same vrf two neighbors same interface",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "blue",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65010,
+											Interface: "eth0",
+										},
+									},
+								},
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "blue",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65011,
+											Interface: "eth0",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "Multiple routers same vrf two neighbors different interface",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "blue",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65010,
+											Interface: "eth0",
+										},
+									},
+								},
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "blue",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:       65011,
+											Interface: "eth1",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65010,
+						VRF:      "blue",
+						RouterID: "192.0.2.5",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: "dual",
+								Name:     "65010@eth0",
+								VRFName:  "blue",
+								ASN:      "65010",
+								Iface:    "eth0",
+								Addr:     "",
+							},
+							{
+								IPFamily: "dual",
+								Name:     "65011@eth1",
+								VRFName:  "blue",
+								ASN:      "65011",
+								Iface:    "eth1",
+								Addr:     "",
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     nil,
 		},
 	}
 

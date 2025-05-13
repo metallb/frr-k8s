@@ -98,6 +98,10 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 				return nil, err
 			}
 
+			if err := validateRouterConfig(routerCfg); err != nil {
+				return nil, err
+			}
+
 			curr, ok := routersForVRF[r.VRF]
 			if !ok {
 				routersForVRF[r.VRF] = routerCfg
@@ -179,7 +183,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	}
 
 	address := n.Address
-	if n.Interface != "" {
+	if n.Interface != "" || n.DualStackAddressFamily {
 		neighborFamily = ipfamily.DualStack
 	}
 
@@ -196,7 +200,6 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		GracefulRestart: n.EnableGracefulRestart,
 		VRFName:         routerVRF,
 		AlwaysBlock:     alwaysBlock,
-		DisableMP:       n.DisableMP,
 	}
 
 	var err error
@@ -706,4 +709,10 @@ func importedPrefixes(r v1beta1.Router, prefixesInRouter map[string][]string) ([
 		res = append(res, imported...)
 	}
 	return res, nil
+}
+
+func validateRouterConfig(r *frr.RouterConfig) error {
+	// merging with itself to validate neighbor list
+	_, err := mergeRouterConfigs(r, r)
+	return err
 }
