@@ -21,6 +21,7 @@ import (
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	v1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientset "k8s.io/client-go/kubernetes"
@@ -284,6 +285,68 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 					})
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			}
+		})
+	})
+
+	ginkgo.Context("Writing FRR Config in a different namespace", func() {
+		const testNamespace = "dontread"
+
+		ginkgo.AfterEach(func() {
+			ginkgo.By("Deleting the test namespace")
+			err := cs.CoreV1().Namespaces().Delete(context.Background(), testNamespace, metav1.DeleteOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() bool {
+				_, err := cs.CoreV1().Namespaces().Get(context.Background(), testNamespace, metav1.GetOptions{})
+				return errors.IsNotFound(err)
+			}, time.Minute, time.Second).Should(BeTrue())
+		})
+
+		ginkgo.BeforeEach(func() {
+			ginkgo.By("Creating the test namespace")
+			ns := corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: testNamespace}}
+			_, err := cs.CoreV1().Namespaces().Create(context.Background(), &ns, metav1.CreateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+			Eventually(func() error {
+				_, err := cs.CoreV1().Namespaces().Get(context.Background(), testNamespace, metav1.GetOptions{})
+				return err
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+		})
+
+		ginkgo.It("should not be processed and reflected in the frr status", func() {
+			frrconfig := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: testNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN: 74515,
+							},
+						},
+					},
+				},
+			}
+
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Creating a configuration with no neighbors")
+			err = updater.Update([]corev1.Secret{}, frrconfig)
+			Expect(err).NotTo(HaveOccurred())
+
+			node := nodes[0]
+			Consistently(func() error {
+				return nodeMatchesStatus(cl, node.Name, func(status frrk8sv1beta1.FRRNodeState) error {
+					if err := stringMatches(status.Status.RunningConfig, DoesNotContain,
+						"router bgp 74515",
+					); err != nil {
+						return err
+					}
+					return nil
+				})
+			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred())
 		})
 	})
 })

@@ -43,11 +43,6 @@ router bgp 65000
   
   neighbor 2001:db8::1 disable-connected-check
 
-  address-family ipv4 unicast
-    neighbor 2001:db8::1 activate
-    neighbor 2001:db8::1 route-map 2001:db8::1-in in
-    neighbor 2001:db8::1 route-map 2001:db8::1-out out
-  exit-address-family
   address-family ipv6 unicast
     neighbor 2001:db8::1 activate
     neighbor 2001:db8::1 route-map 2001:db8::1-in in

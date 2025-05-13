@@ -51,11 +51,6 @@ router bgp 65000
     neighbor net0 route-map net0-in in
     neighbor net0 route-map net0-out out
   exit-address-family
-  address-family ipv6 unicast
-    neighbor net0 activate
-    neighbor net0 route-map net0-in in
-    neighbor net0 route-map net0-out out
-  exit-address-family
   address-family ipv4 unicast
     network 192.169.1.0/24
     network 192.170.1.0/22

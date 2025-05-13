@@ -183,7 +183,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	}
 
 	address := n.Address
-	if n.Interface != "" {
+	if n.Interface != "" || n.DualStackAddressFamily {
 		neighborFamily = ipfamily.DualStack
 	}
 
@@ -200,7 +200,6 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		GracefulRestart: n.EnableGracefulRestart,
 		VRFName:         routerVRF,
 		AlwaysBlock:     alwaysBlock,
-		DisableMP:       n.DisableMP,
 	}
 
 	var err error

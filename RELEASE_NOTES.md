@@ -1,5 +1,15 @@
 # FRRK8s Release Notes
 
+## Release v0.0.19
+
+### New Features
+
+- Deprecate the disableMP flag, and make the v4 over v4 and v6 over v6 behavior the default. Additionally, add a dualStackAddressFamily flag per neighbor, where we enable the v4 family over a v6 link and viceversa. (#296, @fedepaol)
+
+### Bugs or Regressions
+
+- Ignore FRRConfigurations belonging to different namespaces. (#290, @fedepaol)
+
 ## Release v0.0.18
 
 ### New Features

@@ -245,8 +245,8 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("conflicting ebgp-multihop specified for %s", neighborKey)
 	}
 
-	if n1.DisableMP != n2.DisableMP {
-		return fmt.Errorf("conflicting disableMP specified for %s", neighborKey)
+	if n1.IPFamily != n2.IPFamily {
+		return fmt.Errorf("conflicting advertiseDualStack specified for %s", neighborKey)
 	}
 
 	if !ptrsEqual(n1.HoldTime, n2.HoldTime, defaultHoldTime) {
