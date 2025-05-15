@@ -114,15 +114,9 @@ func TestSingleSession(t *testing.T) {
 						Addr:     "192.168.1.2",
 						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+								"192.170.1.0/22",
 							},
 						},
 					},

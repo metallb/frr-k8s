@@ -216,7 +216,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	if err != nil {
 		return nil, err
 	}
-	res.Outgoing, err = toAdvertiseToFRR(n.ToAdvertise, prefixesInRouter)
+	res.Outgoing, err = toAdvertiseToFRR(res, n.ToAdvertise, prefixesInRouter)
 	if err != nil {
 		return nil, err
 	}
@@ -255,111 +255,104 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 	return string(srcPass), nil
 }
 
-func toAdvertiseToFRR(toAdvertise v1beta1.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
-	ipv4Prefixes := ipfamily.FilterPrefixes(prefixesInRouter, ipfamily.IPv4)
-	ipv6Prefixes := ipfamily.FilterPrefixes(prefixesInRouter, ipfamily.IPv6)
-	advsV4, advsV6 := prefixesToMap(toAdvertise, ipv4Prefixes, ipv6Prefixes)
+func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
+	modifiers := map[string]frr.PropertyPrefixList{}
+	ipFamilies := []ipfamily.Family{neighbor.IPFamily}
+	if neighbor.IPFamily == ipfamily.DualStack {
+		ipFamilies = []ipfamily.Family{ipfamily.IPv4, ipfamily.IPv6}
+	}
 
-	communities, err := communityPrefixesToMap(toAdvertise.PrefixesWithCommunity)
-	if err != nil {
-		return frr.AllowedOut{}, err
+	for _, prefixes := range toAdvertise.PrefixesWithLocalPref {
+		for _, ipFamily := range ipFamilies {
+			ipfamilyPrefixes := ipfamily.FilterPrefixes(prefixes.Prefixes, ipFamily)
+			frrFamily := frrIPFamily(ipFamily)
+
+			prefixListName := localPrefPrefixList(neighbor, prefixes.LocalPref, frrFamily)
+			prefixList, ok := modifiers[prefixListName]
+			if !ok {
+				prefixList = frr.LocalPrefPrefixList{
+					Name:     prefixListName,
+					IPFamily: frrFamily,
+					Prefixes: sets.New[string](),
+				}
+			}
+			localPrefPrefixList, ok := prefixList.(frr.LocalPrefPrefixList)
+			if !ok {
+				return frr.AllowedOut{}, fmt.Errorf("PropertyPrefixList not matching communityPrefixList type %s", prefixListName)
+			}
+
+			for _, prefix := range ipfamilyPrefixes {
+				localPrefPrefixList.Prefixes.Insert(prefix)
+			}
+			modifiers[prefixListName] = localPrefPrefixList
+		}
 	}
-	err = setCommunitiesToAdvertisements(advsV4, communities, ipfamily.IPv4)
-	if err != nil {
-		return frr.AllowedOut{}, err
+
+	for _, prefixes := range toAdvertise.PrefixesWithCommunity {
+		c, err := community.New(prefixes.Community)
+		if err != nil {
+			return frr.AllowedOut{}, fmt.Errorf("invalid community %s, err: %w", prefixes.Community, err)
+		}
+		for _, ipFamily := range ipFamilies {
+			ipfamilyPrefixes := ipfamily.FilterPrefixes(prefixes.Prefixes, ipFamily)
+			frrFamily := frrIPFamily(ipFamily)
+
+			prefixListName := communityPrefixList(neighbor, c.String(), frrFamily)
+			if community.IsLarge(c) {
+				prefixListName = largeCommunityPrefixList(neighbor, c.String(), frrFamily)
+			}
+			prefixList, ok := modifiers[prefixListName]
+			if !ok {
+				prefixList = frr.CommunityPrefixList{
+					Name:     prefixListName,
+					IPFamily: frrFamily,
+					Prefixes: sets.New[string](),
+				}
+			}
+			communityPrefixList, ok := prefixList.(frr.CommunityPrefixList)
+			if !ok {
+				return frr.AllowedOut{}, fmt.Errorf("PropertyPrefixList not matching communityPrefixList type %s", prefixListName)
+			}
+
+			for _, prefix := range ipfamilyPrefixes {
+				communityPrefixList.Prefixes.Insert(prefix)
+			}
+			modifiers[prefixListName] = communityPrefixList
+		}
 	}
-	err = setCommunitiesToAdvertisements(advsV6, communities, ipfamily.IPv6)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
-	localPrefs, err := localPrefPrefixesToMap(toAdvertise.PrefixesWithLocalPref)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
-	err = setLocalPrefToAdvertisements(advsV4, localPrefs, ipfamily.IPv4)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
-	err = setLocalPrefToAdvertisements(advsV6, localPrefs, ipfamily.IPv6)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
+
 	res := frr.AllowedOut{
-		PrefixesV4: sortMap(advsV4),
-		PrefixesV6: sortMap(advsV6),
+		PrefixesModifiers: modifiers,
 	}
+	for _, ipFamily := range ipFamilies {
+		prefixes := ipfamily.FilterPrefixes(prefixesInRouter, ipFamily)
+		prefixesSet := sets.New(prefixes...)
+		if ipFamily == ipfamily.IPv4 {
+			res.PrefixesV4 = sets.List(prefixesSet)
+		}
+		res.PrefixesV6 = sets.List(prefixesSet)
+	}
+
 	return res, nil
 }
 
-// prefixesToMap returns two maps of prefix->OutgoingFilter (ie family, advertisement, communities), one for each family.
-// The ipv4Prefixes and ipv6Prefixes represent the "global" allowed prefixes which are the prefixes defined on the router.
-func prefixesToMap(toAdvertise v1beta1.Advertise, ipv4Prefixes, ipv6Prefixes []string) (map[string]*frr.OutgoingFilter, map[string]*frr.OutgoingFilter) {
-	resV4 := map[string]*frr.OutgoingFilter{}
-	resV6 := map[string]*frr.OutgoingFilter{}
-	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
-		for _, p := range ipv4Prefixes {
-			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv4}
-		}
-		for _, p := range ipv6Prefixes {
-			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: ipfamily.IPv6}
-		}
-		return resV4, resV6
+func frrIPFamily(ipFamily ipfamily.Family) string {
+	if ipFamily == "ipv6" {
+		return "ipv6"
 	}
-
-	for _, p := range toAdvertise.Allowed.Prefixes {
-		family := ipfamily.ForCIDRString(p)
-		switch family {
-		case ipfamily.IPv4:
-			resV4[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
-		case ipfamily.IPv6:
-			resV6[p] = &frr.OutgoingFilter{Prefix: p, IPFamily: family}
-		}
-	}
-	return resV4, resV6
+	return "ip"
 }
 
-// setCommunitiesToAdvertisements takes the given communityPrefixes and fills the relevant fields to the advertisements contained in the advs map.
-func setCommunitiesToAdvertisements(advs map[string]*frr.OutgoingFilter, communities communityPrefixes, ipFamily ipfamily.Family) error {
-	communitiesForPrefix := communities.communitiesForPrefixV4
-	largeCommunitiesForPrefix := communities.largeCommunitiesForPrefixV4
-	if ipFamily == ipfamily.IPv6 {
-		communitiesForPrefix = communities.communitiesForPrefixV6
-		largeCommunitiesForPrefix = communities.largeCommunitiesForPrefixV6
-	}
-	for p, c := range communitiesForPrefix {
-		adv, ok := advs[p]
-		if !ok {
-			return fmt.Errorf("community associated to non existing prefix %s", p)
-		}
-		adv.Communities = sets.List(c)
-	}
-
-	for p, c := range largeCommunitiesForPrefix {
-		adv, ok := advs[p]
-		if !ok {
-			return fmt.Errorf("large community associated to non existing prefix %s", p)
-		}
-		adv.LargeCommunities = sets.List(c)
-	}
-	return nil
+func localPrefPrefixList(neighbor *frr.NeighborConfig, localPreference uint32, ipFamily string) string {
+	return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighbor.ID(), localPreference, ipFamily)
 }
 
-// setLocalPrefToAdvertisements takes the given localPrefPrefixes and fills the relevant fields to the advertisements contained in the advs map.
-func setLocalPrefToAdvertisements(advs map[string]*frr.OutgoingFilter, localPrefs localPrefPrefixes, ipFamily ipfamily.Family) error {
-	localPrefsForPrefix := localPrefs.localPrefForPrefixV4
-	if ipFamily == ipfamily.IPv6 {
-		localPrefsForPrefix = localPrefs.localPrefForPrefixV6
-	}
+func communityPrefixList(neighbor *frr.NeighborConfig, community, ipFamily string) string {
+	return fmt.Sprintf("%s-%s-%s-community-prefixes", neighbor.ID(), community, ipFamily)
+}
 
-	for p, lp := range localPrefsForPrefix {
-		adv, ok := advs[p]
-		if !ok {
-			return fmt.Errorf("localPref associated to non existing prefix %s", p)
-		}
-		adv.LocalPref = lp
-	}
-
-	return nil
+func largeCommunityPrefixList(neighbor *frr.NeighborConfig, community, ipFamily string) string {
+	return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighbor.ID(), community, ipFamily)
 }
 
 func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {

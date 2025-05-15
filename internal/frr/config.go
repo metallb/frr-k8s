@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"syscall"
 	"text/template"
@@ -18,7 +19,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -95,6 +98,18 @@ func (n *NeighborConfig) ID() string {
 	return id + vrf
 }
 
+func (n *NeighborConfig) OutgoingPrefixLists() []PropertyPrefixList {
+	return sortMap(n.Outgoing.PrefixesModifiers)
+}
+
+func (n *NeighborConfig) ToAdvertisePrefixListV4() string {
+	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv4")
+}
+
+func (n *NeighborConfig) ToAdvertisePrefixListV6() string {
+	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv6")
+}
+
 type AllowedIn struct {
 	All        bool
 	PrefixesV4 []IncomingFilter
@@ -106,12 +121,60 @@ func (a *AllowedIn) AllPrefixes() []IncomingFilter {
 }
 
 type AllowedOut struct {
-	PrefixesV4 []OutgoingFilter
-	PrefixesV6 []OutgoingFilter
+	PrefixesV4        []string
+	PrefixesV6        []string
+	PrefixesModifiers map[string]PropertyPrefixList
 }
 
-func (a *AllowedOut) AllPrefixes() []OutgoingFilter {
-	return append(a.PrefixesV4, a.PrefixesV6...)
+func (a AllowedOut) SortedPrefixLists() []PropertyPrefixList {
+	return sortMap(a.PrefixesModifiers)
+}
+
+type CommunityPrefixList struct {
+	Name      string
+	IPFamily  string
+	Community community.BGPCommunity
+	Prefixes  sets.Set[string]
+}
+
+func (pl CommunityPrefixList) PrefixListName() string {
+	return pl.Name
+}
+
+func (pl CommunityPrefixList) SetStatement() string {
+	if community.IsLarge(pl.Community) {
+		return fmt.Sprintf("set large-community %s additive", pl.Community.String())
+	}
+	return fmt.Sprintf("set community %s additive", pl.Community.String())
+}
+
+func (pl CommunityPrefixList) SortedPrefixes() []string {
+	return sets.List(pl.Prefixes)
+}
+
+type LocalPrefPrefixList struct {
+	Name      string
+	IPFamily  string
+	LocalPref uint32
+	Prefixes  sets.Set[string]
+}
+
+func (pl LocalPrefPrefixList) SetStatement() string {
+	return fmt.Sprintf("set local-preference %d", pl.LocalPref)
+}
+
+func (pl LocalPrefPrefixList) SortedPrefixes() []string {
+	return sets.List(pl.Prefixes)
+}
+
+func (pl LocalPrefPrefixList) PrefixListName() string {
+	return pl.Name
+}
+
+type PropertyPrefixList interface {
+	SetStatement() string
+	PrefixListName() string
+	SortedPrefixes() []string
 }
 
 type IncomingFilter struct {
@@ -143,14 +206,6 @@ func (i IncomingFilter) Matcher() string {
 		res += fmt.Sprintf(" ge %d", i.GE)
 	}
 	return res
-}
-
-type OutgoingFilter struct {
-	IPFamily         ipfamily.Family
-	Prefix           string
-	Communities      []string
-	LargeCommunities []string
-	LocalPref        uint32
 }
 
 // templateConfig uses the template library to template
@@ -356,4 +411,17 @@ func debouncer(ctx context.Context, body func(config *Config) error,
 			}
 		}
 	}()
+}
+
+func sortMap[T any](toSort map[string]T) []T {
+	keys := make([]string, 0)
+	for k := range toSort {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	res := make([]T, 0)
+	for _, k := range keys {
+		res = append(res, toSort[k])
+	}
+	return res
 }
