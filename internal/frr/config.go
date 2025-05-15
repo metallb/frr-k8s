@@ -98,10 +98,6 @@ func (n *NeighborConfig) ID() string {
 	return id + vrf
 }
 
-func (n *NeighborConfig) OutgoingPrefixLists() []PropertyPrefixList {
-	return sortMap(n.Outgoing.PrefixesModifiers)
-}
-
 func (n *NeighborConfig) ToAdvertisePrefixListV4() string {
 	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv4")
 }
@@ -121,24 +117,24 @@ func (a *AllowedIn) AllPrefixes() []IncomingFilter {
 }
 
 type AllowedOut struct {
-	PrefixesV4        []string
-	PrefixesV6        []string
-	PrefixesModifiers map[string]PropertyPrefixList
+	PrefixesV4                 []string
+	PrefixesV6                 []string
+	LocalPrefForPrefix         map[string]uint32
+	LocalPrefPrefixesModifiers map[string]LocalPrefPrefixList
+	CommunityPrefixesModifiers map[string]CommunityPrefixList
 }
 
-func (a AllowedOut) SortedPrefixLists() []PropertyPrefixList {
-	return sortMap(a.PrefixesModifiers)
+func (a AllowedOut) SortedLocalPrefPrefixLists() []LocalPrefPrefixList {
+	return sortMap(a.LocalPrefPrefixesModifiers)
+}
+
+func (a AllowedOut) SortedCommunityPrefixLists() []CommunityPrefixList {
+	return sortMap(a.CommunityPrefixesModifiers)
 }
 
 type CommunityPrefixList struct {
-	Name      string
-	IPFamily  string
+	PrefixList
 	Community community.BGPCommunity
-	Prefixes  sets.Set[string]
-}
-
-func (pl CommunityPrefixList) PrefixListName() string {
-	return pl.Name
 }
 
 func (pl CommunityPrefixList) SetStatement() string {
@@ -148,27 +144,27 @@ func (pl CommunityPrefixList) SetStatement() string {
 	return fmt.Sprintf("set community %s additive", pl.Community.String())
 }
 
-func (pl CommunityPrefixList) SortedPrefixes() []string {
+type PrefixList struct {
+	Name     string
+	IPFamily string
+	Prefixes sets.Set[string]
+}
+
+func (pl PrefixList) PrefixListName() string {
+	return pl.Name
+}
+
+func (pl PrefixList) SortedPrefixes() []string {
 	return sets.List(pl.Prefixes)
 }
 
 type LocalPrefPrefixList struct {
-	Name      string
-	IPFamily  string
+	PrefixList
 	LocalPref uint32
-	Prefixes  sets.Set[string]
 }
 
 func (pl LocalPrefPrefixList) SetStatement() string {
 	return fmt.Sprintf("set local-preference %d", pl.LocalPref)
-}
-
-func (pl LocalPrefPrefixList) SortedPrefixes() []string {
-	return sets.List(pl.Prefixes)
-}
-
-func (pl LocalPrefPrefixList) PrefixListName() string {
-	return pl.Name
 }
 
 type PropertyPrefixList interface {

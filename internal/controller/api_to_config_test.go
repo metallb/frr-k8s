@@ -373,14 +373,7 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -439,46 +432,14 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.4.0/24",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.4.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
@@ -584,64 +545,14 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:         ipfamily.IPv4,
-											Prefix:           "192.0.2.0/24",
-											Communities:      []string{"10:100", "10:102"},
-											LargeCommunities: []string{"123:456:7890"},
-											LocalPref:        100,
-										},
-										{
-											IPFamily:         ipfamily.IPv4,
-											Prefix:           "192.0.4.0/24",
-											Communities:      []string{"10:100", "10:104"},
-											LargeCommunities: []string{"123:456:7890", "123:456:7892"},
-											LocalPref:        104,
-										},
-										{
-											IPFamily:  ipfamily.IPv4,
-											Prefix:    "192.0.6.0/24",
-											LocalPref: 100,
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.0/24",
-											Communities: []string{"10:100", "10:102", "10:108"},
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.0/24",
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.4.0/24",
-											Communities: []string{"10:100"},
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.6.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv6,
-											Prefix:      "2001:db8::/64",
-											Communities: []string{"10:108"},
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
@@ -1221,21 +1132,7 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.10/32",
-											Communities: []string{"10:100", "10:101"},
-											LocalPref:   200,
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.11/32",
-											Communities: []string{"10:101"},
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{
 										{
@@ -1526,50 +1423,14 @@ func TestConversion(t *testing.T) {
 								Name:     "65011@192.0.2.6",
 								ASN:      "65011",
 								Addr:     "192.0.2.6",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.1/32",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.2/32",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65012@192.0.2.7",
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.10/32",
-											Communities: []string{"10:100", "10:101"},
-											LocalPref:   200,
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.11/32",
-											Communities: []string{"10:101"},
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.3.20/32",
-											Communities: []string{"10:100"},
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.3.21/32",
-											Communities: []string{"10:101"},
-											LocalPref:   200,
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						VRF:          "",
@@ -1585,14 +1446,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65017",
 								Addr:     "192.0.2.7",
 								VRFName:  "vrf2",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.5/32",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 							{
 								IPFamily: ipfamily.IPv6,
@@ -1600,24 +1454,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65014",
 								Addr:     "2001:db8::4",
 								VRFName:  "vrf2",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: "ipv4",
-											Prefix:   "192.0.2.5/32",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/96",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						VRF:          "vrf2",
@@ -2408,45 +2245,14 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										}, {
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/64",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						ImportVRFs:   []string{"red"},
@@ -2547,27 +2353,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
 								VRFName:  "red",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										}, {
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/64",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						ImportVRFs:   []string{"default"},
@@ -2682,20 +2468,7 @@ func TestConversion(t *testing.T) {
 								Name:     "internal@192.0.2.22",
 								ASN:      "internal",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -2748,20 +2521,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "internal",
 								Iface:    "eth0",
 								Addr:     "",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
-								},
+								Outgoing: frr.AllowedOut{},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},

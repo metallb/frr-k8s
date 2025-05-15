@@ -551,10 +551,7 @@ var _ = Describe("Frrk8s controller", func() {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password2",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{},
-									PrefixesV6: []frr.OutgoingFilter{},
-								},
+								Outgoing: frr.AllowedOut{},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
@@ -588,10 +585,7 @@ var _ = Describe("Frrk8s controller", func() {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password3",
-								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{},
-									PrefixesV6: []frr.OutgoingFilter{},
-								},
+								Outgoing: frr.AllowedOut{},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
