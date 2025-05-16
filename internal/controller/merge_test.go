@@ -16,7 +16,6 @@ import (
 )
 
 func TestMergeRouters(t *testing.T) {
-
 	tests := []struct {
 		name     string
 		curr     *frr.RouterConfig

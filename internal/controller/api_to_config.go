@@ -256,7 +256,6 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 }
 
 func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
-
 	neighborIPFamilies := []ipfamily.Family{neighbor.IPFamily}
 	if neighbor.IPFamily == ipfamily.DualStack {
 		neighborIPFamilies = []ipfamily.Family{ipfamily.IPv4, ipfamily.IPv6}
@@ -353,7 +352,6 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 					return frr.AllowedOut{}, fmt.Errorf("prefix %s is already defined for community %s", prefix, c)
 				}
 				communityPrefixList.Prefixes.Insert(prefix)
-
 			}
 			communityModifiers[key] = communityPrefixList
 		}
