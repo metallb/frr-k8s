@@ -266,7 +266,14 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 		ipfamily.IPv6: prefixesToAdvertiseForFamily(toAdvertise, prefixesInRouter, ipfamily.IPv6),
 	}
 
-	res := frr.AllowedOut{}
+	res := frr.AllowedOut{
+		LocalPrefForPrefix:         make(map[string]uint32),
+		PrefixesV4:                 make([]string, 0),
+		PrefixesV6:                 make([]string, 0),
+		LocalPrefPrefixesModifiers: make(map[string]frr.LocalPrefPrefixList),
+		CommunityPrefixesModifiers: make(map[string]frr.CommunityPrefixList),
+	}
+
 	if neighborHasIPFamily(neighbor, ipfamily.IPv4) {
 		res.PrefixesV4 = sets.List(prefixesForFamily[ipfamily.IPv4])
 	}

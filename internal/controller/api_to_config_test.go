@@ -373,7 +373,9 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -432,14 +434,18 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.4.0/24"},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
