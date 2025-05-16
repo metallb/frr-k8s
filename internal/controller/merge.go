@@ -65,7 +65,6 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 		if err != nil {
 			return nil, err
 		}
-
 		curr.Outgoing, err = mergeAllowedOut(curr.Outgoing, n.Outgoing)
 		if err != nil {
 			return nil, fmt.Errorf("could not merge outgoing for neighbor %s vrf %s, err: %w", n.Addr, n.VRFName, err)

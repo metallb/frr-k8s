@@ -551,14 +551,37 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("192.0.2.21", "10:100", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("192.0.2.21", "10:102", "ip", "192.0.2.0/24"),
+										keyForCommunityPL("10:104", "ip"):             communityPrefixListFor("192.0.2.21", "10:104", "ip", "192.0.4.0/24"),
+										keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("192.0.2.21", "large:123:456:7890", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("192.0.2.21", "large:123:456:7892", "ip", "192.0.4.0/24"),
+									},
+
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(100, "ip"): localPrefPrefixListFor("192.0.2.21", 100, "ip", "192.0.2.0/24", "192.0.6.0/24"),
+										localPrefPrefixListKey(104, "ip"): localPrefPrefixListFor("192.0.2.21", 104, "ip", "192.0.4.0/24"),
+									},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.22", "10:100", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("10:102", "ip"): communityPrefixListFor("192.0.2.22", "10:102", "ip", "192.0.2.0/24"),
+										keyForCommunityPL("10:108", "ip"): communityPrefixListFor("192.0.2.22", "10:108", "ip", "192.0.2.0/24"),
+									},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
@@ -1138,7 +1161,17 @@ func TestConversion(t *testing.T) {
 								Name:     "65012@192.0.2.7",
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.10/32", "192.0.2.11/32"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.7", "10:100", "ip", "192.0.2.10/32"),
+										keyForCommunityPL("10:101", "ip"): communityPrefixListFor("192.0.2.7", "10:101", "ip", "192.0.2.10/32", "192.0.2.11/32"),
+									},
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(200, "ip"): localPrefPrefixListFor("192.0.2.7", 200, "ip", "192.0.2.10/32"),
+									},
+								},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{
 										{
@@ -1429,14 +1462,26 @@ func TestConversion(t *testing.T) {
 								Name:     "65011@192.0.2.6",
 								ASN:      "65011",
 								Addr:     "192.0.2.6",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.3.1/32", "192.0.3.2/32"},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65012@192.0.2.7",
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.10/32", "192.0.2.11/32", "192.0.3.20/32", "192.0.3.21/32"},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.7", "10:100", "ip", "192.0.3.20/32", "192.0.2.10/32"),
+										keyForCommunityPL("10:101", "ip"): communityPrefixListFor("192.0.2.7", "10:101", "ip", "192.0.2.10/32", "192.0.2.11/32", "192.0.3.21/32"),
+									},
+
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(200, "ip"): localPrefPrefixListFor("192.0.2.7", 200, "ip", "192.0.2.10/32", "192.0.3.21/32"),
+									},
+								},
 							},
 						},
 						VRF:          "",
@@ -1452,7 +1497,9 @@ func TestConversion(t *testing.T) {
 								ASN:      "65017",
 								Addr:     "192.0.2.7",
 								VRFName:  "vrf2",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.5/32"},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv6,
@@ -1460,7 +1507,9 @@ func TestConversion(t *testing.T) {
 								ASN:      "65014",
 								Addr:     "2001:db8::4",
 								VRFName:  "vrf2",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV6: []string{"2001:db8::/64", "2001:db9::/96"},
+								},
 							},
 						},
 						VRF:          "vrf2",
@@ -2251,14 +2300,18 @@ func TestConversion(t *testing.T) {
 								Name:     "65041@192.0.2.21",
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
+								},
 							},
 							{
 								IPFamily: ipfamily.IPv4,
 								Name:     "65041@192.0.2.22",
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
+								},
 							},
 						},
 						ImportVRFs:   []string{"red"},
@@ -2359,7 +2412,9 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
 								VRFName:  "red",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
+								},
 							},
 						},
 						ImportVRFs:   []string{"default"},
@@ -2474,7 +2529,9 @@ func TestConversion(t *testing.T) {
 								Name:     "internal@192.0.2.22",
 								ASN:      "internal",
 								Addr:     "192.0.2.22",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -2527,7 +2584,10 @@ func TestConversion(t *testing.T) {
 								ASN:      "internal",
 								Iface:    "eth0",
 								Addr:     "",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+									PrefixesV6: []string{"2001:db8::/64"},
+								},
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},
@@ -2799,7 +2859,9 @@ func TestConversion(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(frr, test.expected, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(frr, test.expected,
+				cmpopts.EquateEmpty(),
+				cmp.Comparer(communityComparer)); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})

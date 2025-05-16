@@ -288,16 +288,17 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 			frrFamily := frrIPFamily(ipFamily)
 			key := localPrefPrefixListKey(prefixes.LocalPref, frrFamily)
 
-			localPrefPrefixList, ok := localPrefModifiers[key]
-			if !ok {
-				localPrefPrefixList = frr.LocalPrefPrefixList{
-					PrefixList: frr.PrefixList{
-						Name:     localPrefPrefixListName(neighbor.ID(), prefixes.LocalPref, frrFamily),
-						IPFamily: frrFamily,
-						Prefixes: sets.New[string](),
-					},
-					LocalPref: prefixes.LocalPref,
-				}
+			if _, ok := localPrefModifiers[key]; ok {
+				return frr.AllowedOut{}, fmt.Errorf("local preference %d is already defined", prefixes.LocalPref)
+			}
+
+			localPrefPrefixList := frr.LocalPrefPrefixList{
+				PrefixList: frr.PrefixList{
+					Name:     localPrefPrefixListName(neighbor.ID(), prefixes.LocalPref, frrFamily),
+					IPFamily: frrFamily,
+					Prefixes: sets.New[string](),
+				},
+				LocalPref: prefixes.LocalPref,
 			}
 
 			toAdvertiseForFamily := prefixesForFamily[ipFamily]
@@ -305,7 +306,13 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 				if !toAdvertiseForFamily.Has(prefix) {
 					return frr.AllowedOut{}, fmt.Errorf("prefix %s is advertised for local preference %d but it's not in the advertisement list of the neighbor", prefix, prefixes.LocalPref)
 				}
+				if localPrefPrefixList.Prefixes.Has(prefix) {
+					return frr.AllowedOut{}, fmt.Errorf("prefix %s is already defined for local preference %d", prefix, prefixes.LocalPref)
+				}
 				localPrefPrefixList.Prefixes.Insert(prefix)
+				if existing, ok := res.LocalPrefForPrefix[prefix]; ok && existing != prefixes.LocalPref {
+					return frr.AllowedOut{}, fmt.Errorf("prefix %s is advertised with different local preference %d and %d", prefix, existing, prefixes.LocalPref)
+				}
 				res.LocalPrefForPrefix[prefix] = prefixes.LocalPref
 			}
 			localPrefModifiers[key] = localPrefPrefixList
@@ -324,16 +331,17 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 			frrFamily := frrIPFamily(ipFamily)
 
 			key := communityPrefixListKey(c, frrFamily)
-			communityPrefixList, ok := communityModifiers[key]
-			if !ok {
-				communityPrefixList = frr.CommunityPrefixList{
-					PrefixList: frr.PrefixList{
-						Name:     communityPrefixListName(neighbor.ID(), c, frrFamily),
-						IPFamily: frrFamily,
-						Prefixes: sets.New[string](),
-					},
-					Community: c,
-				}
+			if _, ok := communityModifiers[key]; ok {
+				return frr.AllowedOut{}, fmt.Errorf("communtiy %s is already defined", prefixes.Community)
+			}
+
+			communityPrefixList := frr.CommunityPrefixList{
+				PrefixList: frr.PrefixList{
+					Name:     communityPrefixListName(neighbor.ID(), c, frrFamily),
+					IPFamily: frrFamily,
+					Prefixes: sets.New[string](),
+				},
+				Community: c,
 			}
 
 			toAdvertiseForFamily := prefixesForFamily[ipFamily]
@@ -341,7 +349,11 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 				if !toAdvertiseForFamily.Has(prefix) {
 					return frr.AllowedOut{}, fmt.Errorf("prefix %s is advertised for community %s but it's not in the advertisement list of the neighbor", prefix, c)
 				}
+				if communityPrefixList.Prefixes.Has(prefix) {
+					return frr.AllowedOut{}, fmt.Errorf("prefix %s is already defined for community %s", prefix, c)
+				}
 				communityPrefixList.Prefixes.Insert(prefix)
+
 			}
 			communityModifiers[key] = communityPrefixList
 		}
