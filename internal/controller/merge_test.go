@@ -246,7 +246,7 @@ func TestMergeRouters(t *testing.T) {
 								keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
 								keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
 								keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
-								keyForCommunityPL("large:123:456:7892", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ipv6", "2001:db8::/64"),
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
 							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
 								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.3.0/24"),

@@ -551,7 +551,13 @@ var _ = Describe("Frrk8s controller", func() {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password2",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4:                 []string{},
+									PrefixesV6:                 []string{},
+									LocalPrefForPrefix:         nil,
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+								},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
@@ -585,7 +591,13 @@ var _ = Describe("Frrk8s controller", func() {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Password: "password3",
-								Outgoing: frr.AllowedOut{},
+								Outgoing: frr.AllowedOut{
+									PrefixesV4:                 []string{},
+									PrefixesV6:                 []string{},
+									LocalPrefForPrefix:         nil,
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+								},
 								Incoming: frr.AllowedIn{
 									PrefixesV4: []frr.IncomingFilter{},
 									PrefixesV6: []frr.IncomingFilter{},
