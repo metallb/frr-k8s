@@ -279,13 +279,13 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 		for _, ipFamily := range neighborIPFamilies {
 			ipfamilyPrefixes := ipfamily.FilterPrefixes(prefixes.Prefixes, ipFamily)
 			frrFamily := frrIPFamily(ipFamily)
+			key := localPrefPrefixListKey(prefixes.LocalPref, frrFamily)
 
-			prefixListName := localPrefPrefixList(neighbor, prefixes.LocalPref, frrFamily)
-			localPrefPrefixList, ok := localPrefModifiers[prefixListName]
+			localPrefPrefixList, ok := localPrefModifiers[key]
 			if !ok {
 				localPrefPrefixList = frr.LocalPrefPrefixList{
 					PrefixList: frr.PrefixList{
-						Name:     prefixListName,
+						Name:     localPrefPrefixListName(neighbor.ID(), prefixes.LocalPref, frrFamily),
 						IPFamily: frrFamily,
 						Prefixes: sets.New[string](),
 					},
@@ -301,7 +301,7 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 				localPrefPrefixList.Prefixes.Insert(prefix)
 				res.LocalPrefForPrefix[prefix] = prefixes.LocalPref
 			}
-			localPrefModifiers[prefixListName] = localPrefPrefixList
+			localPrefModifiers[key] = localPrefPrefixList
 		}
 	}
 	res.LocalPrefPrefixesModifiers = localPrefModifiers
@@ -316,12 +316,12 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 			ipfamilyPrefixes := ipfamily.FilterPrefixes(prefixes.Prefixes, ipFamily)
 			frrFamily := frrIPFamily(ipFamily)
 
-			prefixListName := communityPrefixList(neighbor, c, frrFamily)
-			communityPrefixList, ok := communityModifiers[prefixListName]
+			key := communityPrefixListKey(c, frrFamily)
+			communityPrefixList, ok := communityModifiers[key]
 			if !ok {
 				communityPrefixList = frr.CommunityPrefixList{
 					PrefixList: frr.PrefixList{
-						Name:     prefixListName,
+						Name:     communityPrefixListName(neighbor.ID(), c, frrFamily),
 						IPFamily: frrFamily,
 						Prefixes: sets.New[string](),
 					},
@@ -332,11 +332,11 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 			toAdvertiseForFamily := prefixesForFamily[ipFamily]
 			for _, prefix := range ipfamilyPrefixes {
 				if !toAdvertiseForFamily.Has(prefix) {
-					return frr.AllowedOut{}, fmt.Errorf("prefix %s is advertised for community sd but it's not in the advertisement list of the neighbor", prefix, c)
+					return frr.AllowedOut{}, fmt.Errorf("prefix %s is advertised for community %s but it's not in the advertisement list of the neighbor", prefix, c)
 				}
 				communityPrefixList.Prefixes.Insert(prefix)
 			}
-			communityModifiers[prefixListName] = communityPrefixList
+			communityModifiers[key] = communityPrefixList
 		}
 	}
 	res.CommunityPrefixesModifiers = communityModifiers
@@ -377,15 +377,23 @@ func frrIPFamily(ipFamily ipfamily.Family) string {
 	return "ip"
 }
 
-func localPrefPrefixList(neighbor *frr.NeighborConfig, localPreference uint32, ipFamily string) string {
-	return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighbor.ID(), localPreference, ipFamily)
+func localPrefPrefixListName(neighborID string, localPreference uint32, ipFamily string) string {
+	return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighborID, localPreference, ipFamily)
 }
 
-func communityPrefixList(neighbor *frr.NeighborConfig, comm community.BGPCommunity, ipFamily string) string {
+func communityPrefixListName(neighborID string, comm community.BGPCommunity, ipFamily string) string {
 	if community.IsLarge(comm) {
-		return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighbor.ID(), comm, ipFamily)
+		return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighborID, comm, ipFamily)
 	}
-	return fmt.Sprintf("%s-%s-%s-community-prefixes", neighbor.ID(), comm, ipFamily)
+	return fmt.Sprintf("%s-%s-%s-community-prefixes", neighborID, comm, ipFamily)
+}
+
+func communityPrefixListKey(comm community.BGPCommunity, ipFamily string) string {
+	return fmt.Sprintf("%s-%s", comm, ipFamily)
+}
+
+func localPrefPrefixListKey(localPref uint32, ipFamily string) string {
+	return fmt.Sprintf("%d-%s", localPref, ipFamily)
 }
 
 func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {
@@ -501,105 +509,6 @@ func neighborName(n v1beta1.Neighbor) string {
 		return fmt.Sprintf("%s@%s", asnFor(n), n.Interface)
 	}
 	return fmt.Sprintf("%s@%s", asnFor(n), n.Address)
-}
-
-type communityPrefixes struct {
-	communitiesForPrefixV4      map[string]sets.Set[string]
-	largeCommunitiesForPrefixV4 map[string]sets.Set[string]
-	communitiesForPrefixV6      map[string]sets.Set[string]
-	largeCommunitiesForPrefixV6 map[string]sets.Set[string]
-}
-
-func (c *communityPrefixes) mapFor(family ipfamily.Family, isLarge bool) map[string]sets.Set[string] {
-	switch family {
-	case ipfamily.IPv4:
-		if isLarge {
-			return c.largeCommunitiesForPrefixV4
-		}
-		return c.communitiesForPrefixV4
-	case ipfamily.IPv6:
-		if isLarge {
-			return c.largeCommunitiesForPrefixV6
-		}
-		return c.communitiesForPrefixV6
-	}
-	return nil
-}
-
-func communityPrefixesToMap(withCommunity []v1beta1.CommunityPrefixes) (communityPrefixes, error) {
-	res := communityPrefixes{
-		communitiesForPrefixV4:      map[string]sets.Set[string]{},
-		largeCommunitiesForPrefixV4: map[string]sets.Set[string]{},
-		communitiesForPrefixV6:      map[string]sets.Set[string]{},
-		largeCommunitiesForPrefixV6: map[string]sets.Set[string]{},
-	}
-
-	for _, pfxs := range withCommunity {
-		c, err := community.New(pfxs.Community)
-		if err != nil {
-			return communityPrefixes{}, fmt.Errorf("invalid community %s, err: %w", pfxs.Community, err)
-		}
-		isLarge := community.IsLarge(c)
-		for _, p := range pfxs.Prefixes {
-			family := ipfamily.ForCIDRString(p)
-			communityMap := res.mapFor(family, isLarge)
-			_, ok := communityMap[p]
-			if !ok {
-				communityMap[p] = sets.New(c.String())
-				continue
-			}
-
-			communityMap[p].Insert(c.String())
-		}
-	}
-	return res, nil
-}
-
-type localPrefPrefixes struct {
-	localPrefForPrefixV4 map[string]uint32
-	localPrefForPrefixV6 map[string]uint32
-}
-
-func localPrefPrefixesToMap(withLocalPref []v1beta1.LocalPrefPrefixes) (localPrefPrefixes, error) {
-	res := localPrefPrefixes{
-		localPrefForPrefixV4: map[string]uint32{},
-		localPrefForPrefixV6: map[string]uint32{},
-	}
-
-	seen := make(map[uint32]bool)
-	for _, pfxs := range withLocalPref {
-		if _, exists := seen[pfxs.LocalPref]; exists {
-			// error when input is withLocalPref = []v1beta1.LocalPrefPrefixes{
-			//	                      Prefixes:  []string{"192.0.2.0/24"},LocalPref: 100}, []string{"100.0.0.0/24"},LocalPref: 100}}
-			// so we enforce       withLocalPref = []v1beta1.LocalPrefPrefixes{
-			//	                      Prefixes:  []string{"192.0.2.0/24, "100.0.0.0/24"},LocalPref: 100}}
-			return localPrefPrefixes{}, fmt.Errorf("multiple entries with the same localPref: %d", pfxs.LocalPref)
-		}
-		seen[pfxs.LocalPref] = true
-
-		for _, p := range pfxs.Prefixes {
-			family := ipfamily.ForCIDRString(p)
-			lpMap := res.localPrefForPrefixV4
-			if family == ipfamily.IPv6 {
-				lpMap = res.localPrefForPrefixV6
-			}
-
-			v, ok := lpMap[p]
-			if !ok {
-				lpMap[p] = pfxs.LocalPref
-				continue
-			}
-
-			if v != pfxs.LocalPref {
-				return localPrefPrefixes{}, fmt.Errorf("multiple local prefs (%d,%d) specified for prefix %s", v, pfxs.LocalPref, p)
-			}
-			if v == pfxs.LocalPref {
-				return localPrefPrefixes{}, fmt.Errorf("prefix %s with local prefs %d defined twice", p, v)
-			}
-		}
-	}
-
-	return res, nil
 }
 
 func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {

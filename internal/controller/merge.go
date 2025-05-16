@@ -82,9 +82,9 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 
 // Merges the allowed out prefixes, assuming they are for the same neighbor.
 func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
-	mergedPrefixesV4 := sets.New[string](r.PrefixesV4...)
+	mergedPrefixesV4 := sets.New(r.PrefixesV4...)
 	mergedPrefixesV4.Insert(toMerge.PrefixesV4...)
-	mergedPrefixesV6 := sets.New[string](r.PrefixesV6...)
+	mergedPrefixesV6 := sets.New(r.PrefixesV6...)
 	mergedPrefixesV6.Insert(toMerge.PrefixesV6...)
 
 	res := frr.AllowedOut{
@@ -110,9 +110,11 @@ func mergeLocalPrefPrefixLists(curr, toMerge map[string]frr.LocalPrefPrefixList)
 	all := curr
 	for k, prefixList := range toMerge {
 		addTo, ok := all[k]
-		if ok {
-			addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
+		if !ok {
+			all[k] = prefixList
+			continue
 		}
+		addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
 		all[k] = addTo
 	}
 
@@ -123,9 +125,11 @@ func mergeCommunityPrefixLists(curr, toMerge map[string]frr.CommunityPrefixList)
 	all := curr
 	for k, prefixList := range toMerge {
 		addTo, ok := all[k]
-		if ok {
-			addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
+		if !ok {
+			all[k] = prefixList
+			continue
 		}
+		addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
 		all[k] = addTo
 	}
 
