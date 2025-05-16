@@ -157,14 +157,10 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 							PrefixesV4: []string{"192.169.1.0/24", "192.169.1.0/22", "192.170.1.0/22"},
 							PrefixesV6: []string{},
 							CommunityPrefixesModifiers: map[string]CommunityPrefixList{
-								keyForCommunityPL("10:169", "ip"):       communityPrefixListFor("65001@192.168.1.2", "10:169", "ip", "192.0.2.0/24"),
-								keyForCommunityPL("10:170", "ip"):       communityPrefixListFor("65001@192.168.1.2", "10:170", "ip", "192.0.2.0/24", "192.169.1.0/22", "192.170.1.0/22"),
-								keyForCommunityPL("123:456:7890", "ip"): communityPrefixListFor("65001@192.168.1.2", "123:456:7890", "ip", "192.0.2.0/24", "192.169.1.0/22"),
-
-								keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
-
-								keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
-
+								keyForCommunityPL("10:169", "ip"):               communityPrefixListFor("65001@192.168.1.2", "10:169", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:170", "ip"):               communityPrefixListFor("65001@192.168.1.2", "10:170", "ip", "192.0.2.0/24", "192.169.1.0/22", "192.170.1.0/22"),
+								keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
 								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
 							LocalPrefPrefixesModifiers: map[string]LocalPrefPrefixList{
@@ -185,8 +181,10 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						ASN:      "65001",
 						Addr:     "192.168.1.3",
 						Outgoing: AllowedOut{
-							PrefixesV4: []string{"192.169.1.0/24"},
-							PrefixesV6: []string{},
+							PrefixesV4:                 []string{"192.169.1.0/24"},
+							PrefixesV6:                 []string{},
+							CommunityPrefixesModifiers: map[string]CommunityPrefixList{},
+							LocalPrefPrefixesModifiers: map[string]LocalPrefPrefixList{},
 						},
 					},
 				},

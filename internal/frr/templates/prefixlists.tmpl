@@ -1,5 +1,4 @@
 {{- define "neighborfilters" -}}
-route-map {{.neighbor.ID}}-in deny 20
 
 {{$prefixLists:=.neighbor.Outgoing.SortedPrefixLists}}
 {{- range $prefixList:=$prefixLists}}
@@ -15,19 +14,19 @@ route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
 
 {{$prefixListName:=.neighbor.ToAdvertisePrefixListV4}}
 
-{{ if not .neighbor.AllowedOut.PrefixesV4 }}
+{{ if not .neighbor.Outgoing.PrefixesV4 }}
 ip prefix-list {{$prefixListName}} seq {{counter $prefixListName}} deny any
 {{- end }}
-{{- range $a := .neighbor.AllowedOut.PrefixesV4 }}
+{{- range $a := .neighbor.Outgoing.PrefixesV4 }}
 ip prefix-list {{$prefixListName}} seq {{counter $prefixListName}} permit {{$a}}
 {{- end }}
 
 {{$prefixListName:=.neighbor.ToAdvertisePrefixListV6}}
 
-{{- if not .neighbor.AllowedOut.PrefixesV6 }}
+{{- if not .neighbor.Outgoing.PrefixesV6 }}
 ipv6 prefix-list {{$prefixListName}} seq {{counter $prefixListName}} deny any
 {{- end }}
-{{- range $a := .neighbor.AllowedOut.PrefixesV6 }}
+{{- range $a := .neighbor.Outgoing.PrefixesV6 }}
 ipv6 prefix-list {{$prefixListName}} seq {{counter $prefixListName}} permit {{$a}}
 {{- end }}
 

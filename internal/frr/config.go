@@ -124,12 +124,15 @@ type AllowedOut struct {
 	CommunityPrefixesModifiers map[string]CommunityPrefixList
 }
 
-func (a AllowedOut) SortedLocalPrefPrefixLists() []LocalPrefPrefixList {
-	return sortMap(a.LocalPrefPrefixesModifiers)
-}
-
-func (a AllowedOut) SortedCommunityPrefixLists() []CommunityPrefixList {
-	return sortMap(a.CommunityPrefixesModifiers)
+func (a AllowedOut) SortedPrefixLists() []PropertyPrefixList {
+	res := make([]PropertyPrefixList, len(a.LocalPrefPrefixesModifiers)+len(a.CommunityPrefixesModifiers))
+	for i, v := range sortMap(a.LocalPrefPrefixesModifiers) {
+		res[i] = v
+	}
+	for i, v := range sortMap(a.CommunityPrefixesModifiers) {
+		res[i+len(a.LocalPrefPrefixesModifiers)] = v
+	}
+	return res
 }
 
 type CommunityPrefixList struct {
@@ -224,18 +227,6 @@ func templateConfig(data interface{}) (string, error) {
 			},
 			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family) bool {
 				return (string(neighbourFamily) == ipFamily || neighbourFamily == ipfamily.DualStack)
-			},
-			"localPrefPrefixList": func(neighbor *NeighborConfig, localPreference uint32) string {
-				return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighbor.ID(), localPreference, neighbor.IPFamily)
-			},
-			"communityPrefixList": func(neighbor *NeighborConfig, community string) string {
-				return fmt.Sprintf("%s-%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
-			},
-			"largeCommunityPrefixList": func(neighbor *NeighborConfig, community string) string {
-				return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
-			},
-			"allowedPrefixList": func(neighbor *NeighborConfig) string {
-				return fmt.Sprintf("%s-pl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
 			"allowedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)
