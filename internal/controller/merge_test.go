@@ -8,8 +8,10 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/utils/ptr"
 )
 
@@ -34,25 +36,16 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108"},
-									LargeCommunities: []string{"large:123:456:7890"},
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.3.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+							PrefixesV6: []string{"2001:db8::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:    ipfamily.IPv6,
-									Prefix:      "2001:db8::/64",
-									Communities: []string{"10:108"},
-								},
-							},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 						},
 						Incoming: frr.AllowedIn{
 							All: false,
@@ -71,25 +64,16 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108"},
-									LargeCommunities: []string{"large:123:456:7890"},
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.3.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+							PrefixesV6: []string{"2001:db8::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.21", "10:108", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:    ipfamily.IPv6,
-									Prefix:      "2001:db8::/64",
-									Communities: []string{"10:108"},
-								},
-							},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 						},
 						Incoming: frr.AllowedIn{
 							All: false,
@@ -108,25 +92,16 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.22",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108"},
-									LargeCommunities: []string{"large:123:456:7890"},
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.3.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+							PrefixesV6: []string{"2001:db8::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.22", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.22", "10:108", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:    ipfamily.IPv6,
-									Prefix:      "2001:db8::/64",
-									Communities: []string{"10:108"},
-								},
-							},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 						},
 						Incoming: frr.AllowedIn{
 							All: false,
@@ -156,35 +131,18 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("20:200", "ip"):   communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
+
+								keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.20", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -204,35 +162,19 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("20:200", "ip"):             communityPrefixListFor("65040@192.0.1.21", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7892", "ip", "192.0.2.0/24"),
+
+								keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.21", "20:200", "ipv6", "2001:db8::/64"),
+
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.21", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.21", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -252,35 +194,19 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.23",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("20:200", "ip"):             communityPrefixListFor("65040@192.0.1.23", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+
+								keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
+
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -309,35 +235,21 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.20",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108", "20:200"},
-									LargeCommunities: []string{"large:123:456:7890", "large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
+								keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"10:108", "20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.20", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -359,35 +271,22 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.21",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108", "20:200"},
-									LargeCommunities: []string{"large:123:456:7890", "large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ipv6"):             communityPrefixListFor("65040@192.0.1.21", "10:108", "ipv6", "2001:db8::/64"),
+								keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.21", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.21", "large:123:456:7892", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.21", "20:200", "ipv6", "2001:db8::/64"),
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"10:108", "20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.21", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.21", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -409,24 +308,14 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.22",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"10:100", "10:102", "10:108"},
-									LargeCommunities: []string{"large:123:456:7890"},
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.3.0/24",
-								},
-							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:    ipfamily.IPv6,
-									Prefix:      "2001:db8::/64",
-									Communities: []string{"10:108"},
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+							PrefixesV6: []string{"2001:db8::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:100", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:102", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:108", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.22", "large:123:456:7890", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.22", "10:108", "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -446,35 +335,19 @@ func TestMergeRouters(t *testing.T) {
 						ASN:      "65040",
 						Addr:     "192.0.1.23",
 						Outgoing: frr.AllowedOut{
-							PrefixesV4: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.0.2.0/24",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7892"},
-								},
-								{
-									IPFamily:  ipfamily.IPv4,
-									Prefix:    "192.0.3.0/24",
-									LocalPref: 150,
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.0.4.0/24",
-								},
+							PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+							PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+							CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+								keyForCommunityPL("20:200", "ip"):             communityPrefixListFor("65040@192.0.1.23", "20:200", "ip", "192.0.2.0/24"),
+								keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+
+								keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
+
+								keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 							},
-							PrefixesV6: []frr.OutgoingFilter{
-								{
-									IPFamily:         ipfamily.IPv6,
-									Prefix:           "2001:db8::/64",
-									Communities:      []string{"20:200"},
-									LargeCommunities: []string{"large:123:456:7890"},
-									LocalPref:        200,
-								},
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9::/64",
-								},
+							LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+								localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+								localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 							},
 						},
 						Incoming: frr.AllowedIn{
@@ -539,7 +412,10 @@ func TestMergeRouters(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(merged, test.expected, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(merged,
+				test.expected,
+				cmpopts.EquateEmpty(),
+				cmp.Comparer(communityComparer)); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})
@@ -563,25 +439,16 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108"},
-								LargeCommunities: []string{"large:123:456:7890"},
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.3.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.20", "10:108", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:    ipfamily.IPv6,
-								Prefix:      "2001:db8::/64",
-								Communities: []string{"10:108"},
-							},
-						},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
 						All: false,
@@ -602,35 +469,18 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("20:200", "ip"):   communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
+
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -652,35 +502,22 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890", "large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "10:108", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -708,25 +545,16 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108"},
-								LargeCommunities: []string{"large:123:456:7890"},
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.3.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.20", "10:108", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:    ipfamily.IPv6,
-								Prefix:      "2001:db8::/64",
-								Communities: []string{"10:108"},
-							},
-						},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
 						All: false,
@@ -745,25 +573,16 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108"},
-								LargeCommunities: []string{"large:123:456:7890"},
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.3.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.21", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.21", "10:108", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:    ipfamily.IPv6,
-								Prefix:      "2001:db8::/64",
-								Communities: []string{"10:108"},
-							},
-						},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
 						All: false,
@@ -782,24 +601,14 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.22",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108"},
-								LargeCommunities: []string{"large:123:456:7890"},
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.3.0/24",
-							},
-						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:    ipfamily.IPv6,
-								Prefix:      "2001:db8::/64",
-								Communities: []string{"10:108"},
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.22", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.22", "10:108", "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -821,35 +630,18 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("20:200", "ip"):   communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
+
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.20", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -869,35 +661,17 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.21", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.21", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.21", "20:200", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.21", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.21", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -917,35 +691,19 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.23",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("20:200", "ip"):             communityPrefixListFor("65040@192.0.1.23", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+
+							keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
+
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -967,35 +725,22 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890", "large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.20", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.20", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "20:200", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ipv6"): communityPrefixListFor("65040@192.0.1.20", "large:123:456:7892", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("10:108", "ipv6"):             communityPrefixListFor("65040@192.0.1.20", "10:108", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.20", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -1017,35 +762,22 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.21",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890", "large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):               communityPrefixListFor("65040@192.0.1.21", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"):   communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):             communityPrefixListFor("65040@192.0.1.21", "10:108", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("20:200", "ip"):               communityPrefixListFor("65040@192.0.1.21", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"):   communityPrefixListFor("65040@192.0.1.21", "large:123:456:7892", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("20:200", "ipv6"):             communityPrefixListFor("65040@192.0.1.21", "20:200", "ipv6", "2001:db8::/64"),
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.21", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"10:108", "20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.21", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.21", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -1067,24 +799,14 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.22",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"10:100", "10:102", "10:108"},
-								LargeCommunities: []string{"large:123:456:7890"},
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.3.0/24",
-							},
-						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:    ipfamily.IPv6,
-								Prefix:      "2001:db8::/64",
-								Communities: []string{"10:108"},
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:100", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:102", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ip"):             communityPrefixListFor("65040@192.0.1.22", "10:108", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("65040@192.0.1.22", "large:123:456:7890", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("10:108", "ipv6"):           communityPrefixListFor("65040@192.0.1.22", "10:108", "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -1104,35 +826,19 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.23",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv4,
-								Prefix:           "192.0.2.0/24",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7892"},
-							},
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.3.0/24",
-								LocalPref: 150,
-							},
-							{
-								IPFamily: ipfamily.IPv4,
-								Prefix:   "192.0.4.0/24",
-							},
+						PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+						PrefixesV6: []string{"2001:db8::/64", "2001:db9::/64"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+							keyForCommunityPL("20:200", "ip"):             communityPrefixListFor("65040@192.0.1.23", "20:200", "ip", "192.0.2.0/24"),
+							keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+
+							keyForCommunityPL("20:200", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
+
+							keyForCommunityPL("large:123:456:7890", "ipv6"): communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{
-							{
-								IPFamily:         ipfamily.IPv6,
-								Prefix:           "2001:db8::/64",
-								Communities:      []string{"20:200"},
-								LargeCommunities: []string{"large:123:456:7890"},
-								LocalPref:        200,
-							},
-							{
-								IPFamily: ipfamily.IPv6,
-								Prefix:   "2001:db9::/64",
-							},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(150, "ip"):   localPrefPrefixListFor("65040@192.0.1.23", 150, "ip", "192.0.3.0/24"),
+							localPrefPrefixListKey(200, "ipv6"): localPrefPrefixListFor("65040@192.0.1.23", 200, "ipv6", "2001:db8::/64"),
 						},
 					},
 					Incoming: frr.AllowedIn{
@@ -1147,9 +853,7 @@ func TestMergeNeighbors(t *testing.T) {
 					},
 				},
 			},
-			err: nil,
-		},
-		{
+		}, {
 			name: "Incoming: first config has All, the other specific",
 			curr: []*frr.NeighborConfig{
 				{
@@ -1162,6 +866,12 @@ func TestMergeNeighbors(t *testing.T) {
 						PrefixesV4: []frr.IncomingFilter{},
 						PrefixesV6: []frr.IncomingFilter{},
 					},
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+					},
 				},
 			},
 			toMerge: []*frr.NeighborConfig{
@@ -1180,6 +890,12 @@ func TestMergeNeighbors(t *testing.T) {
 							{IPFamily: "ipv6", Prefix: "2001:ee9::/64"},
 						},
 					},
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+					},
 				},
 			},
 			expected: []*frr.NeighborConfig{
@@ -1189,8 +905,10 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{},
-						PrefixesV6: []frr.OutgoingFilter{},
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
 						All:        true,
@@ -1219,6 +937,12 @@ func TestMergeNeighbors(t *testing.T) {
 							{IPFamily: "ipv6", Prefix: "2001:ee9::/64"},
 						},
 					},
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+					},
 				},
 			},
 			toMerge: []*frr.NeighborConfig{
@@ -1232,6 +956,12 @@ func TestMergeNeighbors(t *testing.T) {
 						PrefixesV4: []frr.IncomingFilter{},
 						PrefixesV6: []frr.IncomingFilter{},
 					},
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
+					},
 				},
 			},
 			expected: []*frr.NeighborConfig{
@@ -1241,8 +971,10 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{},
-						PrefixesV6: []frr.OutgoingFilter{},
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
 						All:        true,
@@ -1262,14 +994,11 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.2.0/24",
-								LocalPref: 100,
-							},
+						PrefixesV4:                 []string{"192.0.2.0/24"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(100, "ip"): localPrefPrefixListFor("65040@192.0.1.20", 100, "ip", "192.0.2.0/24"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{},
 					},
 				},
 			},
@@ -1280,14 +1009,11 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{
-							{
-								IPFamily:  ipfamily.IPv4,
-								Prefix:    "192.0.2.0/24",
-								LocalPref: 150,
-							},
+						PrefixesV4:                 []string{"192.0.2.0/24"},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+							localPrefPrefixListKey(100, "ip"): localPrefPrefixListFor("65040@192.0.1.20", 150, "ip", "192.0.2.0/24"),
 						},
-						PrefixesV6: []frr.OutgoingFilter{},
 					},
 				},
 			},
@@ -1321,10 +1047,13 @@ func TestMergeNeighbors(t *testing.T) {
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
 					Outgoing: frr.AllowedOut{
-						PrefixesV4: []frr.OutgoingFilter{},
-						PrefixesV6: []frr.OutgoingFilter{},
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{},
 					},
 					Incoming: frr.AllowedIn{
+						All:        false,
 						PrefixesV4: []frr.IncomingFilter{},
 						PrefixesV6: []frr.IncomingFilter{},
 					},
@@ -1375,9 +1104,51 @@ func TestMergeNeighbors(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(merged, test.expected, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(merged, test.expected,
+				cmpopts.EquateEmpty(), cmp.Comparer(communityComparer)); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})
 	}
+}
+
+func communityPrefixListFor(neigID, comm string, ipFamily string, prefixes ...string) frr.CommunityPrefixList {
+	community, err := community.New(comm)
+	if err != nil {
+		panic(err)
+	}
+	return frr.CommunityPrefixList{
+		PrefixList: frr.PrefixList{
+			Name:     communityPrefixListName(neigID, community, ipFamily),
+			Prefixes: sets.New(prefixes...),
+			IPFamily: ipFamily,
+		},
+		Community: community,
+	}
+}
+
+func keyForCommunityPL(comm string, ipFamily string) string {
+	community, err := community.New(comm)
+	if err != nil {
+		panic(err)
+	}
+	return communityPrefixListKey(community, ipFamily)
+}
+
+func localPrefPrefixListFor(neigID string, localPref int, ipFamily string, prefixes ...string) frr.LocalPrefPrefixList {
+	return frr.LocalPrefPrefixList{
+		PrefixList: frr.PrefixList{
+			Name:     localPrefPrefixListName(neigID, uint32(localPref), ipFamily),
+			Prefixes: sets.New(prefixes...),
+			IPFamily: ipFamily,
+		},
+		LocalPref: uint32(localPref),
+	}
+}
+
+func communityComparer(a, b community.BGPCommunity) bool {
+	if a != nil && b != nil {
+		return a.String() == b.String()
+	}
+	return false
 }

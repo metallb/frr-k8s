@@ -374,12 +374,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24"},
 								},
 							},
 						},
@@ -440,16 +435,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.4.0/24",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.4.0/24"},
 								},
 							},
 							{
@@ -458,26 +444,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.4.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
 								},
 							},
 						},
@@ -585,26 +552,19 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:         ipfamily.IPv4,
-											Prefix:           "192.0.2.0/24",
-											Communities:      []string{"10:100", "10:102"},
-											LargeCommunities: []string{"123:456:7890"},
-											LocalPref:        100,
-										},
-										{
-											IPFamily:         ipfamily.IPv4,
-											Prefix:           "192.0.4.0/24",
-											Communities:      []string{"10:100", "10:104"},
-											LargeCommunities: []string{"123:456:7890", "123:456:7892"},
-											LocalPref:        104,
-										},
-										{
-											IPFamily:  ipfamily.IPv4,
-											Prefix:    "192.0.6.0/24",
-											LocalPref: 100,
-										},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"):             communityPrefixListFor("192.0.2.21", "10:100", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("10:102", "ip"):             communityPrefixListFor("192.0.2.21", "10:102", "ip", "192.0.2.0/24"),
+										keyForCommunityPL("10:104", "ip"):             communityPrefixListFor("192.0.2.21", "10:104", "ip", "192.0.4.0/24"),
+										keyForCommunityPL("large:123:456:7890", "ip"): communityPrefixListFor("192.0.2.21", "large:123:456:7890", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("large:123:456:7892", "ip"): communityPrefixListFor("192.0.2.21", "large:123:456:7892", "ip", "192.0.4.0/24"),
+									},
+
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(100, "ip"): localPrefPrefixListFor("192.0.2.21", 100, "ip", "192.0.2.0/24", "192.0.6.0/24"),
+										localPrefPrefixListKey(104, "ip"): localPrefPrefixListFor("192.0.2.21", 104, "ip", "192.0.4.0/24"),
 									},
 								},
 							},
@@ -614,32 +574,12 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.0/24",
-											Communities: []string{"10:100", "10:102", "10:108"},
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.0/24",
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.4.0/24",
-											Communities: []string{"10:100"},
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.6.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv6,
-											Prefix:      "2001:db8::/64",
-											Communities: []string{"10:108"},
-										},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "192.0.6.0/24"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.22", "10:100", "ip", "192.0.2.0/24", "192.0.4.0/24"),
+										keyForCommunityPL("10:102", "ip"): communityPrefixListFor("192.0.2.22", "10:102", "ip", "192.0.2.0/24"),
+										keyForCommunityPL("10:108", "ip"): communityPrefixListFor("192.0.2.22", "10:108", "ip", "192.0.2.0/24"),
 									},
 								},
 							},
@@ -872,6 +812,40 @@ func TestConversion(t *testing.T) {
 										},
 									},
 									Prefixes: []string{"192.0.2.0/24", "10.0.0.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("a not nil error"),
+		},
+		{
+			name: "One neighbor, trying to set localpref on non existing prefix",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+													{
+														Prefixes:  []string{"10.0.0.0/24"},
+														LocalPref: 100,
+													},
+												},
+											},
+										},
+									},
 								},
 							},
 						},
@@ -1222,18 +1196,14 @@ func TestConversion(t *testing.T) {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.10/32",
-											Communities: []string{"10:100", "10:101"},
-											LocalPref:   200,
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.11/32",
-											Communities: []string{"10:101"},
-										},
+									PrefixesV4: []string{"192.0.2.10/32", "192.0.2.11/32"},
+									PrefixesV6: []string{},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.7", "10:100", "ip", "192.0.2.10/32"),
+										keyForCommunityPL("10:101", "ip"): communityPrefixListFor("192.0.2.7", "10:101", "ip", "192.0.2.10/32", "192.0.2.11/32"),
+									},
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(200, "ip"): localPrefPrefixListFor("192.0.2.7", 200, "ip", "192.0.2.10/32"),
 									},
 								},
 								Incoming: frr.AllowedIn{
@@ -1527,16 +1497,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65011",
 								Addr:     "192.0.2.6",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.1/32",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.3.2/32",
-										},
-									},
+									PrefixesV4: []string{"192.0.3.1/32", "192.0.3.2/32"},
 								},
 							},
 							{
@@ -1545,29 +1506,14 @@ func TestConversion(t *testing.T) {
 								ASN:      "65012",
 								Addr:     "192.0.2.7",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.10/32",
-											Communities: []string{"10:100", "10:101"},
-											LocalPref:   200,
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.2.11/32",
-											Communities: []string{"10:101"},
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.3.20/32",
-											Communities: []string{"10:100"},
-										},
-										{
-											IPFamily:    ipfamily.IPv4,
-											Prefix:      "192.0.3.21/32",
-											Communities: []string{"10:101"},
-											LocalPref:   200,
-										},
+									PrefixesV4: []string{"192.0.2.10/32", "192.0.2.11/32", "192.0.3.20/32", "192.0.3.21/32"},
+									CommunityPrefixesModifiers: map[string]frr.CommunityPrefixList{
+										keyForCommunityPL("10:100", "ip"): communityPrefixListFor("192.0.2.7", "10:100", "ip", "192.0.3.20/32", "192.0.2.10/32"),
+										keyForCommunityPL("10:101", "ip"): communityPrefixListFor("192.0.2.7", "10:101", "ip", "192.0.2.10/32", "192.0.2.11/32", "192.0.3.21/32"),
+									},
+
+									LocalPrefPrefixesModifiers: map[string]frr.LocalPrefPrefixList{
+										localPrefPrefixListKey(200, "ip"): localPrefPrefixListFor("192.0.2.7", 200, "ip", "192.0.2.10/32", "192.0.3.21/32"),
 									},
 								},
 							},
@@ -1586,12 +1532,7 @@ func TestConversion(t *testing.T) {
 								Addr:     "192.0.2.7",
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.5/32",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.5/32"},
 								},
 							},
 							{
@@ -1601,22 +1542,7 @@ func TestConversion(t *testing.T) {
 								Addr:     "2001:db8::4",
 								VRFName:  "vrf2",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: "ipv4",
-											Prefix:   "192.0.2.5/32",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/96",
-										},
-									},
+									PrefixesV6: []string{"2001:db8::/64", "2001:db9::/96"},
 								},
 							},
 						},
@@ -2409,16 +2335,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.21",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
 								},
 							},
 							{
@@ -2427,25 +2344,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "65041",
 								Addr:     "192.0.2.22",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										}, {
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/64",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
 								},
 							},
 						},
@@ -2548,25 +2447,7 @@ func TestConversion(t *testing.T) {
 								Addr:     "192.0.2.22",
 								VRFName:  "red",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.5.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										}, {
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db9::/64",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24", "192.0.5.0/24"},
 								},
 							},
 						},
@@ -2683,18 +2564,7 @@ func TestConversion(t *testing.T) {
 								ASN:      "internal",
 								Addr:     "192.0.2.22",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24"},
 								},
 							},
 						},
@@ -2749,18 +2619,8 @@ func TestConversion(t *testing.T) {
 								Iface:    "eth0",
 								Addr:     "",
 								Outgoing: frr.AllowedOut{
-									PrefixesV4: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv4,
-											Prefix:   "192.0.2.0/24",
-										},
-									},
-									PrefixesV6: []frr.OutgoingFilter{
-										{
-											IPFamily: ipfamily.IPv6,
-											Prefix:   "2001:db8::/64",
-										},
-									},
+									PrefixesV4: []string{"192.0.2.0/24"},
+									PrefixesV6: []string{"2001:db8::/64"},
 								},
 							},
 						},
@@ -3183,7 +3043,9 @@ func TestConversion(t *testing.T) {
 			if test.err == nil && err != nil {
 				t.Fatalf("expected no error, got %v", err)
 			}
-			if diff := cmp.Diff(frr, test.expected, cmpopts.EquateEmpty()); diff != "" {
+			if diff := cmp.Diff(frr, test.expected,
+				cmpopts.EquateEmpty(),
+				cmp.Comparer(communityComparer)); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
 			}
 		})
