@@ -65,7 +65,6 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 		if err != nil {
 			return nil, err
 		}
-
 		curr.Outgoing, err = mergeAllowedOut(curr.Outgoing, n.Outgoing)
 		if err != nil {
 			return nil, fmt.Errorf("could not merge outgoing for neighbor %s vrf %s, err: %w", n.Addr, n.VRFName, err)
@@ -77,70 +76,77 @@ func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig,
 		mergedNeighbors[n.ID()] = curr
 	}
 
-	return sortMapPtr(mergedNeighbors), nil
+	return sortMap(mergedNeighbors), nil
 }
 
 // Merges the allowed out prefixes, assuming they are for the same neighbor.
 func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
+	mergedPrefixesV4 := sets.New(r.PrefixesV4...)
+	mergedPrefixesV4.Insert(toMerge.PrefixesV4...)
+	mergedPrefixesV6 := sets.New(r.PrefixesV6...)
+	mergedPrefixesV6.Insert(toMerge.PrefixesV6...)
+
 	res := frr.AllowedOut{
-		PrefixesV4: make([]frr.OutgoingFilter, 0),
-		PrefixesV6: make([]frr.OutgoingFilter, 0),
+		PrefixesV4: sets.List(mergedPrefixesV4),
+		PrefixesV6: sets.List(mergedPrefixesV6),
 	}
 
-	var err error
-	res.PrefixesV4, err = mergeOutgoingFilters(r.PrefixesV4, toMerge.PrefixesV4)
-	if err != nil {
-		return frr.AllowedOut{}, err
+	localPrefForPrefix := map[string]uint32{}
+	for _, p := range r.LocalPrefPrefixesModifiers {
+		for _, prefix := range p.Prefixes.UnsortedList() {
+			localPrefForPrefix[prefix] = p.LocalPref
+		}
+	}
+	for _, p := range toMerge.LocalPrefPrefixesModifiers {
+		for _, prefix := range p.Prefixes.UnsortedList() {
+			if existing, ok := localPrefForPrefix[prefix]; ok && existing != p.LocalPref {
+				return frr.AllowedOut{}, fmt.Errorf("multiple local prefs (%d != %d) specified for prefix %s", existing, p.LocalPref, prefix)
+			}
+		}
 	}
 
-	res.PrefixesV6, err = mergeOutgoingFilters(r.PrefixesV6, toMerge.PrefixesV6)
-	if err != nil {
-		return frr.AllowedOut{}, err
-	}
+	res.CommunityPrefixesModifiers = mergeCommunityPrefixLists(r.CommunityPrefixesModifiers, toMerge.CommunityPrefixesModifiers)
+	res.LocalPrefPrefixesModifiers = mergeLocalPrefPrefixLists(r.LocalPrefPrefixesModifiers, toMerge.LocalPrefPrefixesModifiers)
 
 	return res, nil
 }
 
-func mergeOutgoingFilters(curr, toMerge []frr.OutgoingFilter) ([]frr.OutgoingFilter, error) {
-	all := curr
-	all = append(all, toMerge...)
-	if len(all) == 0 {
-		return []frr.OutgoingFilter{}, nil
+func mergeLocalPrefPrefixLists(curr, toMerge []frr.LocalPrefPrefixList) []frr.LocalPrefPrefixList {
+	allMap := map[string]frr.LocalPrefPrefixList{}
+	for _, prefixList := range curr {
+		allMap[localPrefPrefixListKey(prefixList.LocalPref, prefixList.IPFamily)] = prefixList
 	}
-
-	mergedOut := map[string]*frr.OutgoingFilter{}
-	for _, a := range all {
-		f := a
-		curr, found := mergedOut[f.Prefix]
-		if !found {
-			mergedOut[f.Prefix] = &f
+	for _, prefixList := range toMerge {
+		k := localPrefPrefixListKey(prefixList.LocalPref, prefixList.IPFamily)
+		addTo, ok := allMap[k]
+		if !ok {
+			allMap[k] = prefixList
 			continue
 		}
-
-		if curr.LocalPref != 0 && f.LocalPref != 0 && curr.LocalPref != f.LocalPref {
-			return nil, fmt.Errorf("multiple local prefs (%d != %d) specified for prefix %s", curr.LocalPref, f.LocalPref, curr.Prefix)
-		}
-
-		if f.LocalPref != 0 {
-			curr.LocalPref = f.LocalPref
-		}
-
-		communities := sets.New(append(curr.Communities, f.Communities...)...)
-		curr.Communities = sets.List(communities)
-		if communities.Len() == 0 {
-			curr.Communities = nil
-		}
-
-		largeCommunities := sets.New(append(curr.LargeCommunities, f.LargeCommunities...)...)
-		curr.LargeCommunities = sets.List(largeCommunities)
-		if largeCommunities.Len() == 0 {
-			curr.LargeCommunities = nil
-		}
-
-		mergedOut[curr.Prefix] = curr
+		addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
+		allMap[k] = addTo
 	}
 
-	return sortMap(mergedOut), nil
+	return sortMap(allMap)
+}
+
+func mergeCommunityPrefixLists(curr, toMerge []frr.CommunityPrefixList) []frr.CommunityPrefixList {
+	allMap := map[string]frr.CommunityPrefixList{}
+	for _, prefixList := range curr {
+		allMap[communityPrefixListKey(prefixList.Community, prefixList.IPFamily)] = prefixList
+	}
+	for _, prefixList := range toMerge {
+		k := communityPrefixListKey(prefixList.Community, prefixList.IPFamily)
+		addTo, ok := allMap[k]
+		if !ok {
+			allMap[k] = prefixList
+			continue
+		}
+		addTo.Prefixes = addTo.Prefixes.Union(prefixList.Prefixes)
+		allMap[k] = addTo
+	}
+
+	return sortMap(allMap)
 }
 
 // Merges the allowed incoming prefixes, assuming they are for the same neighbor.
@@ -191,7 +197,7 @@ func mergeIncomingFilters(curr, toMerge []frr.IncomingFilter) []frr.IncomingFilt
 		mergedIn[key] = &f
 	}
 
-	return sortMap(mergedIn)
+	return sortMapPtr(mergedIn)
 }
 
 // Verifies that two routers are compatible for merging.

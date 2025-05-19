@@ -106,3 +106,10 @@ func FilterPrefixes(prefixes []string, familyToFilter Family) []string {
 	}
 	return res
 }
+
+func MatchesPrefix(toMatch Family, prefix string) bool {
+	if toMatch == DualStack {
+		return true
+	}
+	return ForCIDRString(prefix) == toMatch
+}
