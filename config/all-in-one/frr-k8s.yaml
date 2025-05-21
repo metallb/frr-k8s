@@ -1098,6 +1098,7 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+      hostNetwork: true
       serviceAccountName: frr-k8s-daemon
       terminationGracePeriodSeconds: 10
       tolerations:

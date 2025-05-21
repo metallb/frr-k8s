@@ -339,3 +339,4 @@ spec:
             secretName: webhook-server-cert
       serviceAccountName: daemon
       terminationGracePeriodSeconds: 10
+      hostNetwork: true
