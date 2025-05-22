@@ -278,7 +278,7 @@ spec:
         - "--log-level=info"
         - "--webhook-mode=onlywebhook"
         - "--namespace=$(NAMESPACE)"
-        - "--metrics-bind-address=:7572"
+        - "--metrics-bind-address=:7672"
         env:
         - name: NAMESPACE
           valueFrom:
@@ -294,7 +294,7 @@ spec:
               - ALL
           readOnlyRootFilesystem: true
         ports:
-        - containerPort: 7572
+        - containerPort: 7672
           name: monitoring
         - containerPort: 9443
           name: webhook
@@ -339,3 +339,4 @@ spec:
             secretName: webhook-server-cert
       serviceAccountName: daemon
       terminationGracePeriodSeconds: 10
+      hostNetwork: true

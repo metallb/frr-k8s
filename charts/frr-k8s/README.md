@@ -93,6 +93,7 @@ Kubernetes: `>= 1.19.0-0`
 | prometheus.serviceMonitor.metricRelabelings | list | `[]` |  |
 | prometheus.serviceMonitor.relabelings | list | `[]` |  |
 | prometheus.serviceMonitor.tlsConfig.insecureSkipVerify | bool | `true` |  |
+| prometheus.whmetricsPort | int | `7672` |  |
 | rbac.create | bool | `true` |  |
 
 ----------------------------------------------
