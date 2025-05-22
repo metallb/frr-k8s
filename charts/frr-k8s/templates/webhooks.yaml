@@ -43,7 +43,7 @@ spec:
         - "--restart-on-rotator-secret-refresh=true"
         {{- end }}
         - "--namespace=$(NAMESPACE)"
-        - "--metrics-bind-address=:{{ .Values.prometheus.metricsPort }}"
+        - "--metrics-bind-address=:{{ .Values.prometheus.whmetricsPort }}"
         env:
         - name: NAMESPACE
           valueFrom:
@@ -63,7 +63,7 @@ spec:
         ports:
         - containerPort: {{ .Values.frrk8s.webhookPort }}
           name: webhook
-        - containerPort: {{ .Values.prometheus.metricsPort }}
+        - containerPort: {{ .Values.prometheus.whmetricsPort }}
           name: monitoring
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:

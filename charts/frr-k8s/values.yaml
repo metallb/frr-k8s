@@ -26,6 +26,9 @@ prometheus:
   # port frr-k8s will listen on for metrics
   metricsPort: 7572
 
+  # port the frr-k8s validating webhook will listen on for metrics
+  whmetricsPort: 7672
+
   # if set, enables rbac proxy on frr-k8s to expose
   # the metrics via tls.
   secureMetricsPort: 9140
