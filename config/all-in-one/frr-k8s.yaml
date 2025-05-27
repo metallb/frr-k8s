@@ -1051,7 +1051,6 @@ spec:
         - --log-level=info
         - --webhook-mode=onlywebhook
         - --namespace=$(NAMESPACE)
-        - --metrics-bind-address=:7572
         command:
         - /frr-k8s
         env:
@@ -1070,8 +1069,6 @@ spec:
           periodSeconds: 20
         name: frr-k8s-webhook-server
         ports:
-        - containerPort: 7572
-          name: monitoring
         - containerPort: 9443
           name: webhook
         readinessProbe:

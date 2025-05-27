@@ -111,7 +111,7 @@ func main() {
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	options := ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
 		Cache: cache.Options{
@@ -129,7 +129,12 @@ func main() {
 			BindAddress: metricsAddr,
 		},
 		PprofBindAddress: pprofAddr,
-	})
+	}
+	enableWebhook := webhookMode == "onlywebhook"
+	if enableWebhook {
+		options.Metrics.BindAddress = "0" // disable metrics endpoint
+	}
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -139,7 +144,6 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 
-	enableWebhook := webhookMode == "onlywebhook"
 	startListeners := make(chan struct{})
 	if enableWebhook && !disableCertRotation {
 		setupLog.Info("Starting certs generator")
