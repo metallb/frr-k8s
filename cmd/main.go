@@ -93,7 +93,7 @@ func main() {
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
-	flag.IntVar(&webhookPort, "webhook-port", 9443, "the port we listen the webhook calls on")
+	flag.IntVar(&webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
 
 	opts := zap.Options{
 		Development: true,

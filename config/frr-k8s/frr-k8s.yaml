@@ -293,7 +293,7 @@ spec:
               - ALL
           readOnlyRootFilesystem: true
         ports:
-        - containerPort: 9443
+        - containerPort: 19443
           name: webhook
         livenessProbe:
           httpGet:
