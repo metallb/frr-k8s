@@ -109,7 +109,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 										PrefixesWithLocalPref: []frrk8sv1beta1.LocalPrefPrefixes{
 											{
 												LocalPref: 200,
-												Prefixes:  []string{"10.10.10.10"},
+												Prefixes:  []string{"10.10.10.10/32"},
 											},
 										},
 									},
@@ -118,7 +118,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 						},
 					}
 				},
-				"localPref associated to non existing prefix",
+				"associated to non existing prefix",
 			),
 			ginkgo.Entry("both asn and dynamicASN not specified",
 				func(cfg *frrk8sv1beta1.FRRConfiguration) {

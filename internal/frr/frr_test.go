@@ -14,8 +14,10 @@ import (
 	"time"
 
 	"github.com/go-kit/log"
+	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 	"github.com/metallb/frr-k8s/internal/logging"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/utils/ptr"
 )
@@ -114,15 +116,9 @@ func TestSingleSession(t *testing.T) {
 						Addr:     "192.168.1.2",
 						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+								"192.170.1.0/22",
 							},
 						},
 					},
@@ -158,25 +154,18 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						KeepaliveTime: ptr.To[int64](40),
 						ConnectTime:   ptr.To(int64(10)),
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily:    ipfamily.IPv4,
-									Prefix:      "192.169.1.0/24",
-									Communities: []string{"10:169", "10:170"},
-									LocalPref:   100,
-								},
-								{
-									IPFamily:         ipfamily.IPv4,
-									Prefix:           "192.169.1.0/22",
-									Communities:      []string{"10:170"},
-									LargeCommunities: []string{"123:456:7890"},
-									LocalPref:        150,
-								},
-								{
-									IPFamily:    ipfamily.IPv4,
-									Prefix:      "192.170.1.0/22",
-									Communities: []string{"10:170"},
-								},
+							PrefixesV4: []string{"192.169.1.0/24", "192.169.1.0/22", "192.170.1.0/22"},
+							PrefixesV6: []string{},
+							CommunityPrefixesModifiers: []CommunityPrefixList{
+								communityPrefixListFor("65001@192.168.1.2", "10:169", "ip", "192.0.2.0/24"),
+								communityPrefixListFor("65001@192.168.1.2", "10:170", "ip", "192.0.2.0/24", "192.169.1.0/22", "192.170.1.0/22"),
+								communityPrefixListFor("65040@192.0.1.23", "large:123:456:7892", "ip", "192.0.2.0/24"),
+								communityPrefixListFor("65040@192.0.1.23", "20:200", "ipv6", "2001:db8::/64"),
+								communityPrefixListFor("65040@192.0.1.23", "large:123:456:7890", "ipv6", "2001:db8::/64"),
+							},
+							LocalPrefPrefixesModifiers: []LocalPrefPrefixList{
+								localPrefPrefixListFor("65001@192.168.1.2", 100, "ip", "192.0.2.0/24"),
+								localPrefPrefixListFor("65001@192.168.1.2", 150, "ip", "192.169.1.0/22"),
 							},
 						},
 					},
@@ -192,12 +181,10 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 						ASN:      "65001",
 						Addr:     "192.168.1.3",
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-							},
+							PrefixesV4:                 []string{"192.169.1.0/24"},
+							PrefixesV6:                 []string{},
+							CommunityPrefixesModifiers: []CommunityPrefixList{},
+							LocalPrefPrefixesModifiers: []LocalPrefPrefixList{},
 						},
 					},
 				},
@@ -438,16 +425,8 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24", "192.170.1.0/22"},
+							PrefixesV6: []string{},
 						},
 					},
 				},
@@ -483,12 +462,8 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: false, // Single hop
 						Outgoing: AllowedOut{
-							PrefixesV6: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db8:abcd::/48",
-								},
-							},
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
 						},
 					},
 				},
@@ -524,12 +499,8 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 						SrcAddr:  "192.168.1.50",
 						Addr:     "192.168.1.2",
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
 						},
 					},
 					{
@@ -538,12 +509,8 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV6: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db8:abcd::/48",
-								},
-							},
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
 						},
 					},
 				},
@@ -579,12 +546,8 @@ func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 						ASN:      "65001",
 						Addr:     "192.168.1.2",
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
 						},
 					},
 					{
@@ -593,12 +556,8 @@ func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV6: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db8:abcd::/48",
-								},
-							},
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
 						},
 					},
 				},
@@ -635,12 +594,8 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
 						},
 					},
 					{
@@ -649,12 +604,8 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						Addr:         "2001:db8::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV6: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db8:abcd::/48",
-								},
-							},
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
 						},
 					},
 				},
@@ -670,12 +621,8 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						ASN:      "65001",
 						Addr:     "192.170.1.2",
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.171.1.0/24",
-								},
-							},
+							PrefixesV4: []string{"192.171.1.0/24"},
+							PrefixesV6: []string{},
 						},
 					},
 					{
@@ -684,12 +631,8 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 						Addr:         "2001:db9::1",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV6: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv6,
-									Prefix:   "2001:db9:abcd::/48",
-								},
-							},
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
 						},
 					},
 				},
@@ -726,16 +669,8 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 						Addr:         "192.168.1.2",
 						EBGPMultiHop: true,
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24", "192.170.1.0/22"},
+							PrefixesV6: []string{},
 						},
 					},
 				},
@@ -920,16 +855,8 @@ func TestSingleSessionWithInternalASN(t *testing.T) {
 						Addr:     "192.168.1.2",
 						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24", "192.170.1.0/22"},
+							PrefixesV6: []string{},
 						},
 					},
 				},
@@ -962,16 +889,8 @@ func TestSingleSessionWithExternalASN(t *testing.T) {
 						Addr:     "192.168.1.2",
 						Port:     ptr.To[uint16](4567),
 						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
-							},
+							PrefixesV4: []string{"192.169.1.0/24", "192.170.1.0/22"},
+							PrefixesV6: []string{},
 						},
 					},
 				},
@@ -1002,18 +921,9 @@ func TestSingleUnnumberedSession(t *testing.T) {
 						ASN:      "external",
 						Addr:     "",
 						Iface:    "net0",
-						Port:     ptr.To[uint16](4567),
-						Outgoing: AllowedOut{
-							PrefixesV4: []OutgoingFilter{
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.169.1.0/24",
-								},
-								{
-									IPFamily: ipfamily.IPv4,
-									Prefix:   "192.170.1.0/22",
-								},
-							},
+						Port:     ptr.To[uint16](4567), Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24", "192.170.1.0/22"},
+							PrefixesV6: []string{},
 						},
 					},
 				},
@@ -1027,4 +937,41 @@ func TestSingleUnnumberedSession(t *testing.T) {
 	}
 
 	testCheckConfigFile(t)
+}
+
+func communityPrefixListFor(neigID, comm string, ipFamily string, prefixes ...string) CommunityPrefixList {
+	community, err := community.New(comm)
+	if err != nil {
+		panic(err)
+	}
+	return CommunityPrefixList{
+		PrefixList: PrefixList{
+			Name:     communityPrefixListName(neigID, community, ipFamily),
+			Prefixes: sets.New(prefixes...),
+			IPFamily: ipFamily,
+		},
+		Community: community,
+	}
+}
+
+func localPrefPrefixListFor(neigID string, localPref int, ipFamily string, prefixes ...string) LocalPrefPrefixList {
+	return LocalPrefPrefixList{
+		PrefixList: PrefixList{
+			Name:     localPrefPrefixListName(neigID, uint32(localPref), ipFamily),
+			Prefixes: sets.New(prefixes...),
+			IPFamily: ipFamily,
+		},
+		LocalPref: uint32(localPref),
+	}
+}
+
+func localPrefPrefixListName(neighborID string, localPreference uint32, ipFamily string) string {
+	return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighborID, localPreference, ipFamily)
+}
+
+func communityPrefixListName(neighborID string, comm community.BGPCommunity, ipFamily string) string {
+	if community.IsLarge(comm) {
+		return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighborID, comm, ipFamily)
+	}
+	return fmt.Sprintf("%s-%s-%s-community-prefixes", neighborID, comm, ipFamily)
 }
