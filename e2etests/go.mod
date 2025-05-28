@@ -13,7 +13,7 @@ require (
 	github.com/metallb/frr-k8s v0.0.17
 	github.com/onsi/ginkgo/v2 v2.23.4
 	github.com/onsi/gomega v1.36.3
-	github.com/openshift-kni/k8sreporter v1.0.4
+	github.com/openshift-kni/k8sreporter v1.0.7
 	github.com/prometheus/client_model v0.6.2
 	github.com/prometheus/common v0.63.0
 	go.universe.tf/e2etest v0.0.0-00010101000000-000000000000
@@ -45,7 +45,6 @@ require (
 	github.com/go-openapi/swag v0.23.1 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang/glog v1.0.0 // indirect
 	github.com/google/btree v1.1.3 // indirect
 	github.com/google/gnostic-models v0.6.9 // indirect
 	github.com/google/pprof v0.0.0-20250501235452-c0086092b71a // indirect
