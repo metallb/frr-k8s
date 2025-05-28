@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"sort"
 	"strconv"
 	"syscall"
 	"text/template"
@@ -18,7 +19,9 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
+	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"k8s.io/apimachinery/pkg/util/sets"
 )
 
 var (
@@ -95,6 +98,14 @@ func (n *NeighborConfig) ID() string {
 	return id + vrf
 }
 
+func (n *NeighborConfig) ToAdvertisePrefixListV4() string {
+	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv4")
+}
+
+func (n *NeighborConfig) ToAdvertisePrefixListV6() string {
+	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv6")
+}
+
 type AllowedIn struct {
 	All        bool
 	PrefixesV4 []IncomingFilter
@@ -106,12 +117,66 @@ func (a *AllowedIn) AllPrefixes() []IncomingFilter {
 }
 
 type AllowedOut struct {
-	PrefixesV4 []OutgoingFilter
-	PrefixesV6 []OutgoingFilter
+	PrefixesV4                 []string
+	PrefixesV6                 []string
+	LocalPrefPrefixesModifiers []LocalPrefPrefixList
+	CommunityPrefixesModifiers []CommunityPrefixList
 }
 
-func (a *AllowedOut) AllPrefixes() []OutgoingFilter {
-	return append(a.PrefixesV4, a.PrefixesV6...)
+func (a AllowedOut) PrefixLists() []PropertyPrefixList {
+	res := make([]PropertyPrefixList, len(a.LocalPrefPrefixesModifiers)+len(a.CommunityPrefixesModifiers))
+	for i, v := range a.LocalPrefPrefixesModifiers {
+		res[i] = v
+	}
+	for i, v := range a.CommunityPrefixesModifiers {
+		res[i+len(a.LocalPrefPrefixesModifiers)] = v
+	}
+	sort.Slice(res, func(i, j int) bool {
+		return res[i].PrefixListName() < res[j].PrefixListName()
+	})
+
+	return res
+}
+
+type CommunityPrefixList struct {
+	PrefixList
+	Community community.BGPCommunity
+}
+
+func (pl CommunityPrefixList) SetStatement() string {
+	if community.IsLarge(pl.Community) {
+		return fmt.Sprintf("set large-community %s additive", pl.Community.String())
+	}
+	return fmt.Sprintf("set community %s additive", pl.Community.String())
+}
+
+type PrefixList struct {
+	Name     string
+	IPFamily string
+	Prefixes sets.Set[string]
+}
+
+func (pl PrefixList) PrefixListName() string {
+	return pl.Name
+}
+
+func (pl PrefixList) SortedPrefixes() []string {
+	return sets.List(pl.Prefixes)
+}
+
+type LocalPrefPrefixList struct {
+	PrefixList
+	LocalPref uint32
+}
+
+func (pl LocalPrefPrefixList) SetStatement() string {
+	return fmt.Sprintf("set local-preference %d", pl.LocalPref)
+}
+
+type PropertyPrefixList interface {
+	SetStatement() string
+	PrefixListName() string
+	SortedPrefixes() []string
 }
 
 type IncomingFilter struct {
@@ -145,14 +210,6 @@ func (i IncomingFilter) Matcher() string {
 	return res
 }
 
-type OutgoingFilter struct {
-	IPFamily         ipfamily.Family
-	Prefix           string
-	Communities      []string
-	LargeCommunities []string
-	LocalPref        uint32
-}
-
 // templateConfig uses the template library to template
 // 'globalConfigTemplate' using 'data'.
 func templateConfig(data interface{}) (string, error) {
@@ -173,18 +230,6 @@ func templateConfig(data interface{}) (string, error) {
 			},
 			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family) bool {
 				return (string(neighbourFamily) == ipFamily || neighbourFamily == ipfamily.DualStack)
-			},
-			"localPrefPrefixList": func(neighbor *NeighborConfig, localPreference uint32) string {
-				return fmt.Sprintf("%s-%d-%s-localpref-prefixes", neighbor.ID(), localPreference, neighbor.IPFamily)
-			},
-			"communityPrefixList": func(neighbor *NeighborConfig, community string) string {
-				return fmt.Sprintf("%s-%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
-			},
-			"largeCommunityPrefixList": func(neighbor *NeighborConfig, community string) string {
-				return fmt.Sprintf("%s-large:%s-%s-community-prefixes", neighbor.ID(), community, neighbor.IPFamily)
-			},
-			"allowedPrefixList": func(neighbor *NeighborConfig) string {
-				return fmt.Sprintf("%s-pl-%s", neighbor.ID(), neighbor.IPFamily)
 			},
 			"allowedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)

@@ -1,0 +1,76 @@
+{{- define "neighborfilters" -}}
+
+{{$prefixLists:=.neighbor.Outgoing.PrefixLists}}
+{{- range $prefixList:=$prefixLists}}
+{{- range $prefix:=.SortedPrefixes }}
+{{$prefixList.IPFamily}} prefix-list {{ $prefixList.PrefixListName }} seq {{counter $prefixList.PrefixListName}} permit {{$prefix}}
+{{- end }}
+
+route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
+  match {{$prefixList.IPFamily}} address prefix-list {{$prefixList.PrefixListName }}
+  {{$prefixList.SetStatement}}
+  on-match next
+{{ end -}}
+
+{{$prefixListName:=.neighbor.ToAdvertisePrefixListV4}}
+
+{{ if not .neighbor.Outgoing.PrefixesV4 }}
+ip prefix-list {{$prefixListName}} seq {{counter $prefixListName}} deny any
+{{- end }}
+{{- range $a := .neighbor.Outgoing.PrefixesV4 }}
+ip prefix-list {{$prefixListName}} seq {{counter $prefixListName}} permit {{$a}}
+{{- end }}
+
+{{$prefixListName:=.neighbor.ToAdvertisePrefixListV6}}
+
+{{- if not .neighbor.Outgoing.PrefixesV6 }}
+ipv6 prefix-list {{$prefixListName}} seq {{counter $prefixListName}} deny any
+{{- end }}
+{{- range $a := .neighbor.Outgoing.PrefixesV6 }}
+ipv6 prefix-list {{$prefixListName}} seq {{counter $prefixListName}} permit {{$a}}
+{{- end }}
+
+route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
+  match ip address prefix-list {{.neighbor.ToAdvertisePrefixListV4}}
+
+route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{.neighbor.ToAdvertisePrefixListV6}}
+
+{{/* filtering incoming prefixes */}}
+{{$plistName:=allowedIncomingList $.neighbor}}
+{{ range $i := .neighbor.Incoming.AllPrefixes }}
+{{frrIPFamily $i.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$i.Prefix}}{{$i.Matcher}}
+{{- end }}
+
+{{- if .neighbor.Incoming.All }}
+ip prefix-list {{$plistName}} seq {{counter $plistName}} permit any
+ipv6 prefix-list {{$plistName}} seq {{counter $plistName}} permit any
+{{ else}}
+{{ if not .neighbor.Incoming.PrefixesV4 }}
+ip prefix-list {{$plistName}} seq {{counter $plistName}} deny any
+{{- end }}
+{{ if not .neighbor.Incoming.PrefixesV6 }}
+ipv6 prefix-list {{$plistName}} seq {{counter $plistName}} deny any
+{{- end }}
+{{- end}}
+
+{{- if .neighbor.AlwaysBlock}}
+
+{{ $plistName:=deniedIncomingList $.neighbor}}
+{{- range $a := .neighbor.AlwaysBlock }}
+{{frrIPFamily $a.IPFamily}} prefix-list {{$plistName}} seq {{counter $plistName}} permit {{$a.Prefix}}{{$a.Matcher}}
+{{- end }}
+
+route-map {{$.neighbor.ID}}-in deny {{counter $.neighbor.ID}}
+  match ip address prefix-list {{deniedIncomingList $.neighbor}}
+route-map {{$.neighbor.ID}}-in deny {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{deniedIncomingList $.neighbor}}
+{{- end }}
+route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
+  match ip address prefix-list {{allowedIncomingList $.neighbor}}
+route-map {{$.neighbor.ID}}-in permit {{counter $.neighbor.ID}}
+  match ipv6 address prefix-list {{allowedIncomingList $.neighbor}}
+
+
+{{- end -}}  
+

@@ -93,7 +93,7 @@ func main() {
 	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
-	flag.IntVar(&webhookPort, "webhook-port", 9443, "the port we listen the webhook calls on")
+	flag.IntVar(&webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
 
 	opts := zap.Options{
 		Development: true,
@@ -111,7 +111,7 @@ func main() {
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	options := ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
 		Cache: cache.Options{
@@ -129,7 +129,12 @@ func main() {
 			BindAddress: metricsAddr,
 		},
 		PprofBindAddress: pprofAddr,
-	})
+	}
+	enableWebhook := webhookMode == "onlywebhook"
+	if enableWebhook {
+		options.Metrics.BindAddress = "0" // disable metrics endpoint
+	}
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
 		os.Exit(1)
@@ -139,7 +144,6 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 
-	enableWebhook := webhookMode == "onlywebhook"
 	startListeners := make(chan struct{})
 	if enableWebhook && !disableCertRotation {
 		setupLog.Info("Starting certs generator")
