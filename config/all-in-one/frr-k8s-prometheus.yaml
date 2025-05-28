@@ -1082,7 +1082,6 @@ spec:
         - --log-level=info
         - --webhook-mode=onlywebhook
         - --namespace=$(NAMESPACE)
-        - --metrics-bind-address=:7572
         command:
         - /frr-k8s
         env:
@@ -1101,9 +1100,7 @@ spec:
           periodSeconds: 20
         name: frr-k8s-webhook-server
         ports:
-        - containerPort: 7572
-          name: monitoring
-        - containerPort: 9443
+        - containerPort: 19443
           name: webhook
         readinessProbe:
           httpGet:
@@ -1129,6 +1126,7 @@ spec:
         - mountPath: /tmp/k8s-webhook-server/serving-certs
           name: cert
           readOnly: true
+      hostNetwork: true
       serviceAccountName: frr-k8s-daemon
       terminationGracePeriodSeconds: 10
       tolerations:

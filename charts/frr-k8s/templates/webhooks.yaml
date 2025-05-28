@@ -43,7 +43,6 @@ spec:
         - "--restart-on-rotator-secret-refresh=true"
         {{- end }}
         - "--namespace=$(NAMESPACE)"
-        - "--metrics-bind-address=:{{ .Values.prometheus.metricsPort }}"
         env:
         - name: NAMESPACE
           valueFrom:
@@ -63,8 +62,6 @@ spec:
         ports:
         - containerPort: {{ .Values.frrk8s.webhookPort }}
           name: webhook
-        - containerPort: {{ .Values.prometheus.metricsPort }}
-          name: monitoring
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
@@ -121,6 +118,7 @@ spec:
             secretName: frr-k8s-webhook-server-cert
       serviceAccountName: {{ template "frrk8s.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
+      hostNetwork: true
 ---
 apiVersion: v1
 kind: Secret

@@ -128,7 +128,7 @@ frrk8s:
   podAnnotations: {}
   labels:
     app: frr-k8s
-  webhookPort: 9443
+  webhookPort: 19443
   livenessProbe:
     enabled: true
     failureThreshold: 3
