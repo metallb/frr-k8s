@@ -1,5 +1,12 @@
 # FRRK8s Release Notes
 
+## Release v0.0.20
+
+### New Features
+
+- FRR Configuration: don't generate the prefix lists if the neighbor is not enabled for that ip family. (#303, @fedepaol)
+- Make the webhook pod host networked so it will be possible to apply frr configurations even if some route is breaking the CNI connectivity. (#305, @fedepaol)
+
 ## Release v0.0.19
 
 ### New Features
