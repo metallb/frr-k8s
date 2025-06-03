@@ -83,7 +83,7 @@ spec:
           mountPath: /etc/frr_reloader
         env:
         - name: FRR_CONFIG_FILE
-          value: /etc/frr_reloader/frr.conf
+          value: /etc/frr_reloader/frr.conf.load
         - name: FRR_RELOADER_PID_FILE
           value: /etc/frr_reloader/reloader.pid
         - name: NODE_NAME

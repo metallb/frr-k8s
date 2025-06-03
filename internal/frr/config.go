@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	configFileName      = "/etc/frr_reloader/frr.conf"
+	configFileName      = "/etc/frr_reloader/frr.conf.load"
 	reloaderPidFileName = "/etc/frr_reloader/reloader.pid"
 	//go:embed templates/* templates/*
 	templates embed.FS
