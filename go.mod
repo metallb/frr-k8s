@@ -12,7 +12,7 @@ require (
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/prometheus/client_golang v1.22.0
 	k8s.io/api v0.33.0
-	k8s.io/apimachinery v0.33.0
+	k8s.io/apimachinery v0.33.2
 	k8s.io/client-go v0.33.0
 	k8s.io/klog v1.0.0
 	k8s.io/utils v0.0.0-20250321185631-1f6e0b77f77e
