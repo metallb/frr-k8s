@@ -158,7 +158,7 @@ frrk8s:
   frr:
     image:
       repository: quay.io/frrouting/frr
-      tag: 10.3.1
+      tag: 10.2.3
       pullPolicy:
     metricsBindAddress: 127.0.0.1
     metricsPort: 7573
