@@ -55,7 +55,7 @@ func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.In
 	Expect(err).NotTo(HaveOccurred())
 	for _, pod := range frrk8sPods {
 		podExec := executor.ForPod(pod.Namespace, pod.Name, "frr")
-		dump, err := frr.RawDump(podExec, "/etc/frr/frr.conf", "/etc/frr/frr.log")
+		dump, err := frr.RawDump(podExec, "/etc/frr/frr.conf")
 		if err != nil {
 			ginkgo.GinkgoWriter.Printf("External frr dump for pod %s failed %v", pod.Name, err)
 			continue
