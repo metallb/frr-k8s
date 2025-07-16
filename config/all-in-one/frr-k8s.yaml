@@ -683,6 +683,37 @@ rules:
   - watch
 ---
 apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s-role
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: role
+    app.kubernetes.io/part-of: frr-k8s
+  name: frr-k8s-nodestate-cleaner-role
+  namespace: frr-k8s-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frrnodestates
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
   name: frr-k8s-daemon-role
@@ -836,6 +867,27 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: frr-k8s-daemon-role
+subjects:
+- kind: ServiceAccount
+  name: frr-k8s-daemon
+  namespace: frr-k8s-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s-rolebinding
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: rolebinding
+    app.kubernetes.io/part-of: frr-k8s
+  name: frr-k8s-nodestate-cleaner-rolebinding
+  namespace: frr-k8s-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: frr-k8s-nodestate-cleaner-role
 subjects:
 - kind: ServiceAccount
   name: frr-k8s-daemon
@@ -1051,6 +1103,7 @@ spec:
         - --log-level=info
         - --webhook-mode=onlywebhook
         - --namespace=$(NAMESPACE)
+        - --enable-node-state-cleaner=true
         command:
         - /frr-k8s
         env:

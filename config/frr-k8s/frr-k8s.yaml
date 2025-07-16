@@ -278,6 +278,7 @@ spec:
         - "--log-level=info"
         - "--webhook-mode=onlywebhook"
         - "--namespace=$(NAMESPACE)"
+        - "--enable-node-state-cleaner=true"
         env:
         - name: NAMESPACE
           valueFrom:
