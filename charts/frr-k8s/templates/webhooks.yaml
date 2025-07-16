@@ -36,6 +36,7 @@ spec:
         - --log-level={{ . }}
         {{- end }}
         - "--webhook-mode=onlywebhook"
+        - "--enable-node-state-cleaner=true"
         {{- if .Values.frrk8s.disableCertRotation }}
         - "--disable-cert-rotation=true"
         {{- end }}

@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -71,11 +72,13 @@ type params struct {
 	logLevel                      string
 	nodeName                      string
 	namespace                     string
+	podName                       string
 	disableCertRotation           bool
 	restartOnRotatorSecretRefresh bool
 	certDir                       string
 	certServiceName               string
 	webhookMode                   string
+	enableNodeStateCleaner        bool
 	pprofAddr                     string
 	alwaysBlockCIDRs              string
 	webhookPort                   int
@@ -88,6 +91,7 @@ func main() {
 	flag.StringVar(&params.logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
 	flag.StringVar(&params.nodeName, "node-name", "", "The node this daemon is running on.")
 	flag.StringVar(&params.namespace, "namespace", "", "The namespace this daemon is deployed in")
+	flag.StringVar(&params.podName, "pod-name", "", "The name of the pod this process is running in")
 	flag.StringVar(&params.webhookMode, "webhook-mode", "disabled", "webhook mode: can be disabled or onlywebhook if we want the controller to act as webhook endpoint only")
 	flag.BoolVar(&params.disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
 	flag.BoolVar(&params.restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
@@ -96,6 +100,7 @@ func main() {
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&params.alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
 	flag.IntVar(&params.webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
+	flag.BoolVar(&params.enableNodeStateCleaner, "enable-node-state-cleaner", false, "enable the node state cleaner controller")
 
 	opts := zap.Options{
 		Development: true,
@@ -119,6 +124,7 @@ func main() {
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}:                  namespaceSelector,
+				&corev1.Pod{}:                     namespaceSelector,
 				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
 			},
 		},
@@ -132,7 +138,9 @@ func main() {
 		},
 		PprofBindAddress: params.pprofAddr,
 	}
+	enableFRRK8sControllers := params.webhookMode != "onlywebhook"
 	enableWebhook := params.webhookMode == "onlywebhook"
+
 	if enableWebhook {
 		options.Metrics.BindAddress = "0" // disable metrics endpoint
 	}
@@ -162,64 +170,79 @@ func main() {
 		<-startListeners
 
 		if enableWebhook {
-			setupLog.Info("Starting webhooks")
-			err := setupWebhook(mgr, logger)
-			if err != nil {
-				setupLog.Error(err, "unable to create", "webhooks")
-				os.Exit(1)
-			}
-			return // We currently support only a onlywebhook mode
+			setupWebhook(mgr, logger)
 		}
-
-		setupLog.Info("Starting controllers")
-		reloadStatusChan := make(chan event.GenericEvent)
-		reloadStatus := func() {
-			reloadStatusChan <- controller.NewStateEvent()
+		if params.enableNodeStateCleaner {
+			startNodeStateCleaner(mgr, logger)
 		}
-		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(params.logLevel))
-
-		alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
-		if err != nil {
-			setupLog.Error(err, "failed to parse the always-block parameter", "always-block", params.alwaysBlockCIDRs)
-			os.Exit(1)
-		}
-
-		dumpResources := false
-		if params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll {
-			dumpResources = true
-		}
-		configReconciler := &controller.FRRConfigurationReconciler{
-			Client:           mgr.GetClient(),
-			Scheme:           mgr.GetScheme(),
-			FRRHandler:       frrInstance,
-			Logger:           logger,
-			NodeName:         params.nodeName,
-			ReloadStatus:     reloadStatus,
-			AlwaysBlockCIDRS: alwaysBlock,
-			DumpResources:    dumpResources,
-		}
-		if err = configReconciler.SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
-			os.Exit(1)
-		}
-
-		if err = (&controller.FRRStateReconciler{
-			Client:           mgr.GetClient(),
-			Scheme:           mgr.GetScheme(),
-			FRRStatus:        frrInstance,
-			Logger:           logger,
-			NodeName:         params.nodeName,
-			Update:           reloadStatusChan,
-			ConversionResult: configReconciler,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
-			os.Exit(1)
+		if enableFRRK8sControllers {
+			startFRRControllers(ctx, mgr, params, logger)
 		}
 	}()
 
 	setupLog.Info("starting frr-k8s", "version", version.String(), "params", fmt.Sprintf("%+v", params))
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func startNodeStateCleaner(mgr manager.Manager, logger log.Logger) {
+	setupLog.Info("Starting node state cleaner controller")
+	nodeStateCleaner := &controller.NodeStateCleaner{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Logger: logger,
+	}
+	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
+		os.Exit(1)
+	}
+}
+
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger log.Logger) {
+	setupLog.Info("Starting controllers")
+	reloadStatusChan := make(chan event.GenericEvent)
+	reloadStatus := func() {
+		reloadStatusChan <- controller.NewStateEvent()
+	}
+	frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(params.logLevel))
+
+	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
+	if err != nil {
+		setupLog.Error(err, "failed to parse the always-block parameter", "always-block", params.alwaysBlockCIDRs)
+		os.Exit(1)
+	}
+
+	dumpResources := false
+	if params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll {
+		dumpResources = true
+	}
+	configReconciler := &controller.FRRConfigurationReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		FRRHandler:       frrInstance,
+		Logger:           logger,
+		NodeName:         params.nodeName,
+		ReloadStatus:     reloadStatus,
+		AlwaysBlockCIDRS: alwaysBlock,
+		DumpResources:    dumpResources,
+	}
+	if err = configReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
+		os.Exit(1)
+	}
+
+	if err = (&controller.FRRStateReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		FRRStatus:        frrInstance,
+		Logger:           logger,
+		NodeName:         params.nodeName,
+		Update:           reloadStatusChan,
+		ConversionResult: configReconciler,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 		os.Exit(1)
 	}
 }
@@ -265,7 +288,7 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager, logger log.Logger) error {
+func setupWebhook(mgr manager.Manager, logger log.Logger) {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
 	webhooks.Logger = logger
@@ -274,10 +297,8 @@ func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 
 	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
 		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
-		return err
+		os.Exit(1)
 	}
-
-	return nil
 }
 
 func parseCIDRs(cidrs string) ([]net.IPNet, error) {
