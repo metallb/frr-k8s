@@ -50,6 +50,7 @@ type FRRStateReconciler struct {
 	Update           chan event.GenericEvent
 	Logger           log.Logger
 	NodeName         string
+	PodName          string
 	FRRStatus        frr.StatusFetcher
 	ConversionResult ConversionResultFetcher
 }
@@ -90,12 +91,25 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	err := r.Client.Get(ctx, types.NamespacedName{Name: r.NodeName}, state)
 	if k8serrors.IsNotFound(err) {
 		state.Name = r.NodeName
+
+		state.Annotations = map[string]string{
+			PodNameAnnotation: r.PodName,
+		}
 		err = r.Client.Create(ctx, state)
 	}
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRStateReconciler", "failed to get", err)
 		return ctrl.Result{}, err
 	}
+
+	if state.Annotations[PodNameAnnotation] != r.PodName {
+		state.Annotations[PodNameAnnotation] = r.PodName
+		if err := r.Client.Update(ctx, state); err != nil {
+			level.Error(r.Logger).Log("controller", "FRRStateReconciler", "failed to update pod name annotation", err)
+			return ctrl.Result{}, err
+		}
+	}
+
 	frrStatus := r.FRRStatus.GetStatus()
 
 	newStatus := frrk8sv1beta1.FRRNodeStateStatus{

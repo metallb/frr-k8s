@@ -77,6 +77,7 @@ spec:
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--log-level=info"
+        - "--pod-name=$(POD_NAME)"
         ports:
         - containerPort: 7572
           name: monitoring

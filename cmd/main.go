@@ -241,6 +241,7 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		NodeName:         params.nodeName,
 		Update:           reloadStatusChan,
 		ConversionResult: configReconciler,
+		PodName:          params.podName,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 		os.Exit(1)
