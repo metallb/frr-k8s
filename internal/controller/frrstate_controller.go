@@ -130,6 +130,12 @@ func (r *FRRStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 		return true
 	})
+
+	// Trigger initial reconcile event to create empty status
+	go func() {
+		r.Update <- NewStateEvent()
+	}()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.FRRNodeState{}).
 		WatchesRawSource(source.Channel(r.Update, &handler.EnqueueRequestForObject{})).
