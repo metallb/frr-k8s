@@ -24,6 +24,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	clientset "k8s.io/client-go/kubernetes"
 )
 
@@ -347,6 +348,95 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 					return nil
 				})
 			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred())
+		})
+	})
+
+	ginkgo.Context("Node state cleaner functionality", func() {
+		const podNameAnnotation = "frrk8s.metallb.io/pod-name"
+
+		ginkgo.It("should delete FRRNodeState when corresponding pod is deleted", func() {
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Verifying all node states exist with pod annotations")
+			statuses := frrk8sv1beta1.FRRNodeStateList{}
+			err = cl.List(context.Background(), &statuses)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(statuses.Items)).To(Equal(len(nodes)))
+
+			for _, status := range statuses.Items {
+				Expect(status.Annotations).NotTo(BeNil())
+				Expect(status.Annotations[podNameAnnotation]).NotTo(BeEmpty())
+			}
+
+			ginkgo.By(fmt.Sprintf("Finding frr-k8s pod on first node %s to delete", nodes[0].Name))
+			podToDelete, err := k8s.FRRK8sPodOnNode(cs, nodes[0].Name)
+			Expect(err).NotTo(HaveOccurred())
+			ginkgo.By(fmt.Sprintf("Deleting pod %s", podToDelete.Name))
+
+			err = cs.CoreV1().Pods(k8s.FRRK8sNamespace).Delete(context.Background(), podToDelete.Name, metav1.DeleteOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() bool {
+				_, err := cs.CoreV1().Pods(k8s.FRRK8sNamespace).Get(context.Background(), podToDelete.Name, metav1.GetOptions{})
+				return errors.IsNotFound(err)
+			}, time.Minute, time.Second).Should(BeTrue())
+
+			ginkgo.By("Waiting for FRRNodeState to be deleted")
+			Eventually(func() error {
+				statuses := frrk8sv1beta1.FRRNodeStateList{}
+				err := cl.List(context.Background(), &statuses)
+				if err != nil {
+					return err
+				}
+
+				for _, status := range statuses.Items {
+					if podName, exists := status.Annotations[podNameAnnotation]; exists && podName == podToDelete.Name {
+						return fmt.Errorf("FRRNodeState for pod %s still exists", podToDelete.Name)
+					}
+				}
+				return nil
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Verifying other node states still exist")
+			remainingStatuses := frrk8sv1beta1.FRRNodeStateList{}
+			err = cl.List(context.Background(), &remainingStatuses)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(remainingStatuses.Items)).To(BeNumerically(">", 0))
+
+			for _, status := range remainingStatuses.Items {
+				if podName, exists := status.Annotations[podNameAnnotation]; exists {
+					Expect(podName).NotTo(Equal(podToDelete.Name))
+				}
+			}
+
+			ginkgo.By(fmt.Sprintf("Waiting for new pod to be created on node %s", nodes[0].Name))
+			var newPod *corev1.Pod
+			Eventually(func() error {
+				pod, err := k8s.FRRK8sPodOnNode(cs, nodes[0].Name)
+				if err != nil {
+					return err
+				}
+				if pod.Name == podToDelete.Name {
+					return fmt.Errorf("pod %s still exists, waiting for replacement", podToDelete.Name)
+				}
+				newPod = pod
+				return nil
+			}, 3*time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By(fmt.Sprintf("Verifying empty FRRNodeState status is created for node %s with new pod annotation", nodes[0].Name))
+			Eventually(func() error {
+				status := &frrk8sv1beta1.FRRNodeState{}
+				err := cl.Get(context.Background(), types.NamespacedName{Name: nodes[0].Name}, status)
+				if err != nil {
+					return err
+				}
+
+				if podName, exists := status.Annotations[podNameAnnotation]; !exists || podName != newPod.Name {
+					return fmt.Errorf("FRRNodeState pod annotation does not match new pod. Expected: %s, Got: %s", newPod.Name, podName)
+				}
+				return nil
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 		})
 	})
 })
