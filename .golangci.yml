@@ -18,8 +18,6 @@ linters:
     - wastedassign
     - whitespace
   settings:
-    govet:
-      check-shadowing: true
     errcheck:
       exclude-functions:
         - (github.com/go-kit/log.Logger).Log
