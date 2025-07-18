@@ -182,10 +182,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		dumpResources := false
-		if logLevel == logging.LevelDebug || logLevel == logging.LevelAll {
-			dumpResources = true
-		}
+		dumpResources := logLevel == logging.LevelDebug || logLevel == logging.LevelAll
 		configReconciler := &controller.FRRConfigurationReconciler{
 			Client:           mgr.GetClient(),
 			Scheme:           mgr.GetScheme(),
