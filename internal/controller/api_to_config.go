@@ -643,7 +643,6 @@ func joinRawConfigs(raw []namedRawConfig) string {
 func alwaysBlockToFRR(cidrs []net.IPNet) []frr.IncomingFilter {
 	res := make([]frr.IncomingFilter, 0, len(cidrs))
 	for _, c := range cidrs {
-		c := c // to make go sec happy
 		filter := frr.IncomingFilter{IPFamily: ipfamily.ForCIDR(&c), Prefix: c.String()}
 		filter.LE = uint32(32)
 		if filter.IPFamily == ipfamily.IPv6 {

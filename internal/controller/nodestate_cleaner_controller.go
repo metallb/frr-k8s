@@ -36,7 +36,7 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	defer level.Info(r.Logger).Log("controller", "NodeStateCleaner", "end reconcile", req.String())
 
 	pods := &corev1.PodList{}
-	if err := r.Client.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabels(map[string]string{
+	if err := r.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabels(map[string]string{
 		"app.kubernetes.io/component": "frr-k8s",
 	})); err != nil {
 		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to list FRR-K8s pods", err)
@@ -49,7 +49,7 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	}
 
 	frrNodeStates := &frrk8sv1beta1.FRRNodeStateList{}
-	if err := r.Client.List(ctx, frrNodeStates); err != nil {
+	if err := r.List(ctx, frrNodeStates); err != nil {
 		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to list FRRNodeStates", err)
 		return ctrl.Result{}, err
 	}
@@ -58,7 +58,7 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	for _, nodeState := range frrNodeStates.Items {
 		if _, hasFRRPods := nodesWithFRRPods[nodeState.Name]; !hasFRRPods {
 			level.Info(r.Logger).Log("controller", "NodeStateCleaner", "deleting FRRNodeState", "name", nodeState.Name, "reason", "no FRR pods on node")
-			if err := r.Client.Delete(ctx, &nodeState); err != nil {
+			if err := r.Delete(ctx, &nodeState); err != nil {
 				level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to delete FRRNodeState", "name", nodeState.Name, "error", err)
 				errors = append(errors, fmt.Errorf("failed to delete FRRNodeState %s: %w", nodeState.Name, err))
 			}

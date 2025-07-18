@@ -148,10 +148,7 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		os.Exit(1)
 	}
 
-	dumpResources := false
-	if params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll {
-		dumpResources = true
-	}
+	dumpResources := params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll
 	configReconciler := &controller.FRRConfigurationReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
