@@ -80,18 +80,18 @@ func (ps peersStatus) remove(peer string) {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "BGPSessionState", "start reconcile", req.NamespacedName.String())
-	defer level.Info(r.Logger).Log("controller", "BGPSessionState", "end reconcile", req.NamespacedName.String())
+	level.Info(r.Logger).Log("controller", "BGPSessionState", "start reconcile", req.String())
+	defer level.Info(r.Logger).Log("controller", "BGPSessionState", "end reconcile", req.String())
 
 	l := frrk8sv1beta1.BGPSessionStateList{}
-	err := r.Client.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})
+	err := r.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	states, duplicates := peersStatusPerVRF(l.Items)
 	for _, s := range duplicates {
-		err := r.Client.Delete(ctx, &s)
+		err := r.Delete(ctx, &s)
 		if err != nil && !apierrors.IsNotFound(err) {
 			return ctrl.Result{}, err
 		}
@@ -107,7 +107,7 @@ func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 
 	errs := []error{}
 	for _, s := range toRemove { // delete the existing statuses that belong to non-existing neighbors
-		err := r.Client.Delete(ctx, s)
+		err := r.Delete(ctx, s)
 		if err != nil && !apierrors.IsNotFound(err) {
 			errs = append(errs, err)
 		}
