@@ -46,6 +46,7 @@ spec:
         - "--node-name=$(NODE_NAME)"
         - "--log-level=info"
         - "--namespace=$(NAMESPACE)"
+        - "--pod-name=$(POD_NAME)"
         image: controller:latest
         imagePullPolicy: IfNotPresent
         name: frr-k8s
@@ -94,6 +95,10 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
       - name: frr
         securityContext:
           capabilities:
@@ -278,6 +283,7 @@ spec:
         - "--log-level=info"
         - "--webhook-mode=onlywebhook"
         - "--namespace=$(NAMESPACE)"
+        - "--enable-node-state-cleaner=true"
         env:
         - name: NAMESPACE
           valueFrom:

@@ -1,0 +1,12 @@
+namespace: frr-k8s-system
+
+resources:
+- ../../prometheus
+
+patches:
+- path: frr-k8s_testenv_patch.yaml
+  target:
+    kind: DaemonSet
+    name: frr-k8s-daemon
+  options:
+    allowNameChange: false

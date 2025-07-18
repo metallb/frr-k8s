@@ -89,6 +89,7 @@ var _ = BeforeSuite(func() {
 		FRRStatus:        fakeStatus,
 		Logger:           log.NewNopLogger(),
 		NodeName:         testNodeName,
+		PodName:          "test-pod",
 		ConversionResult: fakeConversionRes,
 		Update:           updateChan,
 	}).SetupWithManager(k8sManager)

@@ -8,6 +8,8 @@ resources:
 - role.yaml
 - secrets_role.yaml
 - role_binding.yaml
+- nodestate_cleaner_role.yaml
+- nodestate_cleaner_role_binding.yaml
 # Comment the following 4 lines if you want to disable
 # the auth proxy (https://github.com/brancz/kube-rbac-proxy)
 # which protects your /metrics endpoint.

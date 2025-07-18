@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"net"
@@ -66,34 +67,40 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
-func main() {
-	var (
-		metricsAddr                   string
-		logLevel                      string
-		nodeName                      string
-		namespace                     string
-		disableCertRotation           bool
-		restartOnRotatorSecretRefresh bool
-		certDir                       string
-		certServiceName               string
-		webhookMode                   string
-		pprofAddr                     string
-		alwaysBlockCIDRs              string
-		webhookPort                   int
-	)
+type params struct {
+	metricsAddr                   string
+	logLevel                      string
+	nodeName                      string
+	namespace                     string
+	podName                       string
+	disableCertRotation           bool
+	restartOnRotatorSecretRefresh bool
+	certDir                       string
+	certServiceName               string
+	webhookMode                   string
+	enableNodeStateCleaner        bool
+	pprofAddr                     string
+	alwaysBlockCIDRs              string
+	webhookPort                   int
+}
 
-	flag.StringVar(&metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
-	flag.StringVar(&logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
-	flag.StringVar(&nodeName, "node-name", "", "The node this daemon is running on.")
-	flag.StringVar(&namespace, "namespace", "", "The namespace this daemon is deployed in")
-	flag.StringVar(&webhookMode, "webhook-mode", "disabled", "webhook mode: can be disabled or onlywebhook if we want the controller to act as webhook endpoint only")
-	flag.BoolVar(&disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
-	flag.BoolVar(&restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
-	flag.StringVar(&certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
-	flag.StringVar(&certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
-	flag.StringVar(&pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
-	flag.StringVar(&alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
-	flag.IntVar(&webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
+func main() {
+	params := params{}
+
+	flag.StringVar(&params.metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
+	flag.StringVar(&params.logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
+	flag.StringVar(&params.nodeName, "node-name", "", "The node this daemon is running on.")
+	flag.StringVar(&params.namespace, "namespace", "", "The namespace this daemon is deployed in")
+	flag.StringVar(&params.podName, "pod-name", "", "The name of the pod this process is running in")
+	flag.StringVar(&params.webhookMode, "webhook-mode", "disabled", "webhook mode: can be disabled or onlywebhook if we want the controller to act as webhook endpoint only")
+	flag.BoolVar(&params.disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
+	flag.BoolVar(&params.restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
+	flag.StringVar(&params.certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
+	flag.StringVar(&params.certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
+	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
+	flag.StringVar(&params.alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
+	flag.IntVar(&params.webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
+	flag.BoolVar(&params.enableNodeStateCleaner, "enable-node-state-cleaner", false, "enable the node state cleaner controller")
 
 	opts := zap.Options{
 		Development: true,
@@ -101,14 +108,14 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(logLevel)
+	logger, err := logging.Init(params.logLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
 	}
 
 	namespaceSelector := cache.ByObject{
-		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
 	}
 
 	options := ctrl.Options{
@@ -117,20 +124,23 @@ func main() {
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}:                  namespaceSelector,
+				&corev1.Pod{}:                     namespaceSelector,
 				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
 			},
 		},
 		WebhookServer: webhook.NewServer(
 			webhook.Options{
-				Port: webhookPort,
+				Port: params.webhookPort,
 			},
 		),
 		Metrics: metricsserver.Options{
-			BindAddress: metricsAddr,
+			BindAddress: params.metricsAddr,
 		},
-		PprofBindAddress: pprofAddr,
+		PprofBindAddress: params.pprofAddr,
 	}
-	enableWebhook := webhookMode == "onlywebhook"
+	enableFRRK8sControllers := params.webhookMode != "onlywebhook"
+	enableWebhook := params.webhookMode == "onlywebhook"
+
 	if enableWebhook {
 		options.Metrics.BindAddress = "0" // disable metrics endpoint
 	}
@@ -145,9 +155,9 @@ func main() {
 	//+kubebuilder:scaffold:builder
 
 	startListeners := make(chan struct{})
-	if enableWebhook && !disableCertRotation {
+	if enableWebhook && !params.disableCertRotation {
 		setupLog.Info("Starting certs generator")
-		err = setupCertRotation(startListeners, mgr, logger, namespace, certDir, certServiceName, restartOnRotatorSecretRefresh)
+		err = setupCertRotation(startListeners, mgr, logger, params.namespace, params.certDir, params.certServiceName, params.restartOnRotatorSecretRefresh)
 		if err != nil {
 			setupLog.Error(err, "unable to set up cert rotator")
 			os.Exit(1)
@@ -160,64 +170,80 @@ func main() {
 		<-startListeners
 
 		if enableWebhook {
-			setupLog.Info("Starting webhooks")
-			err := setupWebhook(mgr, logger)
-			if err != nil {
-				setupLog.Error(err, "unable to create", "webhooks")
-				os.Exit(1)
-			}
-			return // We currently support only a onlywebhook mode
+			setupWebhook(mgr, logger)
 		}
-
-		setupLog.Info("Starting controllers")
-		reloadStatusChan := make(chan event.GenericEvent)
-		reloadStatus := func() {
-			reloadStatusChan <- controller.NewStateEvent()
+		if params.enableNodeStateCleaner {
+			startNodeStateCleaner(mgr, logger)
 		}
-		frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(logLevel))
-
-		alwaysBlock, err := parseCIDRs(alwaysBlockCIDRs)
-		if err != nil {
-			setupLog.Error(err, "failed to parse the always-block parameter", "always-block", alwaysBlockCIDRs)
-			os.Exit(1)
-		}
-
-		dumpResources := false
-		if logLevel == logging.LevelDebug || logLevel == logging.LevelAll {
-			dumpResources = true
-		}
-		configReconciler := &controller.FRRConfigurationReconciler{
-			Client:           mgr.GetClient(),
-			Scheme:           mgr.GetScheme(),
-			FRRHandler:       frrInstance,
-			Logger:           logger,
-			NodeName:         nodeName,
-			ReloadStatus:     reloadStatus,
-			AlwaysBlockCIDRS: alwaysBlock,
-			DumpResources:    dumpResources,
-		}
-		if err = configReconciler.SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
-			os.Exit(1)
-		}
-
-		if err = (&controller.FRRStateReconciler{
-			Client:           mgr.GetClient(),
-			Scheme:           mgr.GetScheme(),
-			FRRStatus:        frrInstance,
-			Logger:           logger,
-			NodeName:         nodeName,
-			Update:           reloadStatusChan,
-			ConversionResult: configReconciler,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
-			os.Exit(1)
+		if enableFRRK8sControllers {
+			startFRRControllers(ctx, mgr, params, logger)
 		}
 	}()
 
-	setupLog.Info("starting frr-k8s", "version", version.String())
+	setupLog.Info("starting frr-k8s", "version", version.String(), "params", fmt.Sprintf("%+v", params))
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func startNodeStateCleaner(mgr manager.Manager, logger log.Logger) {
+	setupLog.Info("Starting node state cleaner controller")
+	nodeStateCleaner := &controller.NodeStateCleaner{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Logger: logger,
+	}
+	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
+		os.Exit(1)
+	}
+}
+
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger log.Logger) {
+	setupLog.Info("Starting controllers")
+	reloadStatusChan := make(chan event.GenericEvent)
+	reloadStatus := func() {
+		reloadStatusChan <- controller.NewStateEvent()
+	}
+	frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(params.logLevel))
+
+	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
+	if err != nil {
+		setupLog.Error(err, "failed to parse the always-block parameter", "always-block", params.alwaysBlockCIDRs)
+		os.Exit(1)
+	}
+
+	dumpResources := false
+	if params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll {
+		dumpResources = true
+	}
+	configReconciler := &controller.FRRConfigurationReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		FRRHandler:       frrInstance,
+		Logger:           logger,
+		NodeName:         params.nodeName,
+		ReloadStatus:     reloadStatus,
+		AlwaysBlockCIDRS: alwaysBlock,
+		DumpResources:    dumpResources,
+	}
+	if err = configReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
+		os.Exit(1)
+	}
+
+	if err = (&controller.FRRStateReconciler{
+		Client:           mgr.GetClient(),
+		Scheme:           mgr.GetScheme(),
+		FRRStatus:        frrInstance,
+		Logger:           logger,
+		NodeName:         params.nodeName,
+		Update:           reloadStatusChan,
+		ConversionResult: configReconciler,
+		PodName:          params.podName,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
 		os.Exit(1)
 	}
 }
@@ -263,7 +289,7 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager, logger log.Logger) error {
+func setupWebhook(mgr manager.Manager, logger log.Logger) {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
 	webhooks.Logger = logger
@@ -272,10 +298,8 @@ func setupWebhook(mgr manager.Manager, logger log.Logger) error {
 
 	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
 		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
-		return err
+		os.Exit(1)
 	}
-
-	return nil
 }
 
 func parseCIDRs(cidrs string) ([]net.IPNet, error) {
