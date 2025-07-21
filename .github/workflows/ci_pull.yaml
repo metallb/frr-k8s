@@ -1,0 +1,19 @@
+name: PR
+
+on:
+  merge_group:
+  pull_request:
+    paths-ignore:
+      - 'DCO'
+      - 'LICENSE'
+      - 'README.md'
+      - 'HOW_TO_RELEASE.md'
+      - 'RELEASE_NOTES.md'
+    branches:
+      - "main"
+      - "v**"
+  workflow_dispatch:
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yaml
