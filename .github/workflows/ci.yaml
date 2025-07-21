@@ -253,6 +253,7 @@ jobs:
           --set controller.image.tag=main --set speaker.image.tag=main \
           --set prometheus.serviceMonitor.enabled=true --set prometheus.secureMetricsPort=9120 \
           --set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring \
+          --set networkpolicies.enabled=true --set networkpolicies.defaultDeny=true \
           "
           helm install metallb ${helm_args} .
           kubectl wait -n metallb-system --for=condition=Ready pod -l "app.kubernetes.io/name=metallb" --timeout=300s
