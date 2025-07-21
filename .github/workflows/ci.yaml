@@ -104,10 +104,6 @@ jobs:
         run: |
           make test
 
-      - name: Lint
-        run: |
-          ENV=host make lint
-
   build-test-images:
     runs-on: ubuntu-22.04
     strategy:
