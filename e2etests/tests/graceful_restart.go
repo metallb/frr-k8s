@@ -29,7 +29,9 @@ import (
 	clientset "k8s.io/client-go/kubernetes"
 )
 
-var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func() {
+// GracefulRestart E2E test is disabled until we resolve issue
+// https://github.com/metallb/frr-k8s/issues/326
+var _ = ginkgo.XDescribe("Establish BGP session with EnableGracefulRestart", func() {
 	var (
 		cs       clientset.Interface
 		updater  *config.Updater
