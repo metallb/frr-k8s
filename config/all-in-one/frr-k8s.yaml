@@ -1071,7 +1071,7 @@ spec:
   - port: 443
     targetPort: webhook
   selector:
-    control-plane: webhook-server
+    control-plane: statuscleaner
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1083,29 +1083,27 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
-    control-plane: webhook-server
-  name: frr-k8s-webhook-server
+    control-plane: statuscleaner
+  name: frr-k8s-statuscleaner
   namespace: frr-k8s-system
 spec:
   selector:
     matchLabels:
-      control-plane: webhook-server
+      control-plane: statuscleaner
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
         app: frr-k8s-webhook-server
-        control-plane: webhook-server
+        control-plane: statuscleaner
     spec:
       containers:
       - args:
         - --log-level=info
-        - --webhook-mode=onlywebhook
         - --namespace=$(NAMESPACE)
-        - --enable-node-state-cleaner=true
         command:
-        - /frr-k8s
+        - /statuscleaner
         env:
         - name: NAMESPACE
           valueFrom:

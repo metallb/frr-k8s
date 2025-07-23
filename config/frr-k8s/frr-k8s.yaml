@@ -250,10 +250,10 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webhook-server
+  name: statuscleaner
   namespace: system
   labels:
-    control-plane: webhook-server
+    control-plane: statuscleaner
     app.kubernetes.io/name: frr-k8s
     app.kubernetes.io/instance: frr-k8s
     app.kubernetes.io/component: frr-k8s
@@ -263,23 +263,21 @@ metadata:
 spec:
   selector:
     matchLabels:
-      control-plane: webhook-server
+      control-plane: statuscleaner
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
-        control-plane: webhook-server
+        control-plane: statuscleaner
         app: frr-k8s-webhook-server
     spec:
       containers:
       - command:
-        - /frr-k8s
+        - /statuscleaner
         args:
         - "--log-level=info"
-        - "--webhook-mode=onlywebhook"
         - "--namespace=$(NAMESPACE)"
-        - "--enable-node-state-cleaner=true"
         env:
         - name: NAMESPACE
           valueFrom:

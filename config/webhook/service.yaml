@@ -8,4 +8,4 @@ spec:
     - port: 443
       targetPort: webhook
   selector:
-    control-plane: webhook-server
+    control-plane: statuscleaner
