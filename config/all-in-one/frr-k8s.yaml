@@ -1134,6 +1134,7 @@ spec:
         kubectl.kubernetes.io/default-container: frr-k8s
       labels:
         app: frr-k8s
+        app.kubernetes.io/component: frr-k8s
         control-plane: frr-k8s
     spec:
       affinity:
