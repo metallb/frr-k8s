@@ -685,6 +685,37 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
 metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s-role
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: role
+    app.kubernetes.io/part-of: frr-k8s
+  name: frr-k8s-nodestate-cleaner-role
+  namespace: frr-k8s-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frrnodestates
+  verbs:
+  - get
+  - list
+  - watch
+  - delete
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
   name: prometheus-k8s
   namespace: frr-k8s-system
 rules:
@@ -853,6 +884,27 @@ roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: Role
   name: frr-k8s-daemon-role
+subjects:
+- kind: ServiceAccount
+  name: frr-k8s-daemon
+  namespace: frr-k8s-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  labels:
+    app.kubernetes.io/component: rbac
+    app.kubernetes.io/created-by: frr-k8s
+    app.kubernetes.io/instance: frr-k8s-rolebinding
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: rolebinding
+    app.kubernetes.io/part-of: frr-k8s
+  name: frr-k8s-nodestate-cleaner-rolebinding
+  namespace: frr-k8s-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: frr-k8s-nodestate-cleaner-role
 subjects:
 - kind: ServiceAccount
   name: frr-k8s-daemon
@@ -1050,7 +1102,7 @@ spec:
   - port: 443
     targetPort: webhook
   selector:
-    control-plane: webhook-server
+    control-plane: statuscleaner
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -1062,28 +1114,27 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
-    control-plane: webhook-server
-  name: frr-k8s-webhook-server
+    control-plane: statuscleaner
+  name: frr-k8s-statuscleaner
   namespace: frr-k8s-system
 spec:
   selector:
     matchLabels:
-      control-plane: webhook-server
+      control-plane: statuscleaner
   template:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
         app: frr-k8s-webhook-server
-        control-plane: webhook-server
+        control-plane: statuscleaner
     spec:
       containers:
       - args:
         - --log-level=info
-        - --webhook-mode=onlywebhook
         - --namespace=$(NAMESPACE)
         command:
-        - /frr-k8s
+        - /statuscleaner
         env:
         - name: NAMESPACE
           valueFrom:
@@ -1165,6 +1216,7 @@ spec:
         kubectl.kubernetes.io/default-container: frr-k8s
       labels:
         app: frr-k8s
+        app.kubernetes.io/component: frr-k8s
         control-plane: frr-k8s
     spec:
       affinity:

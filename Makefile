@@ -164,10 +164,7 @@ deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster spe
 	$(KUBECTL) -n ${NAMESPACE} delete ds frr-k8s-daemon || true
 	$(KUBECTL) -n ${NAMESPACE} delete deployment frr-k8s-webhook-server || true
 
-	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | \
-		sed '/--log-level/a\        - --always-block=192.167.9.0/24,fc00:f553:ccd:e799::/64' |\
-		sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' |\
-		sed '/--pod-name/a\        - --poll-interval=5s' | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build config/testenv/$(KUSTOMIZE_LAYER) | $(KUBECTL) apply -f -
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n ${NAMESPACE} wait --for=condition=Ready --all pods --timeout 300s
 
