@@ -73,7 +73,6 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 		}
 		err = updater.Clean()
 		Expect(err).NotTo(HaveOccurred())
-		waitForFRRCleanState(cl) // TODO: remove when we move to FRR 10.x
 
 		cs = k8sclient.New()
 	})
@@ -104,7 +103,6 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			noBFD      bfdState = "N/A"
 			bfdDown    bfdState = "Down"
 			bfdUp      bfdState = "Up"
-			bfdUnknown bfdState = "Unknown"
 		)
 		bgpTryingToConnect := bgpPhase{sets.New("Idle", "Connect", "Active")}
 		bgpEstablished := bgpPhase{sets.New("Established")}
@@ -209,9 +207,9 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			err = updater.Update([]corev1.Secret{}, conf)
 			Expect(err).NotTo(HaveOccurred())
 
-			ginkgo.By("Verifying the statuses are updated with BFD unknown")
+			ginkgo.By("Verifying the statuses are updated with BFD down")
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes, "", bgpTryingToConnect, bfdUnknown)
+				return validateStatusForAll(neighbors, nodes, "", bgpTryingToConnect, bfdDown)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Updating the config to target all nodes but the first")
@@ -235,7 +233,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				return validateNoStatusForAll(neighbors, []corev1.Node{nodes[0]}, "")
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes[1:], "", bgpTryingToConnect, bfdUnknown)
+				return validateStatusForAll(neighbors, nodes[1:], "", bgpTryingToConnect, bfdDown)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 		})
 
@@ -494,23 +492,4 @@ func statusFormatFor(ip string) string {
 
 func ipFor(statusIP string) string {
 	return strings.ReplaceAll(statusIP, "-", ":")
-}
-
-// Ensures that all the frr-k8s daemons run a clean FRR config.
-// TODO: this is needed for a CI flake, remove once we move to FRR 10.x
-func waitForFRRCleanState(cl client.Client) {
-	ginkgo.GinkgoHelper()
-	Eventually(func() error {
-		statuses := frrk8sv1beta1.FRRNodeStateList{}
-		err := cl.List(context.Background(), &statuses)
-		if err != nil {
-			return err
-		}
-		for _, status := range statuses.Items {
-			if strings.Contains(status.Status.RunningConfig, "router bgp") {
-				return fmt.Errorf("node %s has a non-clean config: \n %v", status.Name, status)
-			}
-		}
-		return nil
-	}, 2*time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 }
