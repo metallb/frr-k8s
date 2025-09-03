@@ -82,15 +82,15 @@ type ConversionResultFetcher interface {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "FRRStateReconciler", "start reconcile", req.NamespacedName.String())
-	defer level.Info(r.Logger).Log("controller", "FRRStateReconciler", "end reconcile", req.NamespacedName.String())
+	level.Info(r.Logger).Log("controller", "FRRStateReconciler", "start reconcile", req.String())
+	defer level.Info(r.Logger).Log("controller", "FRRStateReconciler", "end reconcile", req.String())
 
 	state := &frrk8sv1beta1.FRRNodeState{}
 
-	err := r.Client.Get(ctx, types.NamespacedName{Name: r.NodeName}, state)
+	err := r.Get(ctx, types.NamespacedName{Name: r.NodeName}, state)
 	if k8serrors.IsNotFound(err) {
 		state.Name = r.NodeName
-		err = r.Client.Create(ctx, state)
+		err = r.Create(ctx, state)
 	}
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRStateReconciler", "failed to get", err)
@@ -130,6 +130,12 @@ func (r *FRRStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		}
 		return true
 	})
+
+	// Trigger initial reconcile event to create empty status
+	go func() {
+		r.Update <- NewStateEvent()
+	}()
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.FRRNodeState{}).
 		WatchesRawSource(source.Channel(r.Update, &handler.EnqueueRequestForObject{})).

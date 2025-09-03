@@ -349,7 +349,144 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred())
 		})
 	})
+
+	ginkgo.Context("Node state cleaner functionality", func() {
+		ginkgo.It("should delete FRRNodeState when node has no FRR-K8s pods", func() {
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Verifying all node states exist")
+			statuses := frrk8sv1beta1.FRRNodeStateList{}
+			err = cl.List(context.Background(), &statuses)
+			Expect(err).NotTo(HaveOccurred())
+			initialStatusCount := len(statuses.Items)
+			Expect(initialStatusCount).To(Equal(len(nodes)))
+
+			ginkgo.By("Creating a FRRNodeState for a node without FRR-K8s pods")
+			orphanedNodeName := "orphaned-node-without-frr-pods"
+			orphanedNodeState := &frrk8sv1beta1.FRRNodeState{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: orphanedNodeName,
+				},
+			}
+			err = cl.Create(context.Background(), orphanedNodeState)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Waiting for orphaned FRRNodeState to be deleted")
+			Eventually(func() error {
+				statuses := frrk8sv1beta1.FRRNodeStateList{}
+				err := cl.List(context.Background(), &statuses)
+				if err != nil {
+					return err
+				}
+
+				for _, status := range statuses.Items {
+					if status.Name == orphanedNodeName {
+						return fmt.Errorf("FRRNodeState for node %s without FRR-K8s pods still exists", orphanedNodeName)
+					}
+				}
+				return nil
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+		})
+
+		ginkgo.It("should remove and restore FRRNodeState when daemonset nodeSelector changes", func() {
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(len(nodes)).To(BeNumerically(">=", 2), "Need at least 2 nodes for this test")
+
+			excludedNode := nodes[0]
+			remainingNodes := nodes[1:]
+
+			ginkgo.By("Patching daemonset to exclude the first node")
+			daemonSet, err := k8s.FRRK8sDaemonSet(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			excludedNode.Labels["test-exclude"] = "true"
+			_, err = cs.CoreV1().Nodes().Update(context.Background(), &excludedNode, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			daemonSet.Spec.Template.Spec.Affinity = &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{
+								MatchExpressions: []corev1.NodeSelectorRequirement{
+									{
+										Key:      "test-exclude",
+										Operator: corev1.NodeSelectorOpNotIn,
+										Values:   []string{"true"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			_, err = cs.AppsV1().DaemonSets(k8s.FRRK8sNamespace).Update(context.Background(), daemonSet, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Waiting for FRRNodeState to be deleted for excluded node")
+			Eventually(func() error {
+				return validateStateForNode(cl, excludedNode.Name, DoesNotExist)
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Verifying FRRNodeStates still exist for remaining nodes")
+			Eventually(func() error {
+				for _, node := range remainingNodes {
+					if err := validateStateForNode(cl, node.Name, Exists); err != nil {
+						return err
+					}
+				}
+				return nil
+			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Reverting daemonset configuration back to original")
+			daemonSet, err = k8s.FRRK8sDaemonSet(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			daemonSet.Spec.Template.Spec.Affinity = nil
+
+			_, err = cs.AppsV1().DaemonSets(k8s.FRRK8sNamespace).Update(context.Background(), daemonSet, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Waiting for FRRNodeState to be restored for the previously excluded node")
+			Eventually(func() error {
+				return validateStateForNode(cl, excludedNode.Name, Exists)
+			}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Cleaning up test label from node")
+			excludedNodePtr, err := cs.CoreV1().Nodes().Get(context.Background(), excludedNode.Name, metav1.GetOptions{})
+			Expect(err).NotTo(HaveOccurred())
+
+			delete(excludedNodePtr.Labels, "test-exclude")
+			_, err = cs.CoreV1().Nodes().Update(context.Background(), excludedNodePtr, metav1.UpdateOptions{})
+			Expect(err).NotTo(HaveOccurred())
+		})
+	})
 })
+
+func validateStateForNode(cl client.Client, nodeName string, shouldExist bool) error {
+	statuses := frrk8sv1beta1.FRRNodeStateList{}
+	err := cl.List(context.Background(), &statuses)
+	if err != nil {
+		return err
+	}
+
+	for _, status := range statuses.Items {
+		if status.Name == nodeName {
+			if !shouldExist {
+				return fmt.Errorf("FRRNodeState for node %s exists but should not", nodeName)
+			}
+			return nil
+		}
+	}
+
+	if shouldExist {
+		return fmt.Errorf("FRRNodeState for node %s not found but should exist", nodeName)
+	}
+	return nil
+}
 
 func nodeMatchesStatus(cl client.Client, nodeName string, validate func(status frrk8sv1beta1.FRRNodeState) error) error {
 	statuses := frrk8sv1beta1.FRRNodeStateList{}
@@ -366,6 +503,8 @@ func nodeMatchesStatus(cl client.Client, nodeName string, validate func(status f
 const (
 	Contains       = true
 	DoesNotContain = false
+	Exists         = true
+	DoesNotExist   = false
 )
 
 func stringMatches(toCheck string, mustContain bool, values ...string) error {

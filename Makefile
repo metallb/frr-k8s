@@ -115,6 +115,7 @@ KUBECTL ?= $(LOCALBIN)/kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 GINKGO ?= $(LOCALBIN)/ginkgo
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 HELM ?= $(LOCALBIN)/helm
 KUBECONFIG_PATH ?= $(LOCALBIN)/kubeconfig
@@ -126,6 +127,7 @@ KUSTOMIZE_VERSION ?= v5.0.0
 CONTROLLER_TOOLS_VERSION ?= v0.14.0
 KUBECTL_VERSION ?= v1.27.0
 GINKGO_VERSION ?= v2.19.0
+GOLANGCI_LINT_VERSION ?= v2.2.2
 KIND_VERSION ?= v0.27.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
@@ -164,10 +166,7 @@ deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster spe
 	$(KUBECTL) -n ${NAMESPACE} delete ds frr-k8s-daemon || true
 	$(KUBECTL) -n ${NAMESPACE} delete deployment frr-k8s-webhook-server || true
 
-	$(KUSTOMIZE) build config/$(KUSTOMIZE_LAYER) | \
-		sed '/--log-level/a\        - --always-block=192.167.9.0/24,fc00:f553:ccd:e799::/64' |\
-		sed 's/--log-level=info/--log-level='$(LOGLEVEL)'/' |\
-		sed '/--pod-name/a\        - --poll-interval=5s' | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build config/testenv/$(KUSTOMIZE_LAYER) | $(KUBECTL) apply -f -
 	sleep 2s # wait for daemonset to be created
 	$(KUBECTL) -n ${NAMESPACE} wait --for=condition=Ready --all pods --timeout 300s
 
@@ -214,6 +213,12 @@ $(KIND): $(LOCALBIN)
 	test -s $(LOCALBIN)/kind && $(LOCALBIN)/kind --version | grep -q $(KIND_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/kind@$(KIND_VERSION)
 
+.PHONY: golangci-lint
+golangci-lint: $(GOLANGCI_LINT)
+$(GOLANGCI_LINT): $(LOCALBIN)
+	test -s $(LOCALBIN)/golangci-lint version && $(LOCALBIN)/golangci-lint version | grep -q $(GOLANGCI_LINT_VERSION) || \
+	GOBIN=$(LOCALBIN) go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
+
 .PHONY: helm
 helm: $(HELM) ## Download helm locally if necessary. If wrong version is installed, it will be overwritten.
 $(HELM): $(LOCALBIN)
@@ -253,8 +258,8 @@ load-on-kind: kind-cluster ## Load the docker image into the kind cluster.
 	$(LOCALBIN)/kind load docker-image ${IMG} -n ${KIND_CLUSTER_NAME}
 
 .PHONY: lint
-lint:
-	hack/lint.sh
+lint: golangci-lint
+	$(LOCALBIN)/golangci-lint run --timeout 10m0s ./...
 
 .PHONY: bumplicense
 bumplicense:
