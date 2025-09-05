@@ -99,7 +99,7 @@ spec:
         securityContext:
           capabilities:
             add: ["NET_ADMIN", "NET_RAW", "SYS_ADMIN", "NET_BIND_SERVICE"]
-        image: quay.io/frrouting/frr:9.1.0
+        image: quay.io/frrouting/frr:10.4.1
         env:
           - name: TINI_SUBREAPER
             value: "true"
@@ -137,7 +137,7 @@ spec:
           failureThreshold: 30
           periodSeconds: 5
       - name: frr-metrics
-        image: quay.io/frrouting/frr:9.1.0
+        image: quay.io/frrouting/frr:10.4.1
         command: ["/etc/frr_metrics/frr-metrics"]
         args:
           - --metrics-port=7573
@@ -153,7 +153,7 @@ spec:
           - name: metrics
             mountPath: /etc/frr_metrics
       - name: frr-status
-        image: quay.io/frrouting/frr:9.1.0
+        image: quay.io/frrouting/frr:10.4.1
         command: ["/etc/frr_status/frr-status"]
         args:
           - "--node-name=$(NODE_NAME)"
@@ -180,7 +180,7 @@ spec:
             fieldRef:
               fieldPath: metadata.name
       - name: reloader
-        image: quay.io/frrouting/frr:9.1.0
+        image: quay.io/frrouting/frr:10.4.1
         command: ["/etc/frr_reloader/frr-reloader.sh"]
         volumeMounts:
           - name: frr-sockets
@@ -216,7 +216,7 @@ spec:
           securityContext:
             runAsUser: 100
             runAsGroup: 101
-          image: quay.io/frrouting/frr:9.1.0
+          image: quay.io/frrouting/frr:10.4.1
           command: ["/bin/sh", "-c", "cp -rLf /tmp/frr/* /etc/frr/"]
           volumeMounts:
             - name: frr-startup
