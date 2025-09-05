@@ -263,6 +263,12 @@ func multiHopSetUp(containers []*frrcontainer.FRR, nextHop nextHopSettings, cs *
 	if err != nil {
 		return errors.Join(err, errors.New("failed to set up the multi-hop network"))
 	}
+	for _, c := range containers {
+		out, err := executor.Host.Exec(executor.ContainerRuntime, "exec", c.Name, "/bin/bash", "-c", "sysctl -w net.ipv6.conf.all.forwarding=1")
+		if err != nil {
+			return errors.Join(err, fmt.Errorf("failed to set up ipv6 forwarding %s %s", c.Name, out))
+		}
+	}
 
 	return nil
 }
