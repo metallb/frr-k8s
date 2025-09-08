@@ -9,7 +9,7 @@ WORKDIR $GOPATH/frr-k8s
 COPY go.mod go.sum ./
 RUN go mod download
 
-COPY cmd/main.go cmd/main.go
+COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
 COPY frr-tools/metrics ./frr-tools/metrics/
@@ -45,12 +45,18 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-k8s \
   -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
-  cmd/main.go
+  cmd/frr-k8s-controller/main.go \
+  && \
+  CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
+  go build -v -o /build/statuscleaner \
+  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
+  cmd/statuscleaner/main.go
 
 FROM docker.io/alpine:latest
 
 
 COPY --from=builder /build/frr-k8s /frr-k8s
+COPY --from=builder /build/statuscleaner /statuscleaner
 COPY --from=builder /build/frr-metrics /frr-metrics
 COPY --from=builder /build/frr-status /frr-status
 COPY frr-tools/reloader/frr-reloader.sh /frr-reloader.sh
@@ -64,5 +70,3 @@ LABEL org.opencontainers.image.authors="metallb" \
   org.opencontainers.image.description="FRR-K8s" \
   org.opencontainers.image.title="frr-k8s" \
   org.opencontainers.image.base.name="docker.io/alpine:latest"
-
-ENTRYPOINT ["/frr-k8s"]

@@ -6,6 +6,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 
 	"errors"
 
@@ -16,6 +17,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -142,7 +144,7 @@ func validateConfigDelete(_ *v1beta1.FRRConfiguration) ([]string, error) {
 func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	var warnings []string
 
-	selector, err := metav1.LabelSelectorAsSelector(&frrConfig.Spec.NodeSelector)
+	selector, err := getCachedSelector(frrConfig.Spec.NodeSelector)
 	if err != nil {
 		return warnings, errors.Join(err, errors.New("resource contains an invalid NodeSelector"))
 	}
@@ -175,7 +177,7 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	for _, n := range matchingNodes {
 		for _, cfg := range existingFRRConfigurations.Items {
 			nodeSelector := cfg.Spec.NodeSelector
-			selector, err := metav1.LabelSelectorAsSelector(&nodeSelector)
+			selector, err := getCachedSelector(nodeSelector)
 			if err != nil {
 				// shouldn't happen as it would have been denied earlier, just in case.
 				continue
@@ -204,10 +206,10 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 			}
 
 			if selector.Matches(labels.Set(n.labels)) {
-				n.cfgs.Items = append(n.cfgs.Items, *cfg.DeepCopy())
+				n.cfgs.Items = append(n.cfgs.Items, cfg)
 			}
 		}
-		n.cfgs.Items = append(n.cfgs.Items, *frrConfig.DeepCopy())
+		n.cfgs.Items = append(n.cfgs.Items, *frrConfig)
 	}
 
 	for _, n := range matchingNodes {
@@ -247,4 +249,31 @@ func containsDisableMP(routers []v1beta1.Router) bool {
 		}
 	}
 	return false
+}
+
+var (
+	selectorCache = lru.New(300)
+	selectorMutex sync.RWMutex
+)
+
+func getCachedSelector(nodeSelector metav1.LabelSelector) (labels.Selector, error) {
+	key := fmt.Sprintf("%v-%v", nodeSelector.MatchLabels, nodeSelector.MatchExpressions)
+
+	selectorMutex.RLock()
+	if cached, ok := selectorCache.Get(key); ok {
+		selectorMutex.RUnlock()
+		return cached.(labels.Selector), nil
+	}
+	selectorMutex.RUnlock()
+
+	selector, err := metav1.LabelSelectorAsSelector(&nodeSelector)
+	if err != nil {
+		return nil, err
+	}
+
+	selectorMutex.Lock()
+	selectorCache.Add(key, selector)
+	selectorMutex.Unlock()
+
+	return selector, nil
 }

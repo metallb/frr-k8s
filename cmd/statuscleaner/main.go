@@ -1,0 +1,226 @@
+/*
+Copyright 2023.
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+*/
+
+package main
+
+import (
+	"flag"
+	"fmt"
+	"os"
+
+	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
+	// to ensure that exec-entrypoint and run can make use of them.
+	_ "k8s.io/client-go/plugin/pkg/client/auth"
+
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+	"sigs.k8s.io/controller-runtime/pkg/manager"
+	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
+
+	"github.com/go-kit/log"
+	"github.com/go-kit/log/level"
+	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/controller"
+	"github.com/metallb/frr-k8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/version"
+	"github.com/metallb/frr-k8s/internal/webhooks"
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
+	//+kubebuilder:scaffold:imports
+)
+
+var (
+	scheme   = runtime.NewScheme()
+	setupLog = ctrl.Log.WithName("setup")
+)
+
+func init() {
+	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
+
+	utilruntime.Must(frrk8sv1beta1.AddToScheme(scheme))
+	//+kubebuilder:scaffold:scheme
+}
+
+type params struct {
+	logLevel                      string
+	namespace                     string
+	disableCertRotation           bool
+	restartOnRotatorSecretRefresh bool
+	certDir                       string
+	certServiceName               string
+	pprofAddr                     string
+	webhookPort                   int
+}
+
+func main() {
+	params := params{}
+
+	flag.StringVar(&params.logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
+	flag.StringVar(&params.namespace, "namespace", "", "The namespace this daemon is deployed in")
+	flag.BoolVar(&params.disableCertRotation, "disable-cert-rotation", false, "disable automatic generation and rotation of webhook TLS certificates/keys")
+	flag.BoolVar(&params.restartOnRotatorSecretRefresh, "restart-on-rotator-secret-refresh", false, "Restart the pod when the rotator refreshes its cert.")
+	flag.StringVar(&params.certDir, "cert-dir", "/tmp/k8s-webhook-server/serving-certs", "The directory where certs are stored")
+	flag.StringVar(&params.certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
+	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
+	flag.IntVar(&params.webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
+	opts := zap.Options{
+		Development: true,
+	}
+	opts.BindFlags(flag.CommandLine)
+	flag.Parse()
+
+	logger, err := logging.Init(params.logLevel)
+	if err != nil {
+		fmt.Printf("failed to initialize logging: %s\n", err)
+		os.Exit(1)
+	}
+
+	namespaceSelector := cache.ByObject{
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
+	}
+
+	options := ctrl.Options{
+		Scheme:                 scheme,
+		HealthProbeBindAddress: "",
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&corev1.Secret{}:                  namespaceSelector,
+				&corev1.Pod{}:                     namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+			},
+		},
+		WebhookServer: webhook.NewServer(
+			webhook.Options{
+				Port: params.webhookPort,
+			},
+		),
+		Metrics: metricsserver.Options{
+			BindAddress: "0",
+		},
+		PprofBindAddress: params.pprofAddr,
+	}
+
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
+	if err != nil {
+		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	ctx := ctrl.SetupSignalHandler()
+
+	//+kubebuilder:scaffold:builder
+
+	startListeners := make(chan struct{})
+	if !params.disableCertRotation {
+		setupLog.Info("Starting certs generator")
+		err = setupCertRotation(startListeners, mgr, logger, params.namespace, params.certDir, params.certServiceName, params.restartOnRotatorSecretRefresh)
+		if err != nil {
+			setupLog.Error(err, "unable to set up cert rotator")
+			os.Exit(1)
+		}
+	} else {
+		close(startListeners)
+	}
+
+	go func() {
+		<-startListeners
+
+		setupWebhook(mgr, logger)
+		startNodeStateCleaner(mgr, logger, params.namespace)
+	}()
+
+	setupLog.Info("starting frr-k8s webhook", "version", version.String(), "params", fmt.Sprintf("%+v", params))
+	if err := mgr.Start(ctx); err != nil {
+		setupLog.Error(err, "problem running manager")
+		os.Exit(1)
+	}
+}
+
+func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace string) {
+	setupLog.Info("Starting node state cleaner controller")
+	nodeStateCleaner := &controller.NodeStateCleaner{
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Logger:    logger,
+		Namespace: namespace,
+	}
+	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Pod")
+		os.Exit(1)
+	}
+}
+
+const (
+	caName         = "cert"
+	caOrganization = "frrk8s"
+)
+
+var (
+	webhookName       = "frr-k8s-validating-webhook-configuration"
+	webhookSecretName = "frr-k8s-webhook-server-cert" //#nosec G101
+)
+
+func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger log.Logger,
+	namespace, certDir, certServiceName string, restartOnSecretRefresh bool) error {
+	webhooks := []rotator.WebhookInfo{
+		{
+			Name: webhookName,
+			Type: rotator.Validating,
+		},
+	}
+
+	level.Info(logger).Log("op", "startup", "action", "setting up cert rotation")
+	err := rotator.AddRotator(mgr, &rotator.CertRotator{
+		SecretKey: types.NamespacedName{
+			Namespace: namespace,
+			Name:      webhookSecretName,
+		},
+		CertDir:                certDir,
+		CAName:                 caName,
+		CAOrganization:         caOrganization,
+		DNSName:                fmt.Sprintf("%s.%s.svc", certServiceName, namespace),
+		IsReady:                notifyFinished,
+		Webhooks:               webhooks,
+		FieldOwner:             "frr-k8s",
+		RestartOnSecretRefresh: restartOnSecretRefresh,
+	})
+	if err != nil {
+		level.Error(logger).Log("error", err, "unable to set up", "cert rotation")
+		return err
+	}
+	return nil
+}
+
+func setupWebhook(mgr manager.Manager, logger log.Logger) {
+	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
+
+	webhooks.Logger = logger
+	webhooks.WebhookClient = mgr.GetAPIReader()
+	webhooks.Validate = controller.Validate
+
+	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
+		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
+		os.Exit(1)
+	}
+}

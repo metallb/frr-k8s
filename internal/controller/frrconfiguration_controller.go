@@ -73,8 +73,8 @@ func (r *FRRConfigurationReconciler) ConversionResult() string {
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,resourceNames="frr-k8s-validating-webhook-configuration",verbs=update
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.NamespacedName.String())
-	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.NamespacedName.String())
+	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.String())
+	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.String())
 	lastConversionResult := r.conversionResult
 	conversionResult := ConversionSuccess
 
@@ -90,7 +90,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	updates.Inc()
 
 	configs := frrk8sv1beta1.FRRConfigurationList{}
-	err := r.Client.List(ctx, &configs)
+	err := r.List(ctx, &configs)
 	if err != nil {
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
@@ -113,7 +113,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	thisNode := &corev1.Node{}
-	err = r.Client.Get(ctx, types.NamespacedName{Name: r.NodeName}, thisNode)
+	err = r.Get(ctx, types.NamespacedName{Name: r.NodeName}, thisNode)
 	if err != nil {
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
@@ -185,7 +185,6 @@ func (r *FRRConfigurationReconciler) applyEmptyConfig() error {
 func configsForNode(cfgs []frrk8sv1beta1.FRRConfiguration, nodeLabels map[string]string) ([]frrk8sv1beta1.FRRConfiguration, error) {
 	valid := []frrk8sv1beta1.FRRConfiguration{}
 	for _, cfg := range cfgs {
-		cfg := cfg
 		selector, err := metav1.LabelSelectorAsSelector(&cfg.Spec.NodeSelector)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse nodeSelector for FRRConfiguration %s/%s, err: %w", cfg.Namespace, cfg.Name, err)
