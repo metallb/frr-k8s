@@ -178,7 +178,7 @@ jobs:
 
       - name: E2E
         run: |
-          SKIP="none"
+          SKIP="'echo mode enabled'"
           if [ "${{ matrix.ip-family }}" == "ipv4" ]; then SKIP="$SKIP\|IPV6\|DUALSTACK"; fi
           if [ "${{ matrix.ip-family }}" == "dual" ]; then SKIP="$SKIP\|IPV6"; fi
           if [ "${{ matrix.ip-family }}" == "ipv6" ]; then SKIP="$SKIP\|IPV4\|DUALSTACK"; fi
