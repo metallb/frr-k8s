@@ -17,7 +17,7 @@ reload_frr() {
   kill_sleep
 
   echo "Checking the configuration file syntax"
-  if ! python3 /usr/lib/frr/frr-reload.py --test --stdout "$FILE_TO_RELOAD" >"$LAST_ERROR_FILE" 2>&1 | sed 's/password.*/password <retracted>/g'; then
+  if ! python3 /usr/lib/frr/frr-reload.py --test --stdout "$FILE_TO_RELOAD" 2>"$LAST_ERROR_FILE" | sed 's/password.*/password <retracted>/g'; then
     echo "Syntax error spotted: aborting.. $SECONDS seconds"
     cat "$LAST_ERROR_FILE" | sed 's/password.*/password <retracted>/g'
     echo -n "$(date +%s) failure"  > "$STATUSFILE"
