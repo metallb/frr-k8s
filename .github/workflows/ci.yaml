@@ -75,6 +75,20 @@ jobs:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v5
 
+  golangci:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v8
+        with:
+          version: latest
+
   unit-tests:
     runs-on: ubuntu-22.04
     steps:
@@ -89,10 +103,6 @@ jobs:
       - name: Unit Tests
         run: |
           make test
-
-      - name: Lint
-        run: |
-          ENV=host make lint
 
   build-test-images:
     runs-on: ubuntu-22.04
@@ -168,7 +178,7 @@ jobs:
 
       - name: E2E
         run: |
-          SKIP="none"
+          SKIP="'echo mode enabled'"
           if [ "${{ matrix.ip-family }}" == "ipv4" ]; then SKIP="$SKIP\|IPV6\|DUALSTACK"; fi
           if [ "${{ matrix.ip-family }}" == "dual" ]; then SKIP="$SKIP\|IPV6"; fi
           if [ "${{ matrix.ip-family }}" == "ipv6" ]; then SKIP="$SKIP\|IPV4\|DUALSTACK"; fi
@@ -253,6 +263,7 @@ jobs:
           --set controller.image.tag=main --set speaker.image.tag=main \
           --set prometheus.serviceMonitor.enabled=true --set prometheus.secureMetricsPort=9120 \
           --set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring \
+          --set networkpolicies.enabled=true --set networkpolicies.defaultDeny=true \
           "
           helm install metallb ${helm_args} .
           kubectl wait -n metallb-system --for=condition=Ready pod -l "app.kubernetes.io/name=metallb" --timeout=300s

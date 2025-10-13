@@ -73,7 +73,6 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 		}
 		err = updater.Clean()
 		Expect(err).NotTo(HaveOccurred())
-		waitForFRRCleanState(cl) // TODO: remove when we move to FRR 10.x
 
 		cs = k8sclient.New()
 	})
@@ -101,59 +100,144 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 		}
 		type bfdState string
 		const (
-			noBFD   bfdState = "N/A"
-			bfdDown bfdState = "Down"
-			bfdUp   bfdState = "Up"
+			noBFD      bfdState = "N/A"
+			bfdDown    bfdState = "Down"
+			bfdUp      bfdState = "Up"
 		)
 		bgpTryingToConnect := bgpPhase{sets.New("Idle", "Connect", "Active")}
 		bgpEstablished := bgpPhase{sets.New("Established")}
+
+		validateStatusForNeigh := func(neighborIP string, nodes []corev1.Node, vrf string, expectedBGP bgpPhase, expectedBFD bfdState) error {
+			for _, n := range nodes {
+				s, err := bgpSessionStateFor(cl, n.Name, neighborIP, vrf)
+				if err != nil {
+					return err
+				}
+				key := fmt.Sprintf("node %s peer %s vrf %s", n.Name, neighborIP, vrf)
+				if !expectedBGP.Has(s.Status.BGPStatus) {
+					return fmt.Errorf("expected bgp status for %s to be one of %v, got %s", key, expectedBGP, s.Status.BGPStatus)
+
+				}
+				if string(expectedBFD) != s.Status.BFDStatus {
+					return fmt.Errorf("expected bfd status for %s to be %v, got %s", key, expectedBFD, s.Status.BFDStatus)
+
+				}
+			}
+			return nil
+		}
+
+		validateNoStatusForNeigh := func(neighborIP string, nodes []corev1.Node, vrf string) error {
+			for _, n := range nodes {
+				s, err := bgpSessionStateFor(cl, n.Name, neighborIP, vrf)
+				if !k8serrors.IsNotFound(err) {
+					return fmt.Errorf("expected status to not be there, got %v with err %w", s, err)
+				}
+			}
+			return nil
+		}
+
+		validateStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node, vrf string, expectedBGP bgpPhase, expectedBFD bfdState) error {
+			for _, n := range neighbors {
+				err := validateStatusForNeigh(n.Address, nodes, vrf, expectedBGP, expectedBFD)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		validateNoStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node, vrf string) error {
+			for _, n := range neighbors {
+				err := validateNoStatusForNeigh(n.Address, nodes, vrf)
+				if err != nil {
+					return err
+				}
+			}
+			return nil
+		}
+
+		ginkgo.It("Manages statuses according to changes in FRRConfigurations", func() {
+			neighbors := []frrk8sv1beta1.Neighbor{
+				{
+					ASN:     100,
+					Address: "10.10.10.10",
+				},
+			}
+			ginkgo.By("Creating the FRR configuration")
+			conf := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       100,
+								VRF:       "",
+								Neighbors: neighbors,
+								Prefixes:  []string{"1.2.3.4/32"},
+							},
+						},
+					},
+				},
+			}
+
+			err := updater.Update([]corev1.Secret{}, conf)
+			Expect(err).NotTo(HaveOccurred())
+
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Verifying the status resources are created with bgp Idle/Connect/Active")
+			Eventually(func() error {
+				return validateStatusForAll(neighbors, nodes, "", bgpTryingToConnect, noBFD)
+			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
+			Consistently(func() error {
+				return validateStatusForAll(neighbors, nodes, "", bgpTryingToConnect, noBFD)
+			}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Updating the neighbors to have BFD")
+			simpleProfile := frrk8sv1beta1.BFDProfile{
+				Name: "simple",
+			}
+			neighbors[0].BFDProfile = simpleProfile.Name
+			conf.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{simpleProfile}
+
+			err = updater.Update([]corev1.Secret{}, conf)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("Verifying the statuses are updated with BFD down")
+			Eventually(func() error {
+				return validateStatusForAll(neighbors, nodes, "", bgpTryingToConnect, bfdDown)
+			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
+
+			ginkgo.By("Updating the config to target all nodes but the first")
+			nodesNames := []string{}
+			for _, n := range nodes {
+				nodesNames = append(nodesNames, n.Name)
+			}
+			conf.Spec.NodeSelector = metav1.LabelSelector{
+				MatchExpressions: []metav1.LabelSelectorRequirement{
+					{
+						Key:      "kubernetes.io/hostname",
+						Values:   nodesNames[1:],
+						Operator: metav1.LabelSelectorOpIn,
+					},
+				},
+			}
+			err = updater.Update([]corev1.Secret{}, conf)
+			Expect(err).NotTo(HaveOccurred())
+
+			Eventually(func() error {
+				return validateNoStatusForAll(neighbors, []corev1.Node{nodes[0]}, "")
+			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
+			Eventually(func() error {
+				return validateStatusForAll(neighbors, nodes[1:], "", bgpTryingToConnect, bfdDown)
+			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
+		})
+
 		ginkgo.DescribeTable("Each node manages its statuses", func(p params) {
-			validateStatusForNeigh := func(neighborIP string, nodes []corev1.Node, vrf string, expectedBGP bgpPhase, expectedBFD bfdState) error {
-				for _, n := range nodes {
-					s, err := bgpSessionStateFor(cl, n.Name, neighborIP, vrf)
-					if err != nil {
-						return err
-					}
-					key := fmt.Sprintf("node %s peer %s vrf %s", n.Name, neighborIP, vrf)
-					if !expectedBGP.Has(s.Status.BGPStatus) {
-						return fmt.Errorf("expected bgp status for %s to be one of %v, got %s", key, expectedBGP, s.Status.BGPStatus)
-
-					}
-					if string(expectedBFD) != s.Status.BFDStatus {
-						return fmt.Errorf("expected bfd status for %s to be %v, got %s", key, expectedBFD, s.Status.BFDStatus)
-
-					}
-				}
-				return nil
-			}
-			validateNoStatusForNeigh := func(neighborIP string, nodes []corev1.Node, vrf string) error {
-				for _, n := range nodes {
-					s, err := bgpSessionStateFor(cl, n.Name, neighborIP, vrf)
-					if !k8serrors.IsNotFound(err) {
-						return fmt.Errorf("expected status to not be there, got %v with err %w", s, err)
-					}
-				}
-				return nil
-			}
-			validateStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node, expectedBGP bgpPhase, expectedBFD bfdState) error {
-				for _, n := range neighbors {
-					err := validateStatusForNeigh(n.Address, nodes, p.vrf, expectedBGP, expectedBFD)
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-			validateNoStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node) error {
-				for _, n := range neighbors {
-					err := validateNoStatusForNeigh(n.Address, nodes, p.vrf)
-					if err != nil {
-						return err
-					}
-				}
-				return nil
-			}
-
 			frrs := config.ContainersForVRF(infra.FRRContainers, p.vrf)
 			peersConfig := config.PeersForContainers(frrs, p.ipFamily)
 			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
@@ -187,10 +271,10 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 
 			ginkgo.By("Verifying the status resources are created with bgp Idle/Connect/Active")
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpTryingToConnect, noBFD)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpTryingToConnect, noBFD)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 			Consistently(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpTryingToConnect, noBFD)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpTryingToConnect, noBFD)
 			}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Pairing the containers with the nodes")
@@ -205,7 +289,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 
 			ginkgo.By("Verifying the statuses are updated with bgp Established")
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpEstablished, noBFD)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpEstablished, noBFD)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Updating the neighbors to have BFD")
@@ -242,7 +326,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 
 			ginkgo.By("Verifying the statuses are updated with BFD down")
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpEstablished, bfdDown)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpEstablished, bfdDown)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Pairing the containers with the nodes with BFD")
@@ -255,10 +339,10 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 
 			ginkgo.By("Verifying the statuses are updated with BFD up")
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpEstablished, bfdUp)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpEstablished, bfdUp)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 			Consistently(func() error {
-				return validateStatusForAll(neighbors, nodes, bgpEstablished, bfdUp)
+				return validateStatusForAll(neighbors, nodes, p.vrf, bgpEstablished, bfdUp)
 			}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Updating the config to target all nodes but the first")
@@ -279,10 +363,10 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Eventually(func() error {
-				return validateNoStatusForAll(neighbors, []corev1.Node{nodes[0]})
+				return validateNoStatusForAll(neighbors, []corev1.Node{nodes[0]}, p.vrf)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 			Eventually(func() error {
-				return validateStatusForAll(neighbors, nodes[1:], bgpEstablished, bfdUp)
+				return validateStatusForAll(neighbors, nodes[1:], p.vrf, bgpEstablished, bfdUp)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Resetting the FRR configuration on the first external container")
@@ -299,10 +383,10 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				otherNeighbors = append(otherNeighbors, n)
 			}
 			Eventually(func() error {
-				return validateStatusForAll(frr0Neighbors, nodes[1:], bgpTryingToConnect, bfdDown)
+				return validateStatusForAll(frr0Neighbors, nodes[1:], p.vrf, bgpTryingToConnect, bfdDown)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 			Eventually(func() error {
-				return validateStatusForAll(otherNeighbors, nodes[1:], bgpEstablished, bfdUp)
+				return validateStatusForAll(otherNeighbors, nodes[1:], p.vrf, bgpEstablished, bfdUp)
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 		},
 			ginkgo.Entry("IPV4", params{
@@ -408,23 +492,4 @@ func statusFormatFor(ip string) string {
 
 func ipFor(statusIP string) string {
 	return strings.ReplaceAll(statusIP, "-", ":")
-}
-
-// Ensures that all the frr-k8s daemons run a clean FRR config.
-// TODO: this is needed for a CI flake, remove once we move to FRR 10.x
-func waitForFRRCleanState(cl client.Client) {
-	ginkgo.GinkgoHelper()
-	Eventually(func() error {
-		statuses := frrk8sv1beta1.FRRNodeStateList{}
-		err := cl.List(context.Background(), &statuses)
-		if err != nil {
-			return err
-		}
-		for _, status := range statuses.Items {
-			if strings.Contains(status.Status.RunningConfig, "router bgp") {
-				return fmt.Errorf("node %s has a non-clean config: \n %v", status.Name, status)
-			}
-		}
-		return nil
-	}, 2*time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 }
