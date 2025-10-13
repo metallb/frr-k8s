@@ -1,5 +1,14 @@
 # FRRK8s Release Notes
 
+## Release v0.0.21
+
+### New Features
+- Keep the frrnodestate of a given node aligned with the lifecycle of the pod that generated it. (#323, @fedepaol)
+- Update FRR version to 10.4.1 (#344, @karampok)
+
+### Other (Cleanup or Flake)
+- Webhook performance improvements on scale (#330, @fedepaol)
+
 ## Release v0.0.20
 
 ### New Features
