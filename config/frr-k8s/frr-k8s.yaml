@@ -144,7 +144,7 @@ spec:
           - --metrics-bind-address=127.0.0.1
         ports:
           - containerPort: 7573
-            name: monitoring
+            name: frr-metrics
         volumeMounts:
           - name: frr-sockets
             mountPath: /var/run/frr

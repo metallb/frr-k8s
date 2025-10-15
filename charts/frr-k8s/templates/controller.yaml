@@ -346,7 +346,7 @@ spec:
           - --metrics-bind-address={{ .Values.frrk8s.frr.metricsBindAddress }}
         ports:
           - containerPort: {{ .Values.frrk8s.frr.metricsPort }}
-            name: monitoring
+            name: frr-metrics
         volumeMounts:
           - name: frr-sockets
             mountPath: /var/run/frr
