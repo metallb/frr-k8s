@@ -153,6 +153,10 @@ spec:
           emptyDir: {}
         - name: frr-status
           emptyDir: {}
+        - name: frr-lib
+          emptyDir: {}
+        - name: frr-tmp
+          emptyDir: {}
       {{- if .Values.prometheus.metricsTLSSecret }}
         - name: metrics-certs
           secret:
@@ -267,6 +271,8 @@ spec:
             mountPath: /etc/frr_reloader
       - name: frr
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             add:
             - NET_ADMIN
@@ -285,6 +291,10 @@ spec:
             mountPath: /var/run/frr
           - name: frr-conf
             mountPath: /etc/frr
+          - name: frr-lib
+            mountPath: /var/lib/frr
+          - name: frr-tmp
+            mountPath: /var/tmp/frr
         # The command is FRR's default entrypoint & waiting for the log file to appear and tailing it.
         # If the log file isn't created in 60 seconds the tail fails and the container is restarted.
         # This workaround is needed to have the frr logs as part of kubectl logs -c frr < controller_pod_name >.
