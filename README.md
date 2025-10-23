@@ -204,6 +204,10 @@ spec:
 
 ### Adding a raw configuration
 
+> **WARNING**: The `rawConfig` feature is **UNSUPPORTED** and intended **ONLY FOR EXPERIMENTATION**.
+> It should not be used in production environments. This feature is provided as-is without any
+> guarantees of stability, compatibility, or support. Use at your own risk.
+
 In order to facilitate experimentation and to fill gaps quickly, it is possible to set a piece of raw
 FRR configuration that is appended to the rendered one. In order to do so, the `rawConfig` field
 must be set:
