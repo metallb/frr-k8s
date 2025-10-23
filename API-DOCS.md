@@ -380,6 +380,11 @@ RawConfig is a snippet of raw frr configuration that gets appended to the
 rendered configuration.
 
 
+WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
+It should not be used in production environments. This feature is provided as-is without any
+guarantees of stability, compatibility, or support. Use at your own risk.
+
+
 
 _Appears in:_
 - [FRRConfigurationSpec](#frrconfigurationspec)
