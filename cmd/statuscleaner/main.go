@@ -27,6 +27,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -71,6 +72,7 @@ type params struct {
 	certServiceName               string
 	pprofAddr                     string
 	webhookPort                   int
+	frrk8sSelector                string
 }
 
 func main() {
@@ -84,6 +86,7 @@ func main() {
 	flag.StringVar(&params.certServiceName, "cert-service-name", "frr-k8s-webhook-service", "The service name used to generate the TLS cert's hostname")
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.IntVar(&params.webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
+	flag.StringVar(&params.frrk8sSelector, "frrk8s-selector", "app.kubernetes.io/component=frr-k8s", "Label selector for FRR-K8s pods in the form key=value")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -147,7 +150,7 @@ func main() {
 		<-startListeners
 
 		setupWebhook(mgr, logger)
-		startNodeStateCleaner(mgr, logger, params.namespace)
+		startNodeStateCleaner(mgr, logger, params.namespace, params.frrk8sSelector)
 	}()
 
 	setupLog.Info("starting frr-k8s webhook", "version", version.String(), "params", fmt.Sprintf("%+v", params))
@@ -157,13 +160,21 @@ func main() {
 	}
 }
 
-func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace string) {
+func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace, frrk8sSelector string) {
 	setupLog.Info("Starting node state cleaner controller")
+
+	selector, err := labels.Parse(frrk8sSelector)
+	if err != nil {
+		setupLog.Error(err, "failed to parse frrk8s selector")
+		os.Exit(1)
+	}
+
 	nodeStateCleaner := &controller.NodeStateCleaner{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Logger:    logger,
-		Namespace: namespace,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		Logger:         logger,
+		Namespace:      namespace,
+		FRRK8sSelector: selector,
 	}
 	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")

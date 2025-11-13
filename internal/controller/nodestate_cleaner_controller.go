@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
@@ -24,9 +25,10 @@ import (
 // NodeStateCleaner reconciles Pod objects to clean up FRRNodeState resources.
 type NodeStateCleaner struct {
 	client.Client
-	Scheme    *runtime.Scheme
-	Logger    log.Logger
-	Namespace string
+	Scheme         *runtime.Scheme
+	Logger         log.Logger
+	Namespace      string
+	FRRK8sSelector labels.Selector
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch;delete
@@ -36,9 +38,7 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	defer level.Info(r.Logger).Log("controller", "NodeStateCleaner", "end reconcile", req.String())
 
 	pods := &corev1.PodList{}
-	if err := r.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabels(map[string]string{
-		"app.kubernetes.io/component": "frr-k8s",
-	})); err != nil {
+	if err := r.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabelsSelector{Selector: r.FRRK8sSelector}); err != nil {
 		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to list FRR-K8s pods", err)
 		return ctrl.Result{}, err
 	}
