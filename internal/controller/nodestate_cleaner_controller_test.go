@@ -8,6 +8,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
@@ -184,6 +185,9 @@ func TestNodeStateCleaner_Reconcile(t *testing.T) {
 				Client:    client,
 				Logger:    log.NewNopLogger(),
 				Namespace: "test-namespace",
+				FRRK8sSelector: labels.SelectorFromSet(map[string]string{
+					"app.kubernetes.io/component": "frr-k8s",
+				}),
 			}
 
 			req := ctrl.Request{
