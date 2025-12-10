@@ -129,6 +129,282 @@ spec:
                           maximum: 4294967295
                           minimum: 0
                           type: integer
+                        evpn:
+                          description: EVPN specific configuration for the router.
+                          properties:
+                            advertiseVNIs:
+                              allOf:
+                              - enum:
+                                - Disabled
+                                - All
+                              - enum:
+                                - Disabled
+                                - All
+                              description: |-
+                                AdvertiseVNIs controls how VNIs are advertised to EVPN neighbors.
+                                - "Disabled": No VNI advertisements
+                                - "All": Avertise all VNIs
+                                Note: Can only be provided for router instances with EVPN neighbors.
+                              type: string
+                            l2vnis:
+                              description: |-
+                                L2VNIs contains configuration for Layer 2 VNIs.
+                                Note: Can only be provided for router instances with EVPN neighbors.
+                              items:
+                                description: L2VNI represents a Layer 2 VNI configuration.
+                                properties:
+                                  exportRTs:
+                                    description: |-
+                                      ExportRTs is the list of route targets to export.
+                                      Format: A.B.C.D:MN|EF:OPQR|GHJK:MN|*:OPQR|*:MN (e.g., "65000:100" or "192.0.2.1:100" or "*:42000000")
+                                    items:
+                                      description: RouteTarget defines a BGP Extended
+                                        Community for route filtering.
+                                      type: string
+                                      x-kubernetes-validations:
+                                      - message: RT must contain exactly one colon
+                                        rule: self.split(':').size() == 2
+                                      - message: RT global administrator must be either
+                                          '*', an IPv4 address, or a number
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].isIP()
+                                          || self.split(':')[0].matches('[0-9]+')
+                                      - message: RT local administrator must be a
+                                          number
+                                        rule: self.split(':')[1].matches('[0-9]+')
+                                      - message: RT with wildcard global administrator
+                                          must have format *:OPQR where OPQR <= 4294967295
+                                        rule: self.split(':')[0] != '*' || uint(self.split(':')[1])
+                                          <= 4294967295u
+                                      - message: RT with IPv4 global administrator
+                                          must have format A.B.C.D:MN where MN <=
+                                          65535
+                                        rule: '!self.split('':'')[0].contains(''.'')
+                                          || uint(self.split('':'')[1]) <= 65535u'
+                                      - message: RT with 4-byte ASN global administrator
+                                          must have format GHJK:MN where GHJK <= 4294967295
+                                          and MN <= 65535
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                          || uint(self.split(':')[0]) <= 65535u ||
+                                          uint(self.split(':')[1]) <= 65535u
+                                      - message: RT with 2-byte ASN global administrator
+                                          must have format EF:OPQR where EF <= 65535
+                                          and OPQR <= 4294967295
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                          || uint(self.split(':')[0]) > 65535u ||
+                                          uint(self.split(':')[1]) <= 4294967295u
+                                    maxItems: 100
+                                    type: array
+                                  importRTs:
+                                    description: |-
+                                      ImportRTs is the list of route targets to import.
+                                      Format: A.B.C.D:MN|EF:OPQR|GHJK:MN|*:OPQR|*:MN (e.g., "65000:100" or "192.0.2.1:100" or "*:42000000")
+                                    items:
+                                      description: RouteTarget defines a BGP Extended
+                                        Community for route filtering.
+                                      type: string
+                                      x-kubernetes-validations:
+                                      - message: RT must contain exactly one colon
+                                        rule: self.split(':').size() == 2
+                                      - message: RT global administrator must be either
+                                          '*', an IPv4 address, or a number
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].isIP()
+                                          || self.split(':')[0].matches('[0-9]+')
+                                      - message: RT local administrator must be a
+                                          number
+                                        rule: self.split(':')[1].matches('[0-9]+')
+                                      - message: RT with wildcard global administrator
+                                          must have format *:OPQR where OPQR <= 4294967295
+                                        rule: self.split(':')[0] != '*' || uint(self.split(':')[1])
+                                          <= 4294967295u
+                                      - message: RT with IPv4 global administrator
+                                          must have format A.B.C.D:MN where MN <=
+                                          65535
+                                        rule: '!self.split('':'')[0].contains(''.'')
+                                          || uint(self.split('':'')[1]) <= 65535u'
+                                      - message: RT with 4-byte ASN global administrator
+                                          must have format GHJK:MN where GHJK <= 4294967295
+                                          and MN <= 65535
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                          || uint(self.split(':')[0]) <= 65535u ||
+                                          uint(self.split(':')[1]) <= 65535u
+                                      - message: RT with 2-byte ASN global administrator
+                                          must have format EF:OPQR where EF <= 65535
+                                          and OPQR <= 4294967295
+                                        rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                          || uint(self.split(':')[0]) > 65535u ||
+                                          uint(self.split(':')[1]) <= 4294967295u
+                                    maxItems: 100
+                                    type: array
+                                  rd:
+                                    description: |-
+                                      RD is the route distinguisher for this VNI.
+                                      Format: A.B.C.D:MN|EF:OPQR|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100")
+                                    type: string
+                                    x-kubernetes-validations:
+                                    - message: RD must contain exactly one colon
+                                      rule: self.split(':').size() == 2
+                                    - message: RD global administrator must be either
+                                        an IPv4 address or a number
+                                      rule: self.split(':')[0].isIP() || self.split(':')[0].matches('[0-9]+')
+                                    - message: RD local administrator must be a number
+                                      rule: self.split(':')[1].matches('[0-9]+')
+                                    - message: RD with IPv4 global administrator must
+                                        have format A.B.C.D:MN where MN <= 65535
+                                      rule: '!self.split('':'')[0].contains(''.'')
+                                        || uint(self.split('':'')[1]) <= 65535u'
+                                    - message: RD with 4-byte ASN global administrator
+                                        must have format GHJK:MN where GHJK <= 4294967295
+                                        and MN <= 65535
+                                      rule: self.split(':')[0].contains('.') || uint(self.split(':')[0])
+                                        <= 65535u || uint(self.split(':')[1]) <= 65535u
+                                    - message: RD with 2-byte ASN global administrator
+                                        must have format EF:OPQR where EF <= 65535
+                                        and OPQR <= 4294967295
+                                      rule: self.split(':')[0].contains('.') || uint(self.split(':')[0])
+                                        > 65535u || uint(self.split(':')[1]) <= 4294967295u
+                                  vni:
+                                    description: VNI is the VXLAN Network Identifier
+                                      (1-16777215).
+                                    format: int32
+                                    maximum: 16777215
+                                    minimum: 1
+                                    type: integer
+                                required:
+                                - vni
+                                type: object
+                              type: array
+                            l3vni:
+                              description: L3VNI contains configuration for the Layer
+                                3 VNI.
+                              properties:
+                                advertisePrefixes:
+                                  description: |-
+                                    AdvertisePrefixes controls which prefixes to advertise as EVPN type-5 routes.
+                                    - "unicast": advertise the unicast prefixes of the router.
+                                  enum:
+                                  - unicast
+                                  items:
+                                    type: string
+                                  maxItems: 1
+                                  minItems: 1
+                                  type: array
+                                exportRTs:
+                                  description: |-
+                                    ExportRTs is the list of route targets to export.
+                                    Format: A.B.C.D:MN|EF:OPQR|GHJK:MN|*:OPQR|*:MN (e.g., "65000:100" or "192.0.2.1:100" or "*:42000000")
+                                  items:
+                                    description: RouteTarget defines a BGP Extended
+                                      Community for route filtering.
+                                    type: string
+                                    x-kubernetes-validations:
+                                    - message: RT must contain exactly one colon
+                                      rule: self.split(':').size() == 2
+                                    - message: RT global administrator must be either
+                                        '*', an IPv4 address, or a number
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].isIP()
+                                        || self.split(':')[0].matches('[0-9]+')
+                                    - message: RT local administrator must be a number
+                                      rule: self.split(':')[1].matches('[0-9]+')
+                                    - message: RT with wildcard global administrator
+                                        must have format *:OPQR where OPQR <= 4294967295
+                                      rule: self.split(':')[0] != '*' || uint(self.split(':')[1])
+                                        <= 4294967295u
+                                    - message: RT with IPv4 global administrator must
+                                        have format A.B.C.D:MN where MN <= 65535
+                                      rule: '!self.split('':'')[0].contains(''.'')
+                                        || uint(self.split('':'')[1]) <= 65535u'
+                                    - message: RT with 4-byte ASN global administrator
+                                        must have format GHJK:MN where GHJK <= 4294967295
+                                        and MN <= 65535
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                        || uint(self.split(':')[0]) <= 65535u || uint(self.split(':')[1])
+                                        <= 65535u
+                                    - message: RT with 2-byte ASN global administrator
+                                        must have format EF:OPQR where EF <= 65535
+                                        and OPQR <= 4294967295
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                        || uint(self.split(':')[0]) > 65535u || uint(self.split(':')[1])
+                                        <= 4294967295u
+                                  maxItems: 100
+                                  type: array
+                                importRTs:
+                                  description: |-
+                                    ImportRTs is the list of route targets to import.
+                                    Format: A.B.C.D:MN|EF:OPQR|GHJK:MN|*:OPQR|*:MN (e.g., "65000:100" or "192.0.2.1:100" or "*:42000000")
+                                  items:
+                                    description: RouteTarget defines a BGP Extended
+                                      Community for route filtering.
+                                    type: string
+                                    x-kubernetes-validations:
+                                    - message: RT must contain exactly one colon
+                                      rule: self.split(':').size() == 2
+                                    - message: RT global administrator must be either
+                                        '*', an IPv4 address, or a number
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].isIP()
+                                        || self.split(':')[0].matches('[0-9]+')
+                                    - message: RT local administrator must be a number
+                                      rule: self.split(':')[1].matches('[0-9]+')
+                                    - message: RT with wildcard global administrator
+                                        must have format *:OPQR where OPQR <= 4294967295
+                                      rule: self.split(':')[0] != '*' || uint(self.split(':')[1])
+                                        <= 4294967295u
+                                    - message: RT with IPv4 global administrator must
+                                        have format A.B.C.D:MN where MN <= 65535
+                                      rule: '!self.split('':'')[0].contains(''.'')
+                                        || uint(self.split('':'')[1]) <= 65535u'
+                                    - message: RT with 4-byte ASN global administrator
+                                        must have format GHJK:MN where GHJK <= 4294967295
+                                        and MN <= 65535
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                        || uint(self.split(':')[0]) <= 65535u || uint(self.split(':')[1])
+                                        <= 65535u
+                                    - message: RT with 2-byte ASN global administrator
+                                        must have format EF:OPQR where EF <= 65535
+                                        and OPQR <= 4294967295
+                                      rule: self.split(':')[0] == '*' || self.split(':')[0].contains('.')
+                                        || uint(self.split(':')[0]) > 65535u || uint(self.split(':')[1])
+                                        <= 4294967295u
+                                  maxItems: 100
+                                  type: array
+                                rd:
+                                  description: |-
+                                    RD is the route distinguisher for this VNI.
+                                    Format: A.B.C.D:MN|EF:OPQR|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100")
+                                  type: string
+                                  x-kubernetes-validations:
+                                  - message: RD must contain exactly one colon
+                                    rule: self.split(':').size() == 2
+                                  - message: RD global administrator must be either
+                                      an IPv4 address or a number
+                                    rule: self.split(':')[0].isIP() || self.split(':')[0].matches('[0-9]+')
+                                  - message: RD local administrator must be a number
+                                    rule: self.split(':')[1].matches('[0-9]+')
+                                  - message: RD with IPv4 global administrator must
+                                      have format A.B.C.D:MN where MN <= 65535
+                                    rule: '!self.split('':'')[0].contains(''.'') ||
+                                      uint(self.split('':'')[1]) <= 65535u'
+                                  - message: RD with 4-byte ASN global administrator
+                                      must have format GHJK:MN where GHJK <= 4294967295
+                                      and MN <= 65535
+                                    rule: self.split(':')[0].contains('.') || uint(self.split(':')[0])
+                                      <= 65535u || uint(self.split(':')[1]) <= 65535u
+                                  - message: RD with 2-byte ASN global administrator
+                                      must have format EF:OPQR where EF <= 65535 and
+                                      OPQR <= 4294967295
+                                    rule: self.split(':')[0].contains('.') || uint(self.split(':')[0])
+                                      > 65535u || uint(self.split(':')[1]) <= 4294967295u
+                                vni:
+                                  description: VNI is the VXLAN Network Identifier
+                                    (1-16777215).
+                                  format: int32
+                                  maximum: 16777215
+                                  minimum: 1
+                                  type: integer
+                              required:
+                              - advertisePrefixes
+                              - vni
+                              type: object
+                          type: object
                         id:
                           description: ID is the BGP router ID
                           type: string
@@ -155,6 +431,20 @@ spec:
                                 description: Address is the IP address to establish
                                   the session with.
                                 type: string
+                              addressFamilies:
+                                default:
+                                - unicast
+                                description: |-
+                                  AddressFamilies specifies which address families to activate this
+                                  neighbor for. Supported values: "unicast" (ipv4/ipv6 unicast based on
+                                  session and DualStackAddressFamily value), "evpn" (l2vpn evpn).
+                                enum:
+                                - unicast
+                                - evpn
+                                items:
+                                  type: string
+                                maxItems: 2
+                                type: array
                               asn:
                                 description: |-
                                   ASN is the AS number to use for the local end of the session.
