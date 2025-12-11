@@ -8,7 +8,7 @@ import (
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/prometheus/client_golang/prometheus"
 
-	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
+	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
 )
 
 var labels = []string{"peer", "vrf"}
