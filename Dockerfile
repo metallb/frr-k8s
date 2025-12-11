@@ -12,8 +12,8 @@ RUN go mod download
 COPY cmd/ cmd/
 COPY api/ api/
 COPY internal/ internal/
-COPY frr-tools/metrics ./frr-tools/metrics/
-COPY frr-tools/status ./frr-tools/status/
+COPY cmd/metrics ./cmd/metrics/
+COPY cmd/status ./cmd/status/
 
 ARG TARGETARCH
 ARG TARGETOS
@@ -34,13 +34,13 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-metrics \
   -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
-  frr-tools/metrics/exporter.go \
+  cmd/metrics/exporter.go \
   && \
   # build frr status
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-status \
   -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
-  frr-tools/status/exporter.go \
+  cmd/status/exporter.go \
   && \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-k8s \
@@ -59,7 +59,7 @@ COPY --from=builder /build/frr-k8s /frr-k8s
 COPY --from=builder /build/statuscleaner /statuscleaner
 COPY --from=builder /build/frr-metrics /frr-metrics
 COPY --from=builder /build/frr-status /frr-status
-COPY frr-tools/reloader/frr-reloader.sh /frr-reloader.sh
+COPY cmd/reloader/frr-reloader.sh /frr-reloader.sh
 COPY LICENSE /
 
 LABEL org.opencontainers.image.authors="metallb" \

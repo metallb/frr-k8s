@@ -13,8 +13,8 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
-	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
-	"github.com/metallb/frr-k8s/frr-tools/status/controller"
+	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
+	"github.com/metallb/frr-k8s/cmd/status/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"

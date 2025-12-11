@@ -15,9 +15,9 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 
-	"github.com/metallb/frr-k8s/frr-tools/metrics/collector"
-	"github.com/metallb/frr-k8s/frr-tools/metrics/liveness"
-	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
+	"github.com/metallb/frr-k8s/cmd/metrics/collector"
+	"github.com/metallb/frr-k8s/cmd/metrics/liveness"
+	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"
 )
