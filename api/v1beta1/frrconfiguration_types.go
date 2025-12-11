@@ -87,6 +87,10 @@ type Router struct {
 	// Imports is the list of imported VRFs we want for this router / vrf.
 	// +optional
 	Imports []Import `json:"imports,omitempty"`
+
+	// EVPN specific configuration for the router.
+	// +optional
+	EVPN *EVPNConfig `json:"evpn,omitempty"`
 }
 
 // Import represents the possible imported VRFs to a given router.
@@ -207,6 +211,15 @@ type Neighbor struct {
 	// +optional
 	// +kubebuilder:default:=false
 	DualStackAddressFamily bool `json:"dualStackAddressFamily,omitempty"`
+
+	// AddressFamilies specifies which address families to activate this
+	// neighbor for. Supported values: "unicast" (ipv4/ipv6 unicast based on
+	// session and DualStackAddressFamily value), "evpn" (l2vpn evpn).
+	// +optional
+	// +kubebuilder:default:={"unicast"}
+	// +kubebuilder:validation:MaxItems=2
+	// +kubebuilder:validation:Enum=unicast;evpn
+	AddressFamilies []string `json:"addressFamilies,omitempty"`
 }
 
 // Advertise represents a list of prefixes to advertise to the given neighbor.
@@ -412,3 +425,83 @@ const (
 	InternalASNMode DynamicASNMode = "internal"
 	ExternalASNMode DynamicASNMode = "external"
 )
+
+// EVPNConfig contains configuration related to EVPN.
+type EVPNConfig struct {
+	// AdvertiseVNIs controls how VNIs are advertised to EVPN neighbors.
+	// - "Disabled": No VNI advertisements
+	// - "All": Avertise all VNIs
+	// Note: Can only be provided for router instances with EVPN neighbors.
+	// +optional
+	// +kubebuilder:validation:Enum=Disabled;All
+	AdvertiseVNIs *VNIAdvertisement `json:"advertiseVNIs,omitempty"`
+
+	// L2VNIs contains configuration for Layer 2 VNIs.
+	// Note: Can only be provided for router instances with EVPN neighbors.
+	// +optional
+	L2VNIs []L2VNI `json:"l2vnis,omitempty"`
+
+	// L3VNI contains configuration for the Layer 3 VNI.
+	// +optional
+	L3VNI *L3VNI `json:"l3vni,omitempty"`
+}
+
+// VNIAdvertisement defines how VNIs are advertised in EVPN.
+// +kubebuilder:validation:Enum=Disabled;All
+type VNIAdvertisement string
+
+const (
+	// VNIAdvertisementDisabled disables VNI advertisement.
+	VNIAdvertisementDisabled VNIAdvertisement = "Disabled"
+
+	// VNIAdvertisementAll enables advertisement of all VNIs.
+	VNIAdvertisementAll VNIAdvertisement = "All"
+)
+
+// VNIBase contains common fields for all VNI types.
+type VNIBase struct {
+	// VNI is the VXLAN Network Identifier (1-16777215).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=16777215
+	VNI uint32 `json:"vni"`
+
+	// RD is the route distinguisher for this VNI.
+	// Format: ASN:NN or IP:NN (e.g., "65000:100" or "192.0.2.1:100")
+	// +optional
+	// +kubebuilder:validation:Pattern=`^([0-9]{1,10}|([0-9]{1,3}\.){3}[0-9]{1,3}):[0-9]{1,10}$`
+	RD string `json:"rd,omitempty"`
+
+	// ImportRTs is the list of route targets to import.
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	ImportRTs []RouteTarget `json:"importRTs,omitempty"`
+
+	// ExportRTs is the list of route targets to export.
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	ExportRTs []RouteTarget `json:"exportRTs,omitempty"`
+}
+
+// L2VNI represents a Layer 2 VNI configuration.
+type L2VNI struct {
+	VNIBase `json:",inline"`
+}
+
+// L3VNI represents a Layer 3 VNI configuration.
+type L3VNI struct {
+	VNIBase `json:",inline"`
+
+	// AdvertisePrefixes controls which prefixes to advertise as EVPN type-5 routes.
+	// - "unicast": advertise the unicast prefixes of the router.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=1
+	// +kubebuilder:validation:Enum=unicast
+	AdvertisePrefixes []string `json:"advertisePrefixes"`
+}
+
+// RouteTarget is a BGP route target.
+// Format: ASN:NN, IP:NN, or *:NN for wildcard matching (e.g., "65000:100", "192.0.2.1:100", or "*:100")
+// +kubebuilder:validation:Pattern=`^(\*|[0-9]{1,10}|([0-9]{1,3}\.){3}[0-9]{1,3}):[0-9]{1,10}$`
+type RouteTarget string
