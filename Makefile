@@ -89,7 +89,7 @@ BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the k8s-frr.
-	docker build -t ${IMG} --build-arg GIT_COMMIT=$${COMMIT} --build-arg GIT_BRANCH=$${BRANCH} .
+	docker build -t ${IMG} --build-arg GIT_COMMIT=${COMMIT} --build-arg GIT_BRANCH=${BRANCH} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the k8s-frr.

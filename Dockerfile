@@ -33,23 +33,23 @@ RUN --mount=type=cache,target=/root/.cache/go-build \
   # build frr metrics
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-metrics \
-  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
+  -ldflags "-X 'github.com/metallb/frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'github.com/metallb/frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
   cmd/metrics/exporter.go \
   && \
   # build frr status
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-status \
-  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/metallb/internal/version.gitBranch=${GIT_BRANCH}'" \
+  -ldflags "-X 'github.com/metallb/frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'github.com/metallb/frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
   cmd/status/exporter.go \
   && \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/frr-k8s \
-  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
+  -ldflags "-X 'github.com/metallb/frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'github.com/metallb/frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
   cmd/frr-k8s-controller/main.go \
   && \
   CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH GOARM=$VARIANT \
   go build -v -o /build/statuscleaner \
-  -ldflags "-X 'frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
+  -ldflags "-X 'github.com/metallb/frr-k8s/internal/version.gitCommit=${GIT_COMMIT}' -X 'github.com/metallb/frr-k8s/internal/version.gitBranch=${GIT_BRANCH}'" \
   cmd/statuscleaner/main.go
 
 FROM docker.io/alpine:latest
