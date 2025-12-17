@@ -23,17 +23,32 @@ git push
 
 ## Generate the release notes
 
-A convenience generator script is added under `website/gen_relnotes.sh`. The syntax is
-as follows:
+A convenience generator script is available at `hack/gen_relnotes.sh`. The script can be run in two modes:
+
+### Automatic mode (recommended)
 
 ```bash
-hack/gen_relnotes.sh <branch> <first commit> <last commit>
+hack/gen_relnotes.sh
 ```
 
-Where branch is the branch being released, first and last commit is the interval
-we want to generate the release notes for.
+This will automatically:
+- Find the previous release commit (searches for "Prepare the v*" commits)
+- Use the HEAD of `upstream/main` as the end point
+- Auto-increment the patch version from the current release
+- Generate categorized release notes based on PR labels (`kind/feature`, `kind/bug`, `kind/cleanup`)
+- Update `RELEASE_NOTES.md` with the new release section
 
-The `GITHUB_TOKEN` environment variable must be set with a github token which has the following permissions:
+### Manual mode with custom version
+
+```bash
+hack/gen_relnotes.sh 0.0.21
+```
+
+This will use the provided version number instead of auto-incrementing.
+
+### Prerequisites
+
+The `GITHUB_TOKEN` environment variable must be set with a GitHub token which has the following permissions:
 
 Read access to:
 
@@ -43,9 +58,13 @@ Read access to:
 
 ## Finalize the release notes
 
-All release notes are always written on the main branch in the `RELEASE_NOTES.md` file, and copied into release branches in a later step. Point out all new features and actions required by users. If there are very notable bugfixes (e.g. security issues, long-term pain point resolved), point those out as well.
+All release notes are always written on the main branch in the `RELEASE_NOTES.md` file, and copied into release branches in a later step.
 
-For each new release, a section like `## Release vX.Y.Z` must be added.
+After running the generation script, review the generated notes and:
+- Point out all new features and actions required by users
+- Highlight notable bugfixes (e.g. security issues, long-term pain points resolved)
+- Verify all PRs are properly categorized
+- Add any additional context or explanations as needed
 
 To get a list of contributors to the release, run `git log --format="%aN" $(git merge-base CUR-BRANCH PREV-TAG)..CUR-BRANCH | sort -u | tr '\n' ',' | sed -e 's/,/, /g'`. CUR-BRANCH is main if you’re making a minor release (e.g. 0.9.0), or the release branch for the current version if you’re making a patch release (e.g. v0.8 if you’re making v0.8.4). PREV-TAG is the release tag name for the last release (e.g. if you’re preparing 0.8.4, PREV-TAG is v0.8.3. Also think about whether there were significant contributions that weren’t in the form of a commit, and include those people as well. It’s better to err on the side of being too thankful!
 

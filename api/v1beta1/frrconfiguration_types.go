@@ -40,6 +40,10 @@ type FRRConfigurationSpec struct {
 
 // RawConfig is a snippet of raw frr configuration that gets appended to the
 // rendered configuration.
+//
+// WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
+// It should not be used in production environments. This feature is provided as-is without any
+// guarantees of stability, compatibility, or support. Use at your own risk.
 type RawConfig struct {
 	// Priority is the order with this configuration is appended to the
 	// bottom of the rendered configuration. A higher value means the
@@ -192,6 +196,7 @@ type Neighbor struct {
 	ToReceive Receive `json:"toReceive,omitempty"`
 
 	// To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.
+	//
 	// Deprecated: DisableMP is deprecated in favor of dualStackAddressFamily.
 	// +optional
 	// +kubebuilder:default:=false

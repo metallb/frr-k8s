@@ -1,5 +1,4 @@
 //go:build !arm
-// +build !arm
 
 // SPDX-License-Identifier:Apache-2.0
 

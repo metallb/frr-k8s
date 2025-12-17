@@ -97,6 +97,8 @@ spec:
               fieldPath: metadata.namespace
       - name: frr
         securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
           capabilities:
             add: ["NET_ADMIN", "NET_RAW", "SYS_ADMIN", "NET_BIND_SERVICE"]
         image: quay.io/frrouting/frr:10.4.1
@@ -108,20 +110,14 @@ spec:
             mountPath: /var/run/frr
           - name: frr-conf
             mountPath: /etc/frr
-        # The command is FRR's default entrypoint & waiting for the log file to appear and tailing it.
-        # If the log file isn't created in 60 seconds the tail fails and the container is restarted.
-        # This workaround is needed to have the frr logs as part of kubectl logs -c frr < k8s-frr-podname >.
+          - name: frr-lib
+            mountPath: /var/lib/frr
+          - name: frr-tmp
+            mountPath: /var/tmp/frr
         command:
           - /bin/sh
           - -c
-          - |
-            /sbin/tini -- /usr/lib/frr/docker-start &
-            attempts=0
-            until [[ -f /etc/frr/frr.log || $attempts -eq 60 ]]; do
-              sleep 1
-              attempts=$(( $attempts + 1 ))
-            done
-            tail -f /etc/frr/frr.log
+          - /sbin/tini -- /usr/lib/frr/docker-start
         livenessProbe:
           httpGet:
             path: /livez
@@ -144,7 +140,7 @@ spec:
           - --metrics-bind-address=127.0.0.1
         ports:
           - containerPort: 7573
-            name: monitoring
+            name: frr-metrics
         volumeMounts:
           - name: frr-sockets
             mountPath: /var/run/frr
@@ -209,6 +205,10 @@ spec:
         - name: metrics
           emptyDir: {}
         - name: frr-status
+          emptyDir: {}
+        - name: frr-lib
+          emptyDir: {}
+        - name: frr-tmp
           emptyDir: {}
       initContainers:
         # Copies the initial config files with the right permissions to the shared volume.

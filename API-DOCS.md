@@ -350,7 +350,7 @@ _Appears in:_
 | `enableGracefulRestart` _boolean_ | EnableGracefulRestart allows BGP peer to continue to forward data packets along<br />known routes while the routing protocol information is being restored. If<br />the session is already established, the configuration will have effect<br />after reconnecting to the peer |  |  |
 | `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor<br />and the associated properties. |  |  |
 | `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  |  |
-| `disableMP` _boolean_ | To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.<br />Deprecated: DisableMP is deprecated in favor of dualStackAddressFamily. | false |  |
+| `disableMP` _boolean_ | To set if we want to disable MP BGP that will separate IPv4 and IPv6 route exchanges into distinct BGP sessions.<br /><br />Deprecated: DisableMP is deprecated in favor of dualStackAddressFamily. | false |  |
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false |  |
 
 
@@ -378,6 +378,11 @@ _Appears in:_
 
 RawConfig is a snippet of raw frr configuration that gets appended to the
 rendered configuration.
+
+
+WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
+It should not be used in production environments. This feature is provided as-is without any
+guarantees of stability, compatibility, or support. Use at your own risk.
 
 
 
