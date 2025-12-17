@@ -1,5 +1,14 @@
 # FRRK8s Release Notes
 
+## Release v0.0.22
+
+### Bug fixes
+- Added `readOnlyRootFilesystem: true` and `allowPrivilegeEscalation: false` to containers missing these security flags, enhancing container security posture without affecting functionality. (#358, @cgoncalves)
+
+### Other (Cleanup or Flake)
+- Fix duplicate port name `monitoring` when deploying the all-in-one.yaml (#356, @dave-tucker)
+- Frr container: no longer contains a log file, logs are sent directly to stdout. this enables the logs to be rotated on the node. (#319, @oribon)
+
 ## Release v0.0.21
 
 ### New Features
