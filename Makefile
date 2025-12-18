@@ -51,7 +51,7 @@ help: ## Display this help.
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=daemon-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	cp config/crd/bases/*.yaml charts/frr-k8s/charts/crds/templates
+	cp config/crd/bases/*.yaml charts/frr-k8s/crds/
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -161,7 +161,7 @@ deploy-cluster: kubectl manifests kustomize kind load-on-kind ## Deploy a cluste
 
 KUSTOMIZE_LAYER ?= default
 .PHONY: deploy-controller
-deploy-controller: kubectl kustomize ## Deploy controller to the K8s cluster specified in $KUBECONFIG.
+deploy-controller: kubectl kustomize install ## Deploy controller to the K8s cluster specified in $KUBECONFIG.
 	cd config/frr-k8s && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUBECTL) -n ${NAMESPACE} delete ds frr-k8s-daemon || true
 	$(KUBECTL) -n ${NAMESPACE} delete deployment frr-k8s-webhook-server || true

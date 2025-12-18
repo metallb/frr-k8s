@@ -15,7 +15,6 @@ namePrefix: frr-k8s-
 #    someName: someValue
 
 resources:
-- ../crd
 - ../rbac
 - ../frr-k8s
 - ../webhook

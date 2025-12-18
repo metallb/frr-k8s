@@ -5,10 +5,6 @@ home: https://metallb.universe.tf
 sources:
   - https://github.com/metallb/frr-k8s
 icon: https://metallb.universe.tf/images/logo/metallb-white.png
-dependencies:
-- name: crds
-  condition: crds.enabled
-  version: 0.0.0
 
 # A chart can be either an 'application' or a 'library' chart.
 #
