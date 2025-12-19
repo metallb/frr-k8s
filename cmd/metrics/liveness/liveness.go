@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/go-kit/log"
-	"github.com/metallb/frr-k8s/frr-tools/metrics/vtysh"
+	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
 )
 
 func Handler(frrCli vtysh.Cli, logger log.Logger) http.Handler {
