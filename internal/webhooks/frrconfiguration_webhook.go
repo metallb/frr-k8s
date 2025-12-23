@@ -12,7 +12,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/api/v1beta2"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -31,7 +31,7 @@ var (
 )
 
 const (
-	frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta1-frrconfiguration"
+	frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta2-frrconfiguration"
 	healthPath           = "/healthz"
 )
 
@@ -57,11 +57,11 @@ func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return nil
 }
 
-//+kubebuilder:webhook:verbs=create;update,path=/validate-frrk8s-metallb-io-v1beta1-frrconfiguration,mutating=false,failurePolicy=fail,groups=frrk8s.metallb.io,resources=frrconfigurations,versions=v1beta1,name=frrconfigurationsvalidationwebhook.metallb.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update,path=/validate-frrk8s-metallb-io-v1beta2-frrconfiguration,mutating=false,failurePolicy=fail,groups=frrk8s.metallb.io,resources=frrconfigurations,versions=v1beta2,name=frrconfigurationsvalidationwebhook.metallb.io,sideEffects=None,admissionReviewVersions=v1
 
 func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) (resp admission.Response) {
-	var config v1beta1.FRRConfiguration
-	var oldConfig v1beta1.FRRConfiguration
+	var config v1beta2.FRRConfiguration
+	var oldConfig v1beta2.FRRConfiguration
 	if req.Operation == v1.Delete {
 		if err := v.decoder.DecodeRaw(req.OldObject, &config); err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
@@ -120,28 +120,28 @@ func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type nodeAndConfigs struct {
 	name   string
 	labels map[string]string
-	cfgs   *v1beta1.FRRConfigurationList
+	cfgs   *v1beta2.FRRConfigurationList
 }
 
-func validateConfigCreate(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
+func validateConfigCreate(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigUpdate(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
+func validateConfigUpdate(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigDelete(_ *v1beta1.FRRConfiguration) ([]string, error) {
+func validateConfigDelete(_ *v1beta2.FRRConfiguration) ([]string, error) {
 	return []string{}, nil
 }
 
-func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
+func validateConfig(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
 	var warnings []string
 
 	selector, err := getCachedSelector(frrConfig.Spec.NodeSelector)
@@ -169,7 +169,7 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 			matchingNodes = append(matchingNodes, nodeAndConfigs{
 				name:   n.Name,
 				labels: n.Labels,
-				cfgs:   &v1beta1.FRRConfigurationList{},
+				cfgs:   &v1beta2.FRRConfigurationList{},
 			})
 		}
 	}
@@ -222,8 +222,8 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	return warnings, nil
 }
 
-var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
-	frrConfigurationsList := &v1beta1.FRRConfigurationList{}
+var getFRRConfigurations = func() (*v1beta2.FRRConfigurationList, error) {
+	frrConfigurationsList := &v1beta2.FRRConfigurationList{}
 	err := WebhookClient.List(context.Background(), frrConfigurationsList)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("failed to get existing FRRConfiguration objects"))
@@ -240,7 +240,7 @@ var getNodes = func() ([]corev1.Node, error) {
 	return nodesList.Items, nil
 }
 
-func containsDisableMP(routers []v1beta1.Router) bool {
+func containsDisableMP(routers []v1beta2.Router) bool {
 	for _, r := range routers {
 		for _, n := range r.Neighbors {
 			//nolint:staticcheck // DisableMP is deprecated but still supported for backward compatibility

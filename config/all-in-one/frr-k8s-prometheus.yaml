@@ -954,14 +954,14 @@ webhooks:
     service:
       name: frr-k8s-webhook-service
       namespace: frr-k8s-system
-      path: /validate-frrk8s-metallb-io-v1beta1-frrconfiguration
+      path: /validate-frrk8s-metallb-io-v1beta2-frrconfiguration
   failurePolicy: Fail
   name: frrconfigurationsvalidationwebhook.metallb.io
   rules:
   - apiGroups:
     - frrk8s.metallb.io
     apiVersions:
-    - v1beta1
+    - v1beta2
     operations:
     - CREATE
     - UPDATE
