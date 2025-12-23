@@ -310,3 +310,10 @@ cutrelease: bumpversion generate-all-in-one helm-docs
 .PHONY: demoenv
 demoenv: deploy
 	cd hack/demo && ./demo.sh
+
+.PHONY: tidye2e
+tidye2e:
+	cd e2etests && go mod tidy
+
+.PHONY: checkgenerated
+checkgenerated: bumpall tidye2e generate generate-all-in-one api-docs helm-docs checkuncommitted ## Check all generated content.
