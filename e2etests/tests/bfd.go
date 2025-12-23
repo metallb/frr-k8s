@@ -9,7 +9,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -57,17 +57,17 @@ var _ = ginkgo.Describe("BFD", func() {
 		cs = k8sclient.New()
 	})
 
-	simpleProfile := frrk8sv1beta1.BFDProfile{
+	simpleProfile := frrk8sv1beta2.BFDProfile{
 		Name: "simple",
 	}
-	fullProfile := frrk8sv1beta1.BFDProfile{
+	fullProfile := frrk8sv1beta2.BFDProfile{
 		Name:             "full1",
 		ReceiveInterval:  ptr.To[uint32](60),
 		TransmitInterval: ptr.To[uint32](61),
 		EchoInterval:     ptr.To[uint32](62),
 		MinimumTTL:       ptr.To[uint32](254),
 	}
-	withEchoMode := frrk8sv1beta1.BFDProfile{
+	withEchoMode := frrk8sv1beta2.BFDProfile{
 		Name:             "echo",
 		ReceiveInterval:  ptr.To[uint32](80),
 		TransmitInterval: ptr.To[uint32](81),
@@ -76,7 +76,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		MinimumTTL:       ptr.To[uint32](254),
 	}
 
-	ginkgo.DescribeTable("should work with the given bfd profile", func(bfdProfileDefault frrk8sv1beta1.BFDProfile, bfdProfileRed frrk8sv1beta1.BFDProfile, pairingFamily ipfamily.Family) {
+	ginkgo.DescribeTable("should work with the given bfd profile", func(bfdProfileDefault frrk8sv1beta2.BFDProfile, bfdProfileRed frrk8sv1beta2.BFDProfile, pairingFamily ipfamily.Family) {
 
 		ginkgo.By("pairing with nodes")
 		for _, c := range infra.FRRContainers {
@@ -86,19 +86,19 @@ var _ = ginkgo.Describe("BFD", func() {
 			Expect(err).NotTo(HaveOccurred())
 		}
 
-		withBFD := func(neigh *frrk8sv1beta1.Neighbor) {
+		withBFD := func(neigh *frrk8sv1beta2.Neighbor) {
 			neigh.BFDProfile = bfdProfileDefault.Name
 		}
 		defaultVRFConfig, secrets := configForVRF(infra.DefaultVRFName, infra.FRRK8sASN, pairingFamily, withBFD)
-		defaultVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileDefault}
+		defaultVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta2.BFDProfile{bfdProfileDefault}
 		err := updater.Update(secrets, defaultVRFConfig)
 		Expect(err).NotTo(HaveOccurred())
 
-		withBFDRed := func(neigh *frrk8sv1beta1.Neighbor) {
+		withBFDRed := func(neigh *frrk8sv1beta2.Neighbor) {
 			neigh.BFDProfile = bfdProfileRed.Name
 		}
 		redVRFConfig, redSecrets := configForVRF(infra.VRFName, infra.FRRK8sASNVRF, pairingFamily, withBFDRed)
-		redVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{bfdProfileRed}
+		redVRFConfig.Spec.BGP.BFDProfiles = []frrk8sv1beta2.BFDProfile{bfdProfileRed}
 		err = updater.Update(redSecrets, redVRFConfig)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -172,7 +172,7 @@ var _ = ginkgo.Describe("BFD", func() {
 	)
 })
 
-func configForVRF(vrfName string, asn uint32, pairingFamily ipfamily.Family, modifyNeighbors ...func(neighs *frrk8sv1beta1.Neighbor)) (frrk8sv1beta1.FRRConfiguration, []corev1.Secret) {
+func configForVRF(vrfName string, asn uint32, pairingFamily ipfamily.Family, modifyNeighbors ...func(neighs *frrk8sv1beta2.Neighbor)) (frrk8sv1beta2.FRRConfiguration, []corev1.Secret) {
 	frrs := config.ContainersForVRF(infra.FRRContainers, vrfName)
 	peersConfig := config.PeersForContainers(frrs, pairingFamily)
 	neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
@@ -183,14 +183,14 @@ func configForVRF(vrfName string, asn uint32, pairingFamily ipfamily.Family, mod
 		}
 	}
 
-	config := frrk8sv1beta1.FRRConfiguration{
+	config := frrk8sv1beta2.FRRConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "testvrf" + vrfName,
 			Namespace: k8s.FRRK8sNamespace,
 		},
-		Spec: frrk8sv1beta1.FRRConfigurationSpec{
-			BGP: frrk8sv1beta1.BGPConfig{
-				Routers: []frrk8sv1beta1.Router{
+		Spec: frrk8sv1beta2.FRRConfigurationSpec{
+			BGP: frrk8sv1beta2.BGPConfig{
+				Routers: []frrk8sv1beta2.Router{
 					{
 						ASN:       asn,
 						VRF:       vrfName,
@@ -203,8 +203,8 @@ func configForVRF(vrfName string, asn uint32, pairingFamily ipfamily.Family, mod
 	return config, peersConfig.Secrets
 }
 
-func bfdProfileWithDefaults(profile frrk8sv1beta1.BFDProfile, multiHop bool) frrk8sv1beta1.BFDProfile {
-	res := frrk8sv1beta1.BFDProfile{}
+func bfdProfileWithDefaults(profile frrk8sv1beta2.BFDProfile, multiHop bool) frrk8sv1beta2.BFDProfile {
+	res := frrk8sv1beta2.BFDProfile{}
 	res.Name = profile.Name
 	res.ReceiveInterval = valueWithDefault(profile.ReceiveInterval, 300)
 	res.TransmitInterval = valueWithDefault(profile.TransmitInterval, 300)

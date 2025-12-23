@@ -6,7 +6,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"go.universe.tf/e2etest/pkg/frr/container"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			prefixes    []string
 			modifyPeers func([]config.Peer, []config.Peer)
 			validate    func([]config.Peer, []config.Peer, []v1.Node)
-			splitCfg    func(frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error)
+			splitCfg    func(frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error)
 		}
 
 		ginkgo.DescribeTable("Works with external frrs", func(p params) {
@@ -68,14 +68,14 @@ var _ = ginkgo.Describe("Advertisement", func() {
 			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -138,7 +138,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -175,7 +175,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -212,7 +212,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -269,10 +269,10 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.2.0/24", "192.169.2.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
@@ -323,8 +323,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"192.168.0.0/24"},
@@ -352,9 +352,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowRestricted
 						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"192.168.0.0/24"},
@@ -382,8 +382,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.0.0/24"},
 								LocalPref: 100,
@@ -411,9 +411,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowRestricted
 						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
 								LocalPref: 100,
@@ -442,8 +442,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"192.168.0.0/24"},
@@ -453,7 +453,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"192.168.1.0/24"},
 							},
 						}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.0.0/24"},
 								LocalPref: 100,
@@ -483,9 +483,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowRestricted
 						ppV4[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"192.168.0.0/24"},
@@ -495,7 +495,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
 							},
 						}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.0.0/24", "192.168.1.0/24"},
 								LocalPref: 100,
@@ -526,14 +526,14 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "large:123:456:7890",
 								Prefixes:  []string{"192.168.0.0/24"},
 							},
 						}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.0.0/24"},
 								LocalPref: 100,
@@ -557,8 +557,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
@@ -568,7 +568,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e800::/64"},
 							},
 						}
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
 								LocalPref: 100,
@@ -598,9 +598,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowRestricted
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowRestricted
 						ppV6[i].Neigh.ToAdvertise.Allowed.Prefixes = []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"}
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
@@ -610,7 +610,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 							},
 						}
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 								LocalPref: 100,
@@ -641,14 +641,14 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "large:123:456:7890",
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
 							},
 						}
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
 								LocalPref: 100,
@@ -672,8 +672,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				prefixes: []string{"192.168.2.0/24", "192.169.2.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"192.168.2.0/24"},
@@ -687,7 +687,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"192.168.2.0/24", "192.169.2.0/24"},
 							},
 						}
-						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV4[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"192.168.2.0/24"},
 								LocalPref: 100,
@@ -695,8 +695,8 @@ var _ = ginkgo.Describe("Advertisement", func() {
 						}
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{
 							{
 								Community: "10:100",
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
@@ -710,7 +710,7 @@ var _ = ginkgo.Describe("Advertisement", func() {
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 							},
 						}
-						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{
+						ppV6[i].Neigh.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{
 							{
 								Prefixes:  []string{"fc00:f853:ccd:e799::/64"},
 								LocalPref: 100,

@@ -10,7 +10,7 @@ import (
 
 	"github.com/onsi/ginkgo/v2"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -58,17 +58,17 @@ var _ = ginkgo.Describe("Session", func() {
 
 	ginkgo.Context("Session parameters", func() {
 		ginkgo.It("are set correctly", func() {
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: infra.FRRK8sASN,
-								Neighbors: []frrk8sv1beta1.Neighbor{
+								Neighbors: []frrk8sv1beta2.Neighbor{
 									{
 										ASN:     1234,
 										Address: "192.168.1.1",
@@ -132,7 +132,7 @@ var _ = ginkgo.Describe("Session", func() {
 
 		ginkgo.DescribeTable("Establishes sessions with cleartext password", func(family ipfamily.Family) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
-			neighbors := []frrk8sv1beta1.Neighbor{}
+			neighbors := []frrk8sv1beta2.Neighbor{}
 
 			for _, f := range frrs {
 				addresses := f.AddressesForFamily(family)
@@ -142,7 +142,7 @@ var _ = ginkgo.Describe("Session", func() {
 				}
 
 				for _, address := range addresses {
-					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+					neighbors = append(neighbors, frrk8sv1beta2.Neighbor{
 						ASN:          f.RouterConfig.ASN,
 						Address:      address,
 						Password:     f.RouterConfig.Password,
@@ -152,14 +152,14 @@ var _ = ginkgo.Describe("Session", func() {
 				}
 			}
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       infra.FRRK8sASN,
 								VRF:       "",
@@ -193,7 +193,7 @@ var _ = ginkgo.Describe("Session", func() {
 
 		ginkgo.DescribeTable("Establishes sessions with graceful restart", func(family ipfamily.Family) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
-			neighbors := []frrk8sv1beta1.Neighbor{}
+			neighbors := []frrk8sv1beta2.Neighbor{}
 
 			for _, f := range frrs {
 				addresses := f.AddressesForFamily(family)
@@ -203,7 +203,7 @@ var _ = ginkgo.Describe("Session", func() {
 				}
 
 				for _, address := range addresses {
-					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+					neighbors = append(neighbors, frrk8sv1beta2.Neighbor{
 						ASN:                   f.RouterConfig.ASN,
 						Address:               address,
 						Password:              f.RouterConfig.Password, // Password is hardcoded in external FRRs config
@@ -214,14 +214,14 @@ var _ = ginkgo.Describe("Session", func() {
 				}
 			}
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       infra.FRRK8sASN,
 								VRF:       "",
@@ -269,7 +269,7 @@ var _ = ginkgo.Describe("Session", func() {
 
 		ginkgo.DescribeTable("Establishes sessions with dynamicASN", func(family ipfamily.Family) {
 			frrs := config.ContainersForVRF(infra.FRRContainers, "")
-			neighbors := []frrk8sv1beta1.Neighbor{}
+			neighbors := []frrk8sv1beta2.Neighbor{}
 
 			for _, f := range frrs {
 				addresses := f.AddressesForFamily(family)
@@ -278,13 +278,13 @@ var _ = ginkgo.Describe("Session", func() {
 					ebgpMultihop = true
 				}
 
-				dynamicASN := frrk8sv1beta1.InternalASNMode
+				dynamicASN := frrk8sv1beta2.InternalASNMode
 				if f.RouterConfig.ASN != infra.FRRK8sASN {
-					dynamicASN = frrk8sv1beta1.ExternalASNMode
+					dynamicASN = frrk8sv1beta2.ExternalASNMode
 				}
 
 				for _, address := range addresses {
-					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+					neighbors = append(neighbors, frrk8sv1beta2.Neighbor{
 						DynamicASN:   dynamicASN,
 						Address:      address,
 						Password:     f.RouterConfig.Password,
@@ -294,14 +294,14 @@ var _ = ginkgo.Describe("Session", func() {
 				}
 			}
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       infra.FRRK8sASN,
 								VRF:       "",

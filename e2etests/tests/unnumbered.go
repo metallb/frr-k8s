@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -84,30 +84,30 @@ var _ = ginkgo.Describe("Unnumbered", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By(fmt.Sprintf("peering node %s with its p2p container %s", nodeWithP2PConnection.Name, externalP2PContainer.Name))
-		cr := frrk8sv1beta1.FRRConfiguration{
+		cr := frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "for-" + externalP2PContainer.Name,
 				Namespace: k8s.FRRK8sNamespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					BFDProfiles: []frrk8sv1beta1.BFDProfile{{Name: "simple"}},
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					BFDProfiles: []frrk8sv1beta2.BFDProfile{{Name: "simple"}},
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN: infra.FRRK8sASN,
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN:        remoteASN,
 									Interface:  iface,
 									BFDProfile: "simple",
-									ToReceive: frrk8sv1beta1.Receive{
-										Allowed: frrk8sv1beta1.AllowedInPrefixes{
-											Mode: frrk8sv1beta1.AllowAll,
+									ToReceive: frrk8sv1beta2.Receive{
+										Allowed: frrk8sv1beta2.AllowedInPrefixes{
+											Mode: frrk8sv1beta2.AllowAll,
 										},
 									},
-									ToAdvertise: frrk8sv1beta1.Advertise{
-										Allowed: frrk8sv1beta1.AllowedOutPrefixes{
-											Mode: frrk8sv1beta1.AllowAll,
+									ToAdvertise: frrk8sv1beta2.Advertise{
+										Allowed: frrk8sv1beta2.AllowedOutPrefixes{
+											Mode: frrk8sv1beta2.AllowAll,
 										},
 									},
 								},

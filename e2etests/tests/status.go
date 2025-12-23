@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -71,14 +72,14 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 	ginkgo.Context("Exposing the frr status", func() {
 		ginkgo.It("Works with valid config", func() {
-			frrconfig := frrk8sv1beta1.FRRConfiguration{
+			frrconfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 64515,
 								VRF: "",
@@ -121,11 +122,11 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 					"password": []byte("supersecret"),
 				},
 			}
-			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta1.Neighbor{
+			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta2.Neighbor{
 				{
 					ASN:     123,
 					Address: "192.168.5.1",
-					PasswordSecret: frrk8sv1beta1.SecretReference{
+					PasswordSecret: frrk8sv1beta2.SecretReference{
 						Name:      "neighsecret",
 						Namespace: k8s.FRRK8sNamespace,
 					},
@@ -162,7 +163,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 				}, 2*time.Minute, time.Second).ShouldNot(HaveOccurred())
 			}
 
-			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta1.Neighbor{}
+			frrconfig.Spec.BGP.Routers[0].Neighbors = []frrk8sv1beta2.Neighbor{}
 			ginkgo.By("Removing neighbors")
 			err = updater.Update([]corev1.Secret{}, frrconfig)
 			Expect(err).NotTo(HaveOccurred())
@@ -185,7 +186,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			}
 
 			ginkgo.By("Applying an invalid config")
-			frrconfig.Spec.BGP = frrk8sv1beta1.BGPConfig{}
+			frrconfig.Spec.BGP = frrk8sv1beta2.BGPConfig{}
 			frrconfig.Spec.Raw.Config = "this is a non valid configuration"
 			err = updater.Update([]corev1.Secret{}, frrconfig)
 			Expect(err).NotTo(HaveOccurred())
@@ -210,14 +211,14 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 	ginkgo.Context("Exposing the configuration conversion status", func() {
 		ginkgo.It("Works with valid config", func() {
-			validFRRConfig := frrk8sv1beta1.FRRConfiguration{
+			validFRRConfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 64515,
 								VRF: "",
@@ -246,21 +247,21 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 
 			ginkgo.By("Applying an invalid config")
 
-			invalidConfig := frrk8sv1beta1.FRRConfiguration{
+			invalidConfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: infra.FRRK8sASN,
-								Neighbors: []frrk8sv1beta1.Neighbor{
+								Neighbors: []frrk8sv1beta2.Neighbor{
 									{
 										ASN:     1234,
 										Address: "192.168.1.1",
-										PasswordSecret: frrk8sv1beta1.SecretReference{
+										PasswordSecret: frrk8sv1beta2.SecretReference{
 											Name:      "nonexisting",
 											Namespace: k8s.FRRK8sNamespace,
 										},
@@ -313,14 +314,14 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 		})
 
 		ginkgo.It("should not be processed and reflected in the frr status", func() {
-			frrconfig := frrk8sv1beta1.FRRConfiguration{
+			frrconfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: testNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 74515,
 							},
@@ -463,7 +464,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			_, err = cs.CoreV1().Nodes().Update(context.Background(), excludedNodePtr, metav1.UpdateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-      ginkgo.By("Waiting that all pods of the daemonset running")
+			ginkgo.By("Waiting that all pods of the daemonset running")
 			_, err = k8s.FRRK8sDaemonSet(cs)
 			Expect(err).NotTo(HaveOccurred())
 		})

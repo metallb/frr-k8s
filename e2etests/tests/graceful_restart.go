@@ -12,7 +12,7 @@ import (
 	"go.universe.tf/e2etest/pkg/container"
 	"go.universe.tf/e2etest/pkg/executor"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -101,14 +101,14 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			peersConfig := config.PeersForContainers(frrs, ipFam,
 				config.EnableAllowAll, config.EnableReceiveAllowAll, config.EnableGracefulRestart)
 
-			frrConfigCR := frrk8sv1beta1.FRRConfiguration{
+			frrConfigCR := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "graceful-restart-test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       infra.FRRK8sASN,
 								Neighbors: config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6),

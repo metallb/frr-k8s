@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 	"go.universe.tf/e2etest/pkg/frr/container"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -75,21 +75,21 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			rawFamily, err := rawConfigForFRR(neighborFamilyTemplate, infra.FRRK8sASN, frrs[0])
 			Expect(err).NotTo(HaveOccurred())
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       infra.FRRK8sASN,
 								Neighbors: neighbors,
 							},
 						},
 					},
-					Raw: frrk8sv1beta1.RawConfig{
+					Raw: frrk8sv1beta2.RawConfig{
 						Config: rawFamily,
 					},
 				},
@@ -98,13 +98,13 @@ var _ = ginkgo.Describe("Injecting raw config", func() {
 			err = updater.Update(peersConfig.Secrets, config)
 			Expect(err).NotTo(HaveOccurred())
 
-			configRawSecondBit := frrk8sv1beta1.FRRConfiguration{
+			configRawSecondBit := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test1",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					Raw: frrk8sv1beta1.RawConfig{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					Raw: frrk8sv1beta2.RawConfig{
 						Config:   rawAddress,
 						Priority: 5,
 					},

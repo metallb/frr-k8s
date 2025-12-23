@@ -5,31 +5,31 @@ package tests
 import (
 	"fmt"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func splitByNeigh(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func splitByNeigh(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
 	for i, n := range router.Neighbors {
-		configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+		configs = append(configs, frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-%d", cfg.Name, i),
 				Namespace: cfg.Namespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       router.ASN,
 							VRF:       router.VRF,
-							Neighbors: []frrk8sv1beta1.Neighbor{n},
+							Neighbors: []frrk8sv1beta2.Neighbor{n},
 							Prefixes:  router.Prefixes,
 						},
 					},
@@ -41,33 +41,33 @@ func splitByNeigh(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfig
 	return configs, nil
 }
 
-func splitByCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func splitByCommunities(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
-	withCommunityPrefixFor := func(n frrk8sv1beta1.Neighbor, j int) frrk8sv1beta1.Neighbor {
+	withCommunityPrefixFor := func(n frrk8sv1beta2.Neighbor, j int) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
-		res.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta1.CommunityPrefixes{res.ToAdvertise.PrefixesWithCommunity[j]}
+		res.ToAdvertise.PrefixesWithCommunity = []frrk8sv1beta2.CommunityPrefixes{res.ToAdvertise.PrefixesWithCommunity[j]}
 		return *res
 	}
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
 	for i, n := range router.Neighbors {
 		for j := range n.ToAdvertise.PrefixesWithCommunity {
-			configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+			configs = append(configs, frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-%d", cfg.Name, i, j),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withCommunityPrefixFor(n, j)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withCommunityPrefixFor(n, j)},
 								Prefixes:  router.Prefixes,
 							},
 						},
@@ -80,33 +80,33 @@ func splitByCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRR
 	return configs, nil
 }
 
-func splitByLocalPref(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func splitByLocalPref(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
-	withLocalPrefPrefixFor := func(n frrk8sv1beta1.Neighbor, j int) frrk8sv1beta1.Neighbor {
+	withLocalPrefPrefixFor := func(n frrk8sv1beta2.Neighbor, j int) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
-		res.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta1.LocalPrefPrefixes{res.ToAdvertise.PrefixesWithLocalPref[j]}
+		res.ToAdvertise.PrefixesWithLocalPref = []frrk8sv1beta2.LocalPrefPrefixes{res.ToAdvertise.PrefixesWithLocalPref[j]}
 		return *res
 	}
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
 	for i, n := range router.Neighbors {
 		for j := range n.ToAdvertise.PrefixesWithLocalPref {
-			configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+			configs = append(configs, frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-%d", cfg.Name, i, j),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withLocalPrefPrefixFor(n, j)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withLocalPrefPrefixFor(n, j)},
 								Prefixes:  router.Prefixes,
 							},
 						},
@@ -119,58 +119,58 @@ func splitByLocalPref(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRCo
 	return configs, nil
 }
 
-func splitByLocalPrefAndCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func splitByLocalPrefAndCommunities(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
-	withoutCommunities := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+	withoutCommunities := func(n frrk8sv1beta2.Neighbor) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
 		res.ToAdvertise.PrefixesWithCommunity = nil
 		return *res
 	}
 
-	withoutLocalPrefs := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+	withoutLocalPrefs := func(n frrk8sv1beta2.Neighbor) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
 		res.ToAdvertise.PrefixesWithLocalPref = nil
 		return *res
 	}
 
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
 	for i, n := range router.Neighbors {
 		configs = append(configs,
-			frrk8sv1beta1.FRRConfiguration{
+			frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-without-communities", cfg.Name, i),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withoutCommunities(n)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withoutCommunities(n)},
 								Prefixes:  router.Prefixes,
 							},
 						},
 					},
 				},
 			},
-			frrk8sv1beta1.FRRConfiguration{
+			frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-without-localprefs", cfg.Name, i),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withoutLocalPrefs(n)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withoutLocalPrefs(n)},
 								Prefixes:  router.Prefixes,
 							},
 						},
@@ -183,51 +183,51 @@ func splitByLocalPrefAndCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8
 	return configs, nil
 }
 
-func duplicateNeighsWithReceiveAll(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func duplicateNeighsWithReceiveAll(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
-	withReceiveAll := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+	withReceiveAll := func(n frrk8sv1beta2.Neighbor) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
-		res.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+		res.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 		return *res
 	}
 
 	for i, n := range router.Neighbors {
-		configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+		configs = append(configs, frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-%d-orig", cfg.Name, i),
 				Namespace: cfg.Namespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       router.ASN,
 							VRF:       router.VRF,
-							Neighbors: []frrk8sv1beta1.Neighbor{n},
+							Neighbors: []frrk8sv1beta2.Neighbor{n},
 							Prefixes:  router.Prefixes,
 						},
 					},
 				},
 			},
 		},
-			frrk8sv1beta1.FRRConfiguration{
+			frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-receive-all", cfg.Name, i),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withReceiveAll(n)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withReceiveAll(n)},
 								Prefixes:  router.Prefixes,
 							},
 						},
@@ -239,57 +239,57 @@ func duplicateNeighsWithReceiveAll(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8s
 	return configs, nil
 }
 
-func splitByNeighReceiveAndAdvertise(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+func splitByNeighReceiveAndAdvertise(cfg frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
 	}
 
 	router := cfg.Spec.BGP.Routers[0]
-	configs := []frrk8sv1beta1.FRRConfiguration{}
+	configs := []frrk8sv1beta2.FRRConfiguration{}
 
-	withoutAdvertise := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+	withoutAdvertise := func(n frrk8sv1beta2.Neighbor) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
-		res.ToAdvertise = frrk8sv1beta1.Advertise{}
+		res.ToAdvertise = frrk8sv1beta2.Advertise{}
 		return *res
 	}
 
-	withoutReceive := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+	withoutReceive := func(n frrk8sv1beta2.Neighbor) frrk8sv1beta2.Neighbor {
 		res := n.DeepCopy()
-		res.ToReceive = frrk8sv1beta1.Receive{}
+		res.ToReceive = frrk8sv1beta2.Receive{}
 		return *res
 	}
 
 	for i, n := range router.Neighbors {
-		configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+		configs = append(configs, frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      fmt.Sprintf("%s-%d-no-advertise", cfg.Name, i),
 				Namespace: cfg.Namespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       router.ASN,
 							VRF:       router.VRF,
-							Neighbors: []frrk8sv1beta1.Neighbor{withoutAdvertise(n)},
+							Neighbors: []frrk8sv1beta2.Neighbor{withoutAdvertise(n)},
 							Prefixes:  []string{},
 						},
 					},
 				},
 			},
 		},
-			frrk8sv1beta1.FRRConfiguration{
+			frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("%s-%d-no-receive", cfg.Name, i),
 					Namespace: cfg.Namespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       router.ASN,
 								VRF:       router.VRF,
-								Neighbors: []frrk8sv1beta1.Neighbor{withoutReceive(n)},
+								Neighbors: []frrk8sv1beta2.Neighbor{withoutReceive(n)},
 								Prefixes:  router.Prefixes,
 							},
 						},

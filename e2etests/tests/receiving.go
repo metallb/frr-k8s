@@ -6,7 +6,7 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	"go.universe.tf/e2etest/pkg/frr/container"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -59,7 +59,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 			toAdvertiseV6 []string
 			modifyPeers   func([]config.Peer, []config.Peer)
 			validate      func([]config.Peer, []config.Peer, []*v1.Pod)
-			splitCfg      func(frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error)
+			splitCfg      func(frrk8sv1beta2.FRRConfiguration) ([]frrk8sv1beta2.FRRConfiguration, error)
 		}
 
 		ginkgo.DescribeTable("Works with external frrs", func(p params) {
@@ -68,14 +68,14 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -142,7 +142,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
@@ -158,7 +158,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
 					ValidateNodesHaveRoutes(pods, ppV4[0].FRR, []string{"192.168.2.0/24", "192.169.2.0/24"}...)
@@ -174,7 +174,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.168.2.0/24"},
 						{Prefix: "192.169.2.0/24"}}
 				},
@@ -193,7 +193,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV4: []string{"192.168.2.1/32", "192.169.2.0/24", "192.170.2.1/32", "192.171.2.0/24", "192.171.2.1/32"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.168.2.0/24", LE: 32},
 						{Prefix: "192.169.2.0/24", LE: 24},
 						{Prefix: "192.171.2.0/24", GE: 28, LE: 31},
@@ -214,10 +214,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
@@ -233,7 +233,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "fc00:f853:ccd:e799::/64"},
 					}
 				},
@@ -252,7 +252,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::1/128", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::1/128"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "fc00:f853:ccd:e799::/64", LE: 128},
 						{Prefix: "fc00:f853:ccd:e800::/64", LE: 64},
 						{Prefix: "fc00:f853:ccd:e801::/64", LE: 64},
@@ -272,7 +272,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASNVRF,
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[0].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
 					ValidateNodesHaveRoutes(pods, ppV4[0].FRR, []string{"192.168.2.0/24", "192.169.2.0/24"}...)
@@ -288,7 +288,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASNVRF,
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.168.2.0/24"},
 						{Prefix: "192.169.2.0/24"},
 					}
@@ -309,10 +309,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
@@ -330,10 +330,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 
@@ -354,10 +354,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24"},
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.169.2.0/24"},
 					}
-					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "fc00:f853:ccd:e799::/64"},
 					}
 				},
@@ -384,7 +384,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV4: []string{"192.167.9.0/24", "192.167.9.3/32", "192.168.1.2/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
@@ -404,7 +404,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV6: []string{"fc00:f553:ccd:e799::/64", "fc00:f553:ccd:e799::1/128", "fc00:f853:ccd:e800::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, pods []*v1.Pod) {
@@ -423,14 +423,14 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 			p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
-			config := frrk8sv1beta1.FRRConfiguration{
+			config := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -475,7 +475,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.168.2.0/24"},
 					}
 				},
@@ -492,7 +492,7 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				myAsn:         infra.FRRK8sASN,
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "fc00:f853:ccd:e799::/64"},
 					}
 				},
@@ -510,10 +510,10 @@ var _ = ginkgo.Describe("Receiving routes", func() {
 				toAdvertiseV4: []string{"192.168.2.0/24", "192.169.2.0/24", "192.170.2.0/24"},
 				toAdvertiseV6: []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64", "fc00:f853:ccd:e801::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
-					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV4[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "192.168.2.0/24"},
 					}
-					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+					ppV6[0].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 						{Prefix: "fc00:f853:ccd:e799::/64"},
 					}
 				},

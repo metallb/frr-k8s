@@ -12,7 +12,7 @@ import (
 
 	"errors"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -87,14 +87,14 @@ var _ = ginkgo.Describe("Metrics", func() {
 		p.modifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
-		config := frrk8sv1beta1.FRRConfiguration{
+		config := frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: k8s.FRRK8sNamespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       p.myAsn,
 							VRF:       p.vrf,
@@ -139,8 +139,8 @@ var _ = ginkgo.Describe("Metrics", func() {
 			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
 			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 				for i := range ppV4 {
-					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
@@ -158,8 +158,8 @@ var _ = ginkgo.Describe("Metrics", func() {
 			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24"},
 			modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 				for i := range ppV4 {
-					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
@@ -177,8 +177,8 @@ var _ = ginkgo.Describe("Metrics", func() {
 			prefixes:      []string{"fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 			modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV6 {
-					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
@@ -197,13 +197,13 @@ var _ = ginkgo.Describe("Metrics", func() {
 			prefixes:      []string{"192.168.100.0/24", "192.169.101.0/24", "fc00:f853:ccd:e799::/64", "fc00:f853:ccd:e800::/64"},
 			modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 				for i := range ppV4 {
-					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+					ppV4[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				}
 
 				for i := range ppV6 {
-					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
-					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+					ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
+					ppV6[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 				}
 			},
 			validate: func(frrPods []*corev1.Pod, frrContainers []*frrcontainer.FRR, promPod *corev1.Pod, ipfam ipfamily.Family) {
@@ -218,21 +218,21 @@ var _ = ginkgo.Describe("Metrics", func() {
 		frrs := config.ContainersForVRF(infra.FRRContainers, "")
 		peersConfig := config.PeersForContainers(frrs, ipfamily.IPv4)
 		for i := range peersConfig.PeersV4 {
-			peersConfig.PeersV4[i].Neigh.PasswordSecret = frrk8sv1beta1.SecretReference{
+			peersConfig.PeersV4[i].Neigh.PasswordSecret = frrk8sv1beta2.SecretReference{
 				Name:      "nonexisting",
 				Namespace: k8s.FRRK8sNamespace,
 			}
 		}
 		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
-		config := frrk8sv1beta1.FRRConfiguration{
+		config := frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: k8s.FRRK8sNamespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       infra.FRRK8sASN,
 							Neighbors: neighbors,
@@ -253,7 +253,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 		ValidatePodK8SClientErrorMetrics(pods, frrs, promPod, ipfamily.IPv4)
 	})
 
-	ginkgo.DescribeTable("BFD metrics from FRR", func(bfdProfile frrk8sv1beta1.BFDProfile, ipFamily ipfamily.Family, vrfName string) {
+	ginkgo.DescribeTable("BFD metrics from FRR", func(bfdProfile frrk8sv1beta2.BFDProfile, ipFamily ipfamily.Family, vrfName string) {
 		frrs := config.ContainersForVRF(infra.FRRContainers, vrfName)
 		peersConfig := config.PeersForContainers(frrs, ipFamily)
 		neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
@@ -264,21 +264,21 @@ var _ = ginkgo.Describe("Metrics", func() {
 		if vrfName != "" {
 			myAsn = infra.FRRK8sASNVRF
 		}
-		config := frrk8sv1beta1.FRRConfiguration{
+		config := frrk8sv1beta2.FRRConfiguration{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test",
 				Namespace: k8s.FRRK8sNamespace,
 			},
-			Spec: frrk8sv1beta1.FRRConfigurationSpec{
-				BGP: frrk8sv1beta1.BGPConfig{
-					Routers: []frrk8sv1beta1.Router{
+			Spec: frrk8sv1beta2.FRRConfigurationSpec{
+				BGP: frrk8sv1beta2.BGPConfig{
+					Routers: []frrk8sv1beta2.Router{
 						{
 							ASN:       uint32(myAsn),
 							VRF:       vrfName,
 							Neighbors: neighbors,
 						},
 					},
-					BFDProfiles: []frrk8sv1beta1.BFDProfile{
+					BFDProfiles: []frrk8sv1beta2.BFDProfile{
 						bfdProfile,
 					},
 				},
@@ -325,11 +325,11 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 	},
 		ginkgo.Entry("IPV4 - default",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV4 - full params",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "full1",
 				ReceiveInterval:  ptr.To[uint32](60),
 				TransmitInterval: ptr.To[uint32](61),
@@ -337,7 +337,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV4 - full params- VRF",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "full1",
 				ReceiveInterval:  ptr.To[uint32](60),
 				TransmitInterval: ptr.To[uint32](61),
@@ -345,7 +345,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.VRFName),
 		ginkgo.Entry("IPV4 - echo mode enabled",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "echo",
 				ReceiveInterval:  ptr.To[uint32](80),
 				TransmitInterval: ptr.To[uint32](81),
@@ -354,11 +354,11 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV6 - default",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}, ipfamily.IPv6, infra.DefaultVRFName),
 		ginkgo.Entry("IPV6 - echo mode enabled",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "echo",
 				ReceiveInterval:  ptr.To[uint32](80),
 				TransmitInterval: ptr.To[uint32](81),
