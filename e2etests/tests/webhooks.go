@@ -6,7 +6,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
@@ -63,7 +62,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			Expect(err.Error()).To(ContainSubstring(errStr))
 		},
 			ginkgo.Entry("invalid nodeSelector",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
 					cfg.Spec.NodeSelector = metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app": "@",
@@ -73,8 +72,8 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"invalid NodeSelector",
 			),
 			ginkgo.Entry("invalid router prefix",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
 							Prefixes: []string{"192.a.b.10"},
 						},
@@ -83,11 +82,11 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"unknown ipfamily",
 			),
 			ginkgo.Entry("invalid neighbor address",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
 							ASN: 100,
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN:     100,
 									Address: "192.a.b.10",
@@ -99,15 +98,15 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"failed to find ipfamily for",
 			),
 			ginkgo.Entry("localpref on non-existing prefix",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN:     100,
 									Address: "1.2.3.4",
-									ToAdvertise: frrk8sv1beta1.Advertise{
-										PrefixesWithLocalPref: []frrk8sv1beta1.LocalPrefPrefixes{
+									ToAdvertise: frrk8sv1beta2.Advertise{
+										PrefixesWithLocalPref: []frrk8sv1beta2.LocalPrefPrefixes{
 											{
 												LocalPref: 200,
 												Prefixes:  []string{"10.10.10.10/32"},
@@ -122,10 +121,10 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"associated to non existing prefix",
 			),
 			ginkgo.Entry("both asn and dynamicASN not specified",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									Address: "1.2.3.4",
 								},
@@ -136,13 +135,13 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"has no ASN or DynamicASN specified",
 			),
 			ginkgo.Entry("both asn and dynamicASN specified",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN:        100,
-									DynamicASN: frrk8sv1beta1.ExternalASNMode,
+									DynamicASN: frrk8sv1beta2.ExternalASNMode,
 									Address:    "1.2.3.4",
 								},
 							},
@@ -152,10 +151,10 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"has both ASN and DynamicASN specified",
 			),
 			ginkgo.Entry("no address and no interface is specified",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN: 100,
 								},
@@ -166,10 +165,10 @@ var _ = ginkgo.Describe("Webhooks", func() {
 				"has no address and no interface",
 			),
 			ginkgo.Entry("both address and interface specified",
-				func(cfg *frrk8sv1beta1.FRRConfiguration) {
-					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+				func(cfg *frrk8sv1beta2.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta2.Router{
 						{
-							Neighbors: []frrk8sv1beta1.Neighbor{
+							Neighbors: []frrk8sv1beta2.Neighbor{
 								{
 									ASN:       100,
 									Address:   "1.2.3.4",
