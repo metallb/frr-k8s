@@ -85,7 +85,9 @@ func (d *FRRConfigurationDefaulter) Default(_ context.Context, obj runtime.Objec
 
 // applyDefaults applies default values to CronJob fields.
 func (d *FRRConfigurationDefaulter) applyDefaults(frrConfiguration *apiv1beta2.FRRConfiguration) {
-	frrConfiguration.Spec.LogLevel = d.DefaultLogLevel
+	if frrConfiguration.Spec.LogLevel == "" {
+		frrConfiguration.Spec.LogLevel = d.DefaultLogLevel
+	}
 }
 
 type FRRConfigValidator struct {
