@@ -7,7 +7,7 @@ import (
 
 	"go.universe.tf/e2etest/pkg/frr/container"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -77,14 +77,14 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			ginkgo.By("creating the config selecting a single node")
-			configWithSelector := frrk8sv1beta1.FRRConfiguration{
+			configWithSelector := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testadv-selector",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -121,14 +121,14 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 
 			ginkgo.By("creating the global config")
-			globalConfig := frrk8sv1beta1.FRRConfiguration{
+			globalConfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testadv-selector-global",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -162,7 +162,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalPrefixes: []string{"192.170.2.0/24", "192.171.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 			}),
@@ -174,7 +174,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalPrefixes: []string{"fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"},
 				modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 					}
 				},
 			}),
@@ -233,14 +233,14 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			}
 			Expect(firstNode).NotTo(Equal(corev1.Node{}))
 
-			cfg := frrk8sv1beta1.FRRConfiguration{
+			cfg := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testreceive-selector",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -286,14 +286,14 @@ var _ = ginkgo.Describe("Node Selector", func() {
 			ginkgo.By("creating the global config")
 			p.globalModifyPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 			neighbors = config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
-			globalConfig := frrk8sv1beta1.FRRConfiguration{
+			globalConfig := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "testreceive-selector-global",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -327,7 +327,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalv4Prefixes: []string{"192.170.2.0/24", "192.171.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 							{Prefix: "192.168.2.0/24"},
 							{Prefix: "192.169.2.0/24"},
 						}
@@ -335,7 +335,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 				globalModifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+						ppV4[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 							{Prefix: "192.170.2.0/24"},
 							{Prefix: "192.171.2.0/24"},
 						}
@@ -350,7 +350,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				globalv6Prefixes: []string{"fc00:f853:ccd:e801::/64", "fc00:f853:ccd:e802::/64"},
 				modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 							{Prefix: "fc00:f853:ccd:e799::/64"},
 							{Prefix: "fc00:f853:ccd:e800::/64"},
 						}
@@ -358,7 +358,7 @@ var _ = ginkgo.Describe("Node Selector", func() {
 				},
 				globalModifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta1.PrefixSelector{
+						ppV6[i].Neigh.ToReceive.Allowed.Prefixes = []frrk8sv1beta2.PrefixSelector{
 							{Prefix: "fc00:f853:ccd:e801::/64"},
 							{Prefix: "fc00:f853:ccd:e802::/64"},
 						}

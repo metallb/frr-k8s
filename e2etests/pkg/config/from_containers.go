@@ -5,7 +5,7 @@ package config
 import (
 	"net"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/k8s"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
@@ -15,7 +15,7 @@ import (
 
 type Peer struct {
 	IP    string
-	Neigh frrk8sv1beta1.Neighbor
+	Neigh frrk8sv1beta2.Neighbor
 	FRR   frrcontainer.FRR
 }
 
@@ -47,7 +47,7 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, options
 		for _, address := range addresses {
 			peer := Peer{
 				IP: address,
-				Neigh: frrk8sv1beta1.Neighbor{
+				Neigh: frrk8sv1beta2.Neighbor{
 					ASN:          f.RouterConfig.ASN,
 					Address:      address,
 					Port:         &f.RouterConfig.BGPPort,
@@ -67,7 +67,7 @@ func PeersForContainers(frrs []*frrcontainer.FRR, ipFam ipfamily.Family, options
 						"password": []byte(f.RouterConfig.Password),
 					},
 				}
-				peer.Neigh.PasswordSecret = frrk8sv1beta1.SecretReference{
+				peer.Neigh.PasswordSecret = frrk8sv1beta2.SecretReference{
 					Name:      f.Name,
 					Namespace: k8s.FRRK8sNamespace,
 				}
@@ -106,27 +106,27 @@ func EnableGracefulRestart(pc *PeersConfig) {
 func EnableReceiveAllowAll(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {
-		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 	}
 	t = pc.PeersV6
 	for i := 0; i < len(t); i++ {
-		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta1.AllowAll
+		t[i].Neigh.ToReceive.Allowed.Mode = frrk8sv1beta2.AllowAll
 	}
 }
 
 func EnableAllowAll(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {
-		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 	}
 	t = pc.PeersV6
 	for i := 0; i < len(t); i++ {
-		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+		t[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 	}
 }
 
-func NeighborsFromPeers(peers []Peer, peers1 []Peer) []frrk8sv1beta1.Neighbor {
-	res := make([]frrk8sv1beta1.Neighbor, 0)
+func NeighborsFromPeers(peers []Peer, peers1 []Peer) []frrk8sv1beta2.Neighbor {
+	res := make([]frrk8sv1beta2.Neighbor, 0)
 	for _, p := range peers {
 		res = append(res, p.Neigh)
 	}

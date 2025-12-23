@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/routes"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -162,7 +162,7 @@ func ValidateNeighborLocalPrefForPrefix(neigh frrcontainer.FRR, prefix string, e
 	}, 5*time.Second, time.Second).ShouldNot(HaveOccurred())
 }
 
-func checkBFDConfigPropagated(nodeConfig frrk8sv1beta1.BFDProfile, peerConfig frr.BFDPeer) error {
+func checkBFDConfigPropagated(nodeConfig frrk8sv1beta2.BFDProfile, peerConfig frr.BFDPeer) error {
 	if peerConfig.Status != "up" {
 		return fmt.Errorf("peer status not up")
 	}

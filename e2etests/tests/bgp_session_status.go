@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -136,7 +137,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			return nil
 		}
 
-		validateStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node, vrf string, expectedBGP bgpPhase, expectedBFD bfdState) error {
+		validateStatusForAll := func(neighbors []frrk8sv1beta2.Neighbor, nodes []corev1.Node, vrf string, expectedBGP bgpPhase, expectedBFD bfdState) error {
 			for _, n := range neighbors {
 				err := validateStatusForNeigh(n.Address, nodes, vrf, expectedBGP, expectedBFD)
 				if err != nil {
@@ -146,7 +147,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			return nil
 		}
 
-		validateNoStatusForAll := func(neighbors []frrk8sv1beta1.Neighbor, nodes []corev1.Node, vrf string) error {
+		validateNoStatusForAll := func(neighbors []frrk8sv1beta2.Neighbor, nodes []corev1.Node, vrf string) error {
 			for _, n := range neighbors {
 				err := validateNoStatusForNeigh(n.Address, nodes, vrf)
 				if err != nil {
@@ -157,21 +158,21 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 		}
 
 		ginkgo.It("Manages statuses according to changes in FRRConfigurations", func() {
-			neighbors := []frrk8sv1beta1.Neighbor{
+			neighbors := []frrk8sv1beta2.Neighbor{
 				{
 					ASN:     100,
 					Address: "10.10.10.10",
 				},
 			}
 			ginkgo.By("Creating the FRR configuration")
-			conf := frrk8sv1beta1.FRRConfiguration{
+			conf := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       100,
 								VRF:       "",
@@ -198,11 +199,11 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			}, 10*time.Second, 1*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Updating the neighbors to have BFD")
-			simpleProfile := frrk8sv1beta1.BFDProfile{
+			simpleProfile := frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}
 			neighbors[0].BFDProfile = simpleProfile.Name
-			conf.Spec.BGP.BFDProfiles = []frrk8sv1beta1.BFDProfile{simpleProfile}
+			conf.Spec.BGP.BFDProfiles = []frrk8sv1beta2.BFDProfile{simpleProfile}
 
 			err = updater.Update([]corev1.Secret{}, conf)
 			Expect(err).NotTo(HaveOccurred())
@@ -244,14 +245,14 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			neighbors := config.NeighborsFromPeers(peersConfig.PeersV4, peersConfig.PeersV6)
 
 			ginkgo.By("Creating the FRR configuration")
-			conf := frrk8sv1beta1.FRRConfiguration{
+			conf := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -293,20 +294,20 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Updating the neighbors to have BFD")
-			simpleProfile := frrk8sv1beta1.BFDProfile{
+			simpleProfile := frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}
 			for i := range neighbors {
 				neighbors[i].BFDProfile = "simple"
 			}
-			conf = frrk8sv1beta1.FRRConfiguration{
+			conf = frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN:       p.myAsn,
 								VRF:       p.vrf,
@@ -314,7 +315,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 								Prefixes:  p.prefixes,
 							},
 						},
-						BFDProfiles: []frrk8sv1beta1.BFDProfile{
+						BFDProfiles: []frrk8sv1beta2.BFDProfile{
 							simpleProfile,
 						},
 					},
@@ -373,8 +374,8 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			err = frrs[0].UpdateBGPConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 			frr0Addresses := sets.New(frrs[0].AddressesForFamily(p.ipFamily)...)
-			frr0Neighbors := []frrk8sv1beta1.Neighbor{}
-			otherNeighbors := []frrk8sv1beta1.Neighbor{}
+			frr0Neighbors := []frrk8sv1beta2.Neighbor{}
+			otherNeighbors := []frrk8sv1beta2.Neighbor{}
 			for _, n := range neighbors {
 				if frr0Addresses.Has(n.Address) {
 					frr0Neighbors = append(frr0Neighbors, n)
@@ -396,7 +397,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				prefixes: []string{"192.168.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 						ppV4[i].Neigh.ConnectTime = &metav1.Duration{Duration: 5 * time.Second}
 					}
 				},
@@ -408,7 +409,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				prefixes: []string{"fc00:f853:ccd:e799::/64"},
 				modifyPeers: func(_ []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 						ppV6[i].Neigh.ConnectTime = &metav1.Duration{Duration: 5 * time.Second}
 					}
 				},
@@ -420,11 +421,11 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				prefixes: []string{"192.168.2.0/24", "fc00:f853:ccd:e799::/64"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 						ppV4[i].Neigh.ConnectTime = &metav1.Duration{Duration: 5 * time.Second}
 					}
 					for i := range ppV6 {
-						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 						ppV6[i].Neigh.ConnectTime = &metav1.Duration{Duration: 5 * time.Second}
 					}
 				},
@@ -436,7 +437,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 				prefixes: []string{"192.168.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, _ []config.Peer) {
 					for i := range ppV4 {
-						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta2.AllowAll
 						ppV4[i].Neigh.ConnectTime = &metav1.Duration{Duration: 5 * time.Second}
 					}
 				},

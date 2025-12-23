@@ -10,6 +10,7 @@ import (
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/address"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
@@ -56,7 +57,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 		cs = k8sclient.New()
 	})
 
-	initNeighbors := func(useVrf bool, ipFamily ipfamily.Family) ([]*frrcontainer.FRR, config.PeersConfig, []frrk8sv1beta1.Neighbor) {
+	initNeighbors := func(useVrf bool, ipFamily ipfamily.Family) ([]*frrcontainer.FRR, config.PeersConfig, []frrk8sv1beta2.Neighbor) {
 		frrs := config.ContainersForVRF(infra.FRRContainers, "")
 		if useVrf {
 			frrs = config.ContainersForVRF(infra.FRRContainers, infra.VRFName)
@@ -79,7 +80,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 		return nil
 	}
 
-	updateAndCheckPeered := func(config frrk8sv1beta1.FRRConfiguration, peersDefault, peersVRF config.PeersConfig, frrsDefault, frrsVRF []*frrcontainer.FRR, family ipfamily.Family) {
+	updateAndCheckPeered := func(config frrk8sv1beta2.FRRConfiguration, peersDefault, peersVRF config.PeersConfig, frrsDefault, frrsVRF []*frrcontainer.FRR, family ipfamily.Family) {
 		err := updater.Update(peersDefault.Secrets, config)
 		Expect(err).NotTo(HaveOccurred())
 
@@ -97,14 +98,14 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 		}
 	}
 
-	baseConfig := frrk8sv1beta1.FRRConfiguration{
+	baseConfig := frrk8sv1beta2.FRRConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test",
 			Namespace: k8s.FRRK8sNamespace,
 		},
-		Spec: frrk8sv1beta1.FRRConfigurationSpec{
-			BGP: frrk8sv1beta1.BGPConfig{
-				Routers: []frrk8sv1beta1.Router{
+		Spec: frrk8sv1beta2.FRRConfigurationSpec{
+			BGP: frrk8sv1beta2.BGPConfig{
+				Routers: []frrk8sv1beta2.Router{
 					{
 						ASN: infra.FRRK8sASN,
 					},
@@ -117,10 +118,10 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 		},
 	}
 
-	prefixesToSelectors := func(prefixes []string) []frrk8sv1beta1.PrefixSelector {
-		res := []frrk8sv1beta1.PrefixSelector{}
+	prefixesToSelectors := func(prefixes []string) []frrk8sv1beta2.PrefixSelector {
+		res := []frrk8sv1beta2.PrefixSelector{}
 		for _, p := range prefixes {
-			selector := frrk8sv1beta1.PrefixSelector{
+			selector := frrk8sv1beta2.PrefixSelector{
 				Prefix: p,
 				LE:     32,
 				GE:     0,
@@ -143,7 +144,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			ipFamily ipfamily.Family,
 			toAdvertise,
 			toAdvertiseVRF []string,
-			allowMode frrk8sv1beta1.AllowMode) {
+			allowMode frrk8sv1beta2.AllowMode) {
 
 			frrsDefault, peersDefault, neighborsDefault := initNeighbors(false, ipFamily)
 			frrsVRF, peersVRF, neighborsVRF := initNeighbors(true, ipFamily)
@@ -156,17 +157,17 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 
 			config := *baseConfig.DeepCopy()
 			config.Spec.BGP.Routers[0].Neighbors = neighborsDefault
-			config.Spec.BGP.Routers[0].Imports = []frrk8sv1beta1.Import{{VRF: infra.VRFName}}
+			config.Spec.BGP.Routers[0].Imports = []frrk8sv1beta2.Import{{VRF: infra.VRFName}}
 			config.Spec.BGP.Routers[1].Neighbors = neighborsVRF
 
 			for i := range config.Spec.BGP.Routers[0].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[0].Neighbors[i].ToReceive.Allowed.Prefixes = prefixesToSelectors(append(toAdvertise, toAdvertiseVRF...))
 				}
 				config.Spec.BGP.Routers[0].Neighbors[i].ToReceive.Allowed.Mode = allowMode
 			}
 			for i := range config.Spec.BGP.Routers[1].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[1].Neighbors[i].ToReceive.Allowed.Prefixes = prefixesToSelectors(toAdvertiseVRF)
 				}
 				config.Spec.BGP.Routers[1].Neighbors[i].ToReceive.Allowed.Mode = allowMode
@@ -218,7 +219,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			ipFamily ipfamily.Family,
 			toAdvertise,
 			toAdvertiseVRF []string,
-			allowMode frrk8sv1beta1.AllowMode) {
+			allowMode frrk8sv1beta2.AllowMode) {
 
 			frrsDefault, peersDefault, neighborsDefault := initNeighbors(false, ipFamily)
 			frrsVRF, peersVRF, neighborsVRF := initNeighbors(true, ipFamily)
@@ -232,16 +233,16 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			config := *baseConfig.DeepCopy()
 			config.Spec.BGP.Routers[0].Neighbors = neighborsDefault
 			config.Spec.BGP.Routers[1].Neighbors = neighborsVRF
-			config.Spec.BGP.Routers[1].Imports = []frrk8sv1beta1.Import{{VRF: "default"}}
+			config.Spec.BGP.Routers[1].Imports = []frrk8sv1beta2.Import{{VRF: "default"}}
 
 			for i := range config.Spec.BGP.Routers[0].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[0].Neighbors[i].ToReceive.Allowed.Prefixes = prefixesToSelectors(toAdvertise)
 				}
 				config.Spec.BGP.Routers[0].Neighbors[i].ToReceive.Allowed.Mode = allowMode
 			}
 			for i := range config.Spec.BGP.Routers[1].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[1].Neighbors[i].ToReceive.Allowed.Prefixes = prefixesToSelectors(append(toAdvertise, toAdvertiseVRF...))
 				}
 				config.Spec.BGP.Routers[1].Neighbors[i].ToReceive.Allowed.Mode = allowMode
@@ -296,7 +297,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			ipFamily ipfamily.Family,
 			toAdvertise,
 			toAdvertiseVRF []string,
-			allowMode frrk8sv1beta1.AllowMode) {
+			allowMode frrk8sv1beta2.AllowMode) {
 
 			frrsDefault, peersDefault, neighborsDefault := initNeighbors(false, ipFamily)
 			frrsVRF, peersVRF, neighborsVRF := initNeighbors(true, ipFamily)
@@ -310,18 +311,18 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			config := *baseConfig.DeepCopy()
 			config.Spec.BGP.Routers[0].Neighbors = neighborsDefault
 			config.Spec.BGP.Routers[0].Prefixes = toAdvertise
-			config.Spec.BGP.Routers[0].Imports = []frrk8sv1beta1.Import{{VRF: infra.VRFName}}
+			config.Spec.BGP.Routers[0].Imports = []frrk8sv1beta2.Import{{VRF: infra.VRFName}}
 			config.Spec.BGP.Routers[1].Neighbors = neighborsVRF
 			config.Spec.BGP.Routers[1].Prefixes = toAdvertiseVRF
 
 			for i := range config.Spec.BGP.Routers[0].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[0].Neighbors[i].ToAdvertise.Allowed.Prefixes = append(toAdvertise, toAdvertiseVRF...)
 				}
 				config.Spec.BGP.Routers[0].Neighbors[i].ToAdvertise.Allowed.Mode = allowMode
 			}
 			for i := range config.Spec.BGP.Routers[1].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[1].Neighbors[i].ToAdvertise.Allowed.Prefixes = toAdvertiseVRF
 				}
 				config.Spec.BGP.Routers[1].Neighbors[i].ToAdvertise.Allowed.Mode = allowMode
@@ -372,7 +373,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			ipFamily ipfamily.Family,
 			toAdvertise,
 			toAdvertiseVRF []string,
-			allowMode frrk8sv1beta1.AllowMode) {
+			allowMode frrk8sv1beta2.AllowMode) {
 
 			frrsDefault, peersDefault, neighborsDefault := initNeighbors(false, ipFamily)
 			frrsVRF, peersVRF, neighborsVRF := initNeighbors(true, ipFamily)
@@ -388,16 +389,16 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 			config.Spec.BGP.Routers[0].Prefixes = toAdvertise
 			config.Spec.BGP.Routers[1].Neighbors = neighborsVRF
 			config.Spec.BGP.Routers[1].Prefixes = toAdvertiseVRF
-			config.Spec.BGP.Routers[1].Imports = []frrk8sv1beta1.Import{{VRF: "default"}}
+			config.Spec.BGP.Routers[1].Imports = []frrk8sv1beta2.Import{{VRF: "default"}}
 
 			for i := range config.Spec.BGP.Routers[0].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[0].Neighbors[i].ToAdvertise.Allowed.Prefixes = toAdvertise
 				}
 				config.Spec.BGP.Routers[0].Neighbors[i].ToAdvertise.Allowed.Mode = allowMode
 			}
 			for i := range config.Spec.BGP.Routers[1].Neighbors {
-				if allowMode == frrk8sv1beta1.AllowRestricted {
+				if allowMode == frrk8sv1beta2.AllowRestricted {
 					config.Spec.BGP.Routers[1].Neighbors[i].ToAdvertise.Allowed.Prefixes = append(toAdvertise, toAdvertiseVRF...)
 				}
 				config.Spec.BGP.Routers[1].Neighbors[i].ToAdvertise.Allowed.Mode = allowMode

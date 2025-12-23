@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
 	"github.com/metallb/frrk8stests/pkg/infra"
@@ -48,8 +49,8 @@ var _ = ginkgo.Describe("Webhooks", func() {
 	})
 
 	ginkgo.Context("FRRConfiguration", func() {
-		ginkgo.DescribeTable("Should reject create", func(modify func(*frrk8sv1beta1.FRRConfiguration), errStr string) {
-			cfg := frrk8sv1beta1.FRRConfiguration{
+		ginkgo.DescribeTable("Should reject create", func(modify func(*frrk8sv1beta2.FRRConfiguration), errStr string) {
+			cfg := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook-test",
 					Namespace: k8s.FRRK8sNamespace,
@@ -187,14 +188,14 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Creating the first config on the first node")
-			cfg1 := frrk8sv1beta1.FRRConfiguration{
+			cfg1 := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook-cfg1",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 100,
 								VRF: "",
@@ -212,14 +213,14 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Attempting to create a second config on the first node with a different ASN")
-			cfg2 := frrk8sv1beta1.FRRConfiguration{
+			cfg2 := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook-cfg2",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 200,
 								VRF: "",
@@ -257,14 +258,14 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			Expect(err.Error()).To(ContainSubstring("different asns"))
 
 			ginkgo.By("Attempting to create a third config in a different namespace on the first node with a different ASN")
-			cfg3 := frrk8sv1beta1.FRRConfiguration{
+			cfg3 := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook-cfg3",
 					Namespace: "default",
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 200,
 								VRF: "",
@@ -284,21 +285,21 @@ var _ = ginkgo.Describe("Webhooks", func() {
 		})
 
 		ginkgo.It("Should not reject a resource with a missing secret ref", func() {
-			cfg := frrk8sv1beta1.FRRConfiguration{
+			cfg := frrk8sv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "webhook-test",
 					Namespace: k8s.FRRK8sNamespace,
 				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
+				Spec: frrk8sv1beta2.FRRConfigurationSpec{
+					BGP: frrk8sv1beta2.BGPConfig{
+						Routers: []frrk8sv1beta2.Router{
 							{
 								ASN: 100,
-								Neighbors: []frrk8sv1beta1.Neighbor{
+								Neighbors: []frrk8sv1beta2.Neighbor{
 									{
 										ASN:     100,
 										Address: "1.2.3.4",
-										PasswordSecret: frrk8sv1beta1.SecretReference{
+										PasswordSecret: frrk8sv1beta2.SecretReference{
 											Name:      "nonexisting",
 											Namespace: k8s.FRRK8sNamespace,
 										},
