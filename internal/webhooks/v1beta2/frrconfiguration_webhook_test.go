@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package webhooks
+package v1beta2
 
 import (
 	"testing"

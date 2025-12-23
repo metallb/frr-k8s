@@ -47,7 +47,9 @@ import (
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"
-	"github.com/metallb/frr-k8s/internal/webhooks"
+	webhookshealth "github.com/metallb/frr-k8s/internal/webhooks/health"
+	webhooksv1beta1 "github.com/metallb/frr-k8s/internal/webhooks/v1beta1"
+	webhooksv1beta2 "github.com/metallb/frr-k8s/internal/webhooks/v1beta2"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	//+kubebuilder:scaffold:imports
 )
@@ -190,8 +192,9 @@ const (
 )
 
 var (
-	webhookName       = "frr-k8s-validating-webhook-configuration"
-	webhookSecretName = "frr-k8s-webhook-server-cert" //#nosec G101
+	webhookName         = "frr-k8s-validating-webhook-configuration"
+	webhookMutatingName = "frr-k8s-mutating-webhook-configuration" //#nosec G101
+	webhookSecretName   = "frr-k8s-webhook-server-cert"            //#nosec G101
 )
 
 func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger log.Logger,
@@ -200,6 +203,10 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 		{
 			Name: webhookName,
 			Type: rotator.Validating,
+		},
+		{
+			Name: webhookMutatingName,
+			Type: rotator.Mutating,
 		},
 	}
 
@@ -228,11 +235,27 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 func setupWebhook(mgr manager.Manager, logger log.Logger) {
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
-	webhooks.Logger = logger
-	webhooks.WebhookClient = mgr.GetAPIReader()
-	webhooks.Validate = controller.Validate
+	webhooksv1beta2.Logger = logger
+	webhooksv1beta2.WebhookClient = mgr.GetAPIReader()
+	webhooksv1beta2.Validate = controller.Validate
 
-	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
+	if err := webhooksv1beta2.SetupWebhookWithManager(mgr); err != nil {
+		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
+		os.Exit(1)
+	}
+
+	webhooksv1beta1.Logger = logger
+	webhooksv1beta1.WebhookClient = mgr.GetAPIReader()
+	webhooksv1beta1.Validate = controller.Validate
+
+	if err := webhooksv1beta1.SetupWebhookWithManager(mgr); err != nil {
+		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
+		os.Exit(1)
+	}
+
+	webhookshealth.Logger = logger
+
+	if err := webhookshealth.SetupWebhookWithManager(mgr); err != nil {
 		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
 		os.Exit(1)
 	}

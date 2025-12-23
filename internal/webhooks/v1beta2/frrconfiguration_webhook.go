@@ -1,6 +1,6 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package webhooks
+package v1beta2
 
 import (
 	"context"
@@ -12,11 +12,12 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	"github.com/metallb/frr-k8s/api/v1beta2"
+	apiv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	v1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,9 +32,61 @@ var (
 )
 
 const (
-	frrConfigWebhookPath = "/validate-frrk8s-metallb-io-v1beta2-frrconfiguration"
-	healthPath           = "/healthz"
+	frrConfigWebhookPath    = "/validate-frrk8s-metallb-io-v1beta2-frrconfiguration"
+	frrDefaulterWebhookPath = "/mutate-frrk8s-metallb-io-v1beta2-frrconfiguration"
 )
+
+func SetupWebhookWithManager(mgr ctrl.Manager) error {
+	v := &FRRConfigValidator{}
+	v.client = mgr.GetClient()
+	v.decoder = admission.NewDecoder(mgr.GetScheme())
+
+	mgr.GetWebhookServer().Register(
+		frrConfigWebhookPath,
+		&webhook.Admission{Handler: v})
+
+	d := &FRRConfigurationDefaulter{}
+	d.client = mgr.GetClient()
+	d.DefaultLogLevel = "info"
+
+	mgr.GetWebhookServer().Register(
+		frrDefaulterWebhookPath,
+		admission.WithCustomDefaulter(mgr.GetScheme(), &apiv1beta2.FRRConfiguration{}, d))
+
+	return nil
+}
+
+// +kubebuilder:webhook:path=/mutate-frrk8s-metallb-io-v1beta2-frrconfiguration,mutating=true,failurePolicy=fail,sideEffects=None,groups=frrk8s.metallb.io,resources=frrconfigurations,verbs=create;update,versions=v1beta2,name=mfrrconfigurationsvalidationwebhook-v1beta2.metallb.io,admissionReviewVersions=v1
+
+// FRRConfigurationDefaulter struct is responsible for setting default values on the custom resource of the
+// Kind FRRConfiguration when those are created or updated.
+//
+// NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
+// as it is used only for temporary operations and does not need to be deeply copied.
+type FRRConfigurationDefaulter struct {
+	client          client.Client
+	DefaultLogLevel string
+}
+
+var _ webhook.CustomDefaulter = &FRRConfigurationDefaulter{}
+
+// Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind CronJob.
+func (d *FRRConfigurationDefaulter) Default(_ context.Context, obj runtime.Object) error {
+	frrConfiguration, ok := obj.(*apiv1beta2.FRRConfiguration)
+	if !ok {
+		return fmt.Errorf("expected an FRRConfiguration object but got %T", obj)
+	}
+	level.Info(Logger).Log("Defaulting for FRRConfiguration", "name", frrConfiguration.GetName())
+
+	// Set default values
+	d.applyDefaults(frrConfiguration)
+	return nil
+}
+
+// applyDefaults applies default values to CronJob fields.
+func (d *FRRConfigurationDefaulter) applyDefaults(frrConfiguration *apiv1beta2.FRRConfiguration) {
+	frrConfiguration.Spec.LogLevel = d.DefaultLogLevel
+}
 
 type FRRConfigValidator struct {
 	ClusterResourceNamespace string
@@ -42,26 +95,11 @@ type FRRConfigValidator struct {
 	decoder admission.Decoder
 }
 
-func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
-	v.client = mgr.GetClient()
-	v.decoder = admission.NewDecoder(mgr.GetScheme())
-
-	mgr.GetWebhookServer().Register(
-		frrConfigWebhookPath,
-		&webhook.Admission{Handler: v})
-
-	mgr.GetWebhookServer().Register(
-		healthPath,
-		&healthHandler{})
-
-	return nil
-}
-
-//+kubebuilder:webhook:verbs=create;update,path=/validate-frrk8s-metallb-io-v1beta2-frrconfiguration,mutating=false,failurePolicy=fail,groups=frrk8s.metallb.io,resources=frrconfigurations,versions=v1beta2,name=frrconfigurationsvalidationwebhook.metallb.io,sideEffects=None,admissionReviewVersions=v1
+//+kubebuilder:webhook:verbs=create;update,path=/validate-frrk8s-metallb-io-v1beta2-frrconfiguration,mutating=false,failurePolicy=fail,groups=frrk8s.metallb.io,resources=frrconfigurations,versions=v1beta2,name=frrconfigurationsvalidationwebhook-v1beta2.metallb.io,sideEffects=None,admissionReviewVersions=v1
 
 func (v *FRRConfigValidator) Handle(ctx context.Context, req admission.Request) (resp admission.Response) {
-	var config v1beta2.FRRConfiguration
-	var oldConfig v1beta2.FRRConfiguration
+	var config apiv1beta2.FRRConfiguration
+	var oldConfig apiv1beta2.FRRConfiguration
 	if req.Operation == v1.Delete {
 		if err := v.decoder.DecodeRaw(req.OldObject, &config); err != nil {
 			return admission.Errored(http.StatusBadRequest, err)
@@ -120,28 +158,28 @@ func (h *healthHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 type nodeAndConfigs struct {
 	name   string
 	labels map[string]string
-	cfgs   *v1beta2.FRRConfigurationList
+	cfgs   *apiv1beta2.FRRConfigurationList
 }
 
-func validateConfigCreate(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
+func validateConfigCreate(frrConfig *apiv1beta2.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end create", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigUpdate(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
+func validateConfigUpdate(frrConfig *apiv1beta2.FRRConfiguration) ([]string, error) {
 	level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 	defer level.Debug(Logger).Log("webhook", "frrconfiguration", "action", "end update", "name", frrConfig.Name, "namespace", frrConfig.Namespace)
 
 	return validateConfig(frrConfig)
 }
 
-func validateConfigDelete(_ *v1beta2.FRRConfiguration) ([]string, error) {
+func validateConfigDelete(_ *apiv1beta2.FRRConfiguration) ([]string, error) {
 	return []string{}, nil
 }
 
-func validateConfig(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
+func validateConfig(frrConfig *apiv1beta2.FRRConfiguration) ([]string, error) {
 	var warnings []string
 
 	selector, err := getCachedSelector(frrConfig.Spec.NodeSelector)
@@ -169,7 +207,7 @@ func validateConfig(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
 			matchingNodes = append(matchingNodes, nodeAndConfigs{
 				name:   n.Name,
 				labels: n.Labels,
-				cfgs:   &v1beta2.FRRConfigurationList{},
+				cfgs:   &apiv1beta2.FRRConfigurationList{},
 			})
 		}
 	}
@@ -222,8 +260,8 @@ func validateConfig(frrConfig *v1beta2.FRRConfiguration) ([]string, error) {
 	return warnings, nil
 }
 
-var getFRRConfigurations = func() (*v1beta2.FRRConfigurationList, error) {
-	frrConfigurationsList := &v1beta2.FRRConfigurationList{}
+var getFRRConfigurations = func() (*apiv1beta2.FRRConfigurationList, error) {
+	frrConfigurationsList := &apiv1beta2.FRRConfigurationList{}
 	err := WebhookClient.List(context.Background(), frrConfigurationsList)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("failed to get existing FRRConfiguration objects"))
@@ -240,7 +278,7 @@ var getNodes = func() ([]corev1.Node, error) {
 	return nodesList.Items, nil
 }
 
-func containsDisableMP(routers []v1beta2.Router) bool {
+func containsDisableMP(routers []apiv1beta2.Router) bool {
 	for _, r := range routers {
 		for _, n := range r.Neighbors {
 			//nolint:staticcheck // DisableMP is deprecated but still supported for backward compatibility
