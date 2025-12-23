@@ -50,22 +50,7 @@ jobs:
           cache: true
       - name: Check Generated
         run: |
-          make bumplicense
-          go mod tidy
-          pushd e2etests
-          go mod tidy
-          popd
-          make manifests
-          make generate
-          make generate-all-in-one
-          make api-docs
-          make checkuncommitted
-
-      - name: Helm doc generate
-        uses: docker://jnorwood/helm-docs:v1.10.0
-
-      - name: Check if docs are different
-        run: make checkuncommitted
+          make checkgenerated
 
   commitlint:
     runs-on: ubuntu-22.04
