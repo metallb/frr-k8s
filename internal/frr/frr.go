@@ -41,9 +41,13 @@ type FRR struct {
 
 const ReloadSuccess = "success"
 
-// Create a variable for os.Hostname() in order to make it easy to mock out
-// in unit tests.
-var osHostname = os.Hostname
+var (
+	// Create a variable for os.Hostname() in order to make it easy to mock out
+	// in unit tests.
+	osHostname = os.Hostname
+
+	frrLogLevels = []string{"debugging", "informational", "warnings", "errors", "emergencies"}
+)
 
 func (f *FRR) ApplyConfig(config *Config) error {
 	hostname, err := osHostname()
@@ -52,7 +56,9 @@ func (f *FRR) ApplyConfig(config *Config) error {
 	}
 
 	// TODO add internal wrapper
-	config.Loglevel = f.logLevel
+	if config.Loglevel == "" {
+		config.Loglevel = f.logLevel
+	}
 	config.Hostname = hostname
 	f.reloadConfig <- reloadEvent{config: config}
 	return nil
@@ -64,7 +70,7 @@ var failureTimeout = time.Second * 5
 func NewFRR(ctx context.Context, onStatusChanged StatusChanged, logger log.Logger, logLevel logging.Level) *FRR {
 	res := &FRR{
 		reloadConfig:    make(chan reloadEvent),
-		logLevel:        logLevelToFRR(logLevel),
+		logLevel:        configuredLogLevelToFRR(logLevel),
 		onStatusChanged: onStatusChanged,
 	}
 	reload := func(config *Config) error {
@@ -163,7 +169,9 @@ func readLastReloadResult() (string, string, error) {
 	return lastReloadStatus[0], lastReloadStatus[1], nil
 }
 
-func logLevelToFRR(level logging.Level) string {
+// configuredLogLevelToFRR converts the provided level to a valid log level for frr. Defaults to "informational". Its only used
+// internally.
+func configuredLogLevelToFRR(level logging.Level) string {
 	// Allowed frr log levels are: emergencies, alerts, critical,
 	// 		errors, warnings, notifications, informational, or debugging
 	switch level {
@@ -174,10 +182,55 @@ func logLevelToFRR(level logging.Level) string {
 	case logging.LevelWarn:
 		return "warnings"
 	case logging.LevelError:
-		return "error"
+		return "errors"
 	case logging.LevelNone:
 		return "emergencies"
 	}
 
 	return "informational"
+}
+
+// LogLevelToFRR converts the provided level to a valid log level for frr. Defaults to "" if parsing fails.
+func LogLevelToFRR(level logging.Level) string {
+	// Allowed frr log levels are: emergencies, alerts, critical,
+	// 		errors, warnings, notifications, informational, or debugging
+	switch level {
+	case logging.LevelAll, logging.LevelDebug:
+		return "debugging"
+	case logging.LevelInfo:
+		return "informational"
+	case logging.LevelWarn:
+		return "warnings"
+	case logging.LevelError:
+		return "errors"
+	case logging.LevelNone:
+		return "emergencies"
+	}
+
+	return ""
+}
+
+// CompareFRRLogLevels returns 1 if b's log level is stricter than a's, returns -1 if a's log level is stricter than b's,
+// and 0 otherwise. If an invalid log level if provided, then such a log level is considered the "least strict" of all
+// of them.
+func CompareLogLevels(a, b string) int {
+	ia := -1
+	ib := -1
+	for i, ll := range frrLogLevels {
+		if ll == a {
+			ia = i
+		}
+	}
+	for i, ll := range frrLogLevels {
+		if ll == b {
+			ib = i
+		}
+	}
+	if ib > ia {
+		return 1
+	}
+	if ib < ia {
+		return -1
+	}
+	return 0
 }

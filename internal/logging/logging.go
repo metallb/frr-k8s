@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -53,8 +54,8 @@ func (l levelSlice) String() string {
 // Init must be called as early as possible in main(), before any
 // application-specific flag parsing or logging occurs, because it
 // mutates the contents of the flag package as well as os.Stderr.
-func Init(lvl string) (log.Logger, error) {
-	l := log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+func Init(w io.Writer, lvl string) (*DynamicLvlLogger, error) {
+	l := log.NewJSONLogger(log.NewSyncWriter(w))
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -64,24 +65,50 @@ func Init(lvl string) (log.Logger, error) {
 	klog.SetOutput(w)
 	go collectGlogs(r, l)
 
-	opt, err := parseLevel(lvl)
-	if err != nil {
-		return nil, err
-	}
-
 	timeStampValuer := log.TimestampFormat(time.Now, time.RFC3339)
 	l = log.With(l, "ts", timeStampValuer)
-	l = level.NewFilter(l, opt)
 
 	// Note: caller must be added after everything else that decorates the
 	// logger (otherwise we get incorrect caller reference).
 	l = log.With(l, "caller", log.DefaultCaller)
 
+	// Create our dynamic level logger with the initial log level.
+	opt, err := parseLevel(lvl)
+	if err != nil {
+		return nil, err
+	}
+	dl := &DynamicLvlLogger{
+		logger: l,
+		lvl:    opt,
+	}
+
 	// Setting a controller-runtime logger is required to
 	// get any log created by it.
 	ctrl.SetLogger(zap.New())
 
-	return l, nil
+	return dl, nil
+}
+
+// DynamicLvlLogger is a logger with a log level that can be set at runtime.
+type DynamicLvlLogger struct {
+	logger log.Logger
+	lvl    level.Option
+}
+
+// Log prints log output.
+func (dl *DynamicLvlLogger) Log(keyvals ...interface{}) error {
+	lvlLogger := level.NewFilter(dl.logger, dl.lvl)
+	return lvlLogger.Log(keyvals...)
+}
+
+// SetLogLevel is used to change the log level of the logger dynamically.
+func (dl *DynamicLvlLogger) SetLogLevel(lvl string) error {
+	opt, err := parseLevel(lvl)
+	if err != nil {
+		return err
+	}
+	dl.lvl = opt
+	return nil
 }
 
 func collectGlogs(f *os.File, logger log.Logger) {
@@ -175,6 +202,7 @@ func deformat(logger log.Logger, b []byte) (leveledLogger log.Logger, ts time.Ti
 	return
 }
 
+// parseLevel parses the provided lvl to a level.Option. Returns an error if the level cannot be parsed.
 func parseLevel(lvl string) (level.Option, error) {
 	switch lvl {
 	case LevelAll:

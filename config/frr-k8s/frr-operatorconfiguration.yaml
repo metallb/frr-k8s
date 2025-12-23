@@ -1,0 +1,7 @@
+apiVersion: frrk8s.metallb.io/v1beta2
+kind: FRROperatorConfiguration
+metadata:
+  name: config
+  namespace: system
+spec:
+  logLevel: info

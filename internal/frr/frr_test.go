@@ -939,6 +939,198 @@ func TestSingleUnnumberedSession(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestLogLevelDebugging(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	defer cancel()
+
+	config := Config{
+		Loglevel: "debugging",
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestCompareLogLevels(t *testing.T) {
+	tcs := []struct {
+		a      string
+		b      string
+		expect int
+	}{
+		// Test cases where b is stricter than a (should return 1)
+		{
+			a:      "debugging",
+			b:      "informational",
+			expect: 1,
+		},
+		{
+			a:      "debugging",
+			b:      "warnings",
+			expect: 1,
+		},
+		{
+			a:      "debugging",
+			b:      "errors",
+			expect: 1,
+		},
+		{
+			a:      "debugging",
+			b:      "emergencies",
+			expect: 1,
+		},
+		{
+			a:      "informational",
+			b:      "warnings",
+			expect: 1,
+		},
+		{
+			a:      "informational",
+			b:      "errors",
+			expect: 1,
+		},
+		{
+			a:      "informational",
+			b:      "emergencies",
+			expect: 1,
+		},
+		{
+			a:      "warnings",
+			b:      "errors",
+			expect: 1,
+		},
+		{
+			a:      "warnings",
+			b:      "emergencies",
+			expect: 1,
+		},
+		{
+			a:      "errors",
+			b:      "emergencies",
+			expect: 1,
+		},
+
+		// Test cases where a is stricter than b (should return -1)
+		{
+			a:      "informational",
+			b:      "debugging",
+			expect: -1,
+		},
+		{
+			a:      "warnings",
+			b:      "debugging",
+			expect: -1,
+		},
+		{
+			a:      "errors",
+			b:      "debugging",
+			expect: -1,
+		},
+		{
+			a:      "emergencies",
+			b:      "debugging",
+			expect: -1,
+		},
+		{
+			a:      "warnings",
+			b:      "informational",
+			expect: -1,
+		},
+		{
+			a:      "errors",
+			b:      "informational",
+			expect: -1,
+		},
+		{
+			a:      "emergencies",
+			b:      "informational",
+			expect: -1,
+		},
+		{
+			a:      "errors",
+			b:      "warnings",
+			expect: -1,
+		},
+		{
+			a:      "emergencies",
+			b:      "warnings",
+			expect: -1,
+		},
+		{
+			a:      "emergencies",
+			b:      "errors",
+			expect: -1,
+		},
+
+		// Test cases where a and b are the same (should return 0)
+		{
+			a:      "debugging",
+			b:      "debugging",
+			expect: 0,
+		},
+		{
+			a:      "informational",
+			b:      "informational",
+			expect: 0,
+		},
+		{
+			a:      "warnings",
+			b:      "warnings",
+			expect: 0,
+		},
+		{
+			a:      "errors",
+			b:      "errors",
+			expect: 0,
+		},
+		{
+			a:      "emergencies",
+			b:      "emergencies",
+			expect: 0,
+		},
+
+		// Test cases with invalid log levels (should be treated as least strict)
+		{
+			a:      "invalid",
+			b:      "debugging",
+			expect: 1,
+		},
+		{
+			a:      "debugging",
+			b:      "invalid",
+			expect: -1,
+		},
+		{
+			a:      "invalid",
+			b:      "invalid",
+			expect: 0,
+		},
+		{
+			a:      "invalid",
+			b:      "emergencies",
+			expect: 1,
+		},
+		{
+			a:      "emergencies",
+			b:      "invalid",
+			expect: -1,
+		},
+	}
+
+	for _, tc := range tcs {
+		t.Run(fmt.Sprintf("CompareLogLevels(%q, %q)", tc.a, tc.b), func(t *testing.T) {
+			result := CompareLogLevels(tc.a, tc.b)
+			if result != tc.expect {
+				t.Errorf("CompareLogLevels(%q, %q) = %d, want %d", tc.a, tc.b, result, tc.expect)
+			}
+		})
+	}
+}
+
 func communityPrefixListFor(neigID, comm string, ipFamily string, prefixes ...string) CommunityPrefixList {
 	community, err := community.New(comm)
 	if err != nil {

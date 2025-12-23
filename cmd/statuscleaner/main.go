@@ -43,6 +43,7 @@ import (
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"
@@ -60,6 +61,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(frrk8sv1beta1.AddToScheme(scheme))
+	utilruntime.Must(frrk8sv1beta2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -93,7 +95,7 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	logger, err := logging.Init(os.Stdout, params.logLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)

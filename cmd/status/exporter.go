@@ -13,6 +13,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
 	"github.com/metallb/frr-k8s/cmd/status/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
@@ -36,6 +37,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(frrk8sv1beta1.AddToScheme(scheme))
+	utilruntime.Must(frrk8sv1beta2.AddToScheme(scheme))
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
@@ -65,7 +67,7 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	logger, err := logging.Init(logLevel)
+	logger, err := logging.Init(os.Stdout, logLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %v\n", err)
 		os.Exit(1)

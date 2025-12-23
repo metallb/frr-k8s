@@ -38,7 +38,7 @@ import (
 
 	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/frr"
 )
 
@@ -89,7 +89,7 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	updates.Inc()
 
-	configs := frrk8sv1beta1.FRRConfigurationList{}
+	configs := frrk8sv1beta2.FRRConfigurationList{}
 	err := r.List(ctx, &configs)
 	if err != nil {
 		conversionResult = fmt.Sprintf("failed: %v", err)
@@ -182,8 +182,8 @@ func (r *FRRConfigurationReconciler) applyEmptyConfig() error {
 
 // configsForNode filters the given FRRConfigurations such that only the ones matching the given labels are returned.
 // This also validates that the configuration objects have a valid nodeSelector.
-func configsForNode(cfgs []frrk8sv1beta1.FRRConfiguration, nodeLabels map[string]string) ([]frrk8sv1beta1.FRRConfiguration, error) {
-	valid := []frrk8sv1beta1.FRRConfiguration{}
+func configsForNode(cfgs []frrk8sv1beta2.FRRConfiguration, nodeLabels map[string]string) ([]frrk8sv1beta2.FRRConfiguration, error) {
+	valid := []frrk8sv1beta2.FRRConfiguration{}
 	for _, cfg := range cfgs {
 		selector, err := metav1.LabelSelectorAsSelector(&cfg.Spec.NodeSelector)
 		if err != nil {
@@ -209,7 +209,7 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		Watches(&frrk8sv1beta1.FRRConfiguration{},
+		Watches(&frrk8sv1beta2.FRRConfiguration{},
 			// The controller is level driven, so we squash all the frrconfiguration changes to a single key.
 			// By doing this, the controller will throttle when there are a large amount of configurations generated
 			// at the same time.

@@ -11,7 +11,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	v1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 
@@ -26,7 +26,7 @@ func TestConversion(t *testing.T) {
 
 	tests := []struct {
 		name        string
-		fromK8s     []v1beta1.FRRConfiguration
+		fromK8s     []v1beta2.FRRConfiguration
 		secrets     map[string]v1.Secret
 		alwaysBlock []net.IPNet
 		expected    *frr.Config
@@ -34,15 +34,15 @@ func TestConversion(t *testing.T) {
 	}{
 		{
 			name: "Single Router and Neighbor with SrcAddr",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:           65002,
 											Port:          ptr.To[uint16](179),
@@ -96,15 +96,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single Router and Neighbor",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65002,
 											Port:    ptr.To[uint16](178),
@@ -154,15 +154,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers and Neighbors",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65011,
 											Address: "192.0.2.6",
@@ -177,7 +177,7 @@ func TestConversion(t *testing.T) {
 								{
 									ASN: 65013,
 									ID:  "2001:db8::3",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
@@ -234,15 +234,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "IPv4 Neighbor with IPv4 and IPv6 Prefixes",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65020,
 									ID:  "192.0.2.10",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65021,
 											Address: "192.0.2.11",
@@ -279,7 +279,7 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Empty Configuration",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{},
 			},
 			secrets:  map[string]v1.Secret{},
@@ -288,15 +288,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Non default VRF",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65030,
 									ID:  "192.0.2.15",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65031,
 											Address: "192.0.2.16",
@@ -334,22 +334,22 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with ToAdvertise",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
@@ -386,31 +386,31 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Two Neighbor with ToAdvertise, one advertise all",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -457,24 +457,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Two Neighbor with ToAdvertise, one advertise all, both with communities and localPref",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24", "192.0.6.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														Community: "10:100",
@@ -496,7 +496,7 @@ func TestConversion(t *testing.T) {
 														Community: "10:104",
 													},
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.6.0/24"},
 														LocalPref: 100,
@@ -511,11 +511,11 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														Community: "10:100",
@@ -591,23 +591,23 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		}, {
 			name: "Neighbor with ToAdvertise, with communities and localPref, dual stack",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														Community: "10:100",
@@ -665,15 +665,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, invalid address",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "19@.0.2.@1",
@@ -691,22 +691,22 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to advertise a prefix not in router",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
@@ -724,24 +724,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set community on an unallowed prefix",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														Community: "10:100",
@@ -767,24 +767,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set localPref on an unallowed prefix",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														LocalPref: 100,
@@ -810,24 +810,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set multiple localPrefs for a prefix",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.4.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.4.0/24"},
 														LocalPref: 100,
@@ -853,24 +853,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set samelocalPrefs for different prefix entries",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "10.0.0.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"10.0.0.0/24"},
 														LocalPref: 100,
@@ -896,20 +896,20 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set localpref on non existing prefix",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"10.0.0.0/24"},
 														LocalPref: 100,
@@ -930,24 +930,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "One neighbor, trying to set samelocalPrefs for a prefix twice",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.2.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "192.0.2.0/24"},
 														LocalPref: 100,
@@ -969,21 +969,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with ToReceiveAll",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -1018,21 +1018,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with ToReceive some ips only",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.2.0/24"},
 														{Prefix: "192.0.3.0/24"},
 														{Prefix: "192.0.4.0/24"},
@@ -1082,21 +1082,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with ToReceive some ips only and modifiers",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.2.0/24", LE: 32, GE: 26},
 														{Prefix: "192.0.3.0/24", LE: 32, GE: 26},
 														{Prefix: "192.0.4.0/24"},
@@ -1147,21 +1147,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with ToReceive some ips only and setting le and ge",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.2.0/24", LE: 10, GE: 12},
 														{Prefix: "192.0.3.0/24", LE: 32, GE: 12},
 														{Prefix: "192.0.4.0/24"},
@@ -1183,24 +1183,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple FRRConfigurations - Single Router and neighbor, one config for advertise the other for receiving",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Community: "10:100",
 														Prefixes:  []string{"192.0.2.10/32"},
@@ -1210,7 +1210,7 @@ func TestConversion(t *testing.T) {
 														Prefixes:  []string{"192.0.2.10/32", "192.0.2.11/32"},
 													},
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														LocalPref: 200,
 														Prefixes:  []string{"192.0.2.10/32"},
@@ -1227,20 +1227,20 @@ func TestConversion(t *testing.T) {
 					},
 				},
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Mode: v1beta1.AllowRestricted,
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Mode: v1beta2.AllowRestricted,
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.100.0/24"},
 														{Prefix: "192.0.101.0/24"},
 													},
@@ -1301,22 +1301,22 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple FRRConfigurations - Single Router and neighbor, merging different lengths",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Mode: v1beta1.AllowRestricted,
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Mode: v1beta2.AllowRestricted,
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.100.0/24", LE: 28},
 														{Prefix: "192.0.101.0/24", LE: 32, GE: 26},
 														{Prefix: "192.0.102.0/24", LE: 32, GE: 26},
@@ -1333,20 +1333,20 @@ func TestConversion(t *testing.T) {
 					},
 				},
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToReceive: v1beta1.Receive{
-												Allowed: v1beta1.AllowedInPrefixes{
-													Mode: v1beta1.AllowRestricted,
-													Prefixes: []v1beta1.PrefixSelector{
+											ToReceive: v1beta2.Receive{
+												Allowed: v1beta2.AllowedInPrefixes{
+													Mode: v1beta2.AllowRestricted,
+													Prefixes: []v1beta2.PrefixSelector{
 														{Prefix: "192.0.100.0/24", LE: 32},
 														{Prefix: "192.0.101.0/24", GE: 24},
 														{Prefix: "192.0.102.0/24", LE: 32, GE: 26},
@@ -1416,24 +1416,24 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple FRRConfigurations - Multiple Routers and Neighbors",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.10/32", "192.0.2.11/32"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Community: "10:100",
 														Prefixes:  []string{"192.0.2.10/32"},
@@ -1443,7 +1443,7 @@ func TestConversion(t *testing.T) {
 														Prefixes:  []string{"192.0.2.10/32", "192.0.2.11/32"},
 													},
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														LocalPref: 200,
 														Prefixes:  []string{"192.0.2.10/32"},
@@ -1457,23 +1457,23 @@ func TestConversion(t *testing.T) {
 								},
 								{
 									ASN: 65013,
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65017,
 											Address: "192.0.2.7",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.5/32"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -1486,32 +1486,32 @@ func TestConversion(t *testing.T) {
 					},
 				},
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65011,
 											Address: "192.0.2.6",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.1/32", "192.0.3.2/32"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.3.20/32", "192.0.3.21/32"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Community: "10:100",
 														Prefixes:  []string{"192.0.3.20/32"},
@@ -1521,7 +1521,7 @@ func TestConversion(t *testing.T) {
 														Prefixes:  []string{"192.0.3.21/32"},
 													},
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														LocalPref: 200,
 														Prefixes:  []string{"192.0.3.21/32"},
@@ -1536,14 +1536,14 @@ func TestConversion(t *testing.T) {
 								{
 									ASN: 65013,
 									ID:  "2001:db8::3",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"2001:db9::/96"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
@@ -1627,19 +1627,19 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers and Neighbors with passwords",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1beta1.SecretReference{
+											PasswordSecret: v1beta2.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1655,7 +1655,7 @@ func TestConversion(t *testing.T) {
 								{
 									ASN: 65013,
 									ID:  "2001:db8::3",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65017,
 											Address: "192.0.2.7",
@@ -1663,7 +1663,7 @@ func TestConversion(t *testing.T) {
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
-											PasswordSecret: v1beta1.SecretReference{
+											PasswordSecret: v1beta2.SecretReference{
 												Name:      "secret2",
 												Namespace: "frr-k8s-system",
 											},
@@ -1741,19 +1741,19 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Non existing secret ref",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65012,
 											Address: "192.0.2.7",
-											PasswordSecret: v1beta1.SecretReference{
+											PasswordSecret: v1beta2.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1779,20 +1779,20 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Specifying both cleartext password and secret ref",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:      65012,
 											Address:  "192.0.2.7",
 											Password: "cleartext-password",
-											PasswordSecret: v1beta1.SecretReference{
+											PasswordSecret: v1beta2.SecretReference{
 												Name:      "secret1",
 												Namespace: "frr-k8s-system",
 											},
@@ -1818,18 +1818,18 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single Router and injection",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
 								},
 							},
 						},
-						Raw: v1beta1.RawConfig{
+						Raw: v1beta2.RawConfig{
 							Config: "foo",
 						},
 					},
@@ -1849,40 +1849,40 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single Router and double injection",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
 								},
 							},
 						},
-						Raw: v1beta1.RawConfig{
+						Raw: v1beta2.RawConfig{
 							Config:   "foo",
 							Priority: 5,
 						},
 					},
 				}, {
-					Spec: v1beta1.FRRConfigurationSpec{
-						Raw: v1beta1.RawConfig{
+					Spec: v1beta2.FRRConfigurationSpec{
+						Raw: v1beta2.RawConfig{
 							Config:   "bar\nbaz",
 							Priority: 10,
 						},
 					},
 				}, {
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
 								},
 							},
 						},
-						Raw: v1beta1.RawConfig{
+						Raw: v1beta2.RawConfig{
 							Config: "bar",
 						},
 					},
@@ -1901,15 +1901,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with BFDProfile",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
@@ -1918,7 +1918,7 @@ func TestConversion(t *testing.T) {
 									},
 								},
 							},
-							BFDProfiles: []v1beta1.BFDProfile{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -1960,15 +1960,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with BFDProfile does not exist",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
@@ -1977,7 +1977,7 @@ func TestConversion(t *testing.T) {
 									},
 								},
 							},
-							BFDProfiles: []v1beta1.BFDProfile{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -1994,15 +1994,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with BFDProfile in different config",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:        65041,
 											Address:    "192.0.2.21",
@@ -2015,9 +2015,9 @@ func TestConversion(t *testing.T) {
 					},
 				},
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							BFDProfiles: []v1beta1.BFDProfile{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -2034,11 +2034,11 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Two BFDProfiles, but identical",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							BFDProfiles: []v1beta1.BFDProfile{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -2065,11 +2065,11 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Two BFDProfiles, from different configs",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							BFDProfiles: []v1beta1.BFDProfile{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -2085,9 +2085,9 @@ func TestConversion(t *testing.T) {
 					},
 				},
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							BFDProfiles: []v1beta1.BFDProfile{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							BFDProfiles: []v1beta2.BFDProfile{
 								{
 									Name:             "bfd1",
 									ReceiveInterval:  ptr.To[uint32](42),
@@ -2128,15 +2128,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "HoldTime without KeepaliveTime",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:      65002,
 											Address:  "192.0.2.2",
@@ -2155,15 +2155,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "KeepaliveTime without HoldTime",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:           65002,
 											Address:       "192.0.2.2",
@@ -2182,15 +2182,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "HoldTime bigger than keepalive time",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65002,
 											Address: "192.0.2.2",
@@ -2214,15 +2214,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "With alwaysblock",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65011,
 											Address: "192.0.2.6",
@@ -2233,7 +2233,7 @@ func TestConversion(t *testing.T) {
 								{
 									ASN: 65013,
 									ID:  "2001:db8::3",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65014,
 											Address: "2001:db8::4",
@@ -2305,16 +2305,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers import VRFs",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Imports: []v1beta1.Import{
+									Imports: []v1beta2.Import{
 										{VRF: "red"},
 									},
 								},
@@ -2348,35 +2348,35 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers import VRF, advertise ips from the imported vrf",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
 									VRF: "",
-									Imports: []v1beta1.Import{
+									Imports: []v1beta2.Import{
 										{VRF: "red"},
 									},
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "192.0.5.0/24"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2435,16 +2435,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers import non existing VRFs",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Imports: []v1beta1.Import{
+									Imports: []v1beta2.Import{
 										{VRF: "blue"},
 									},
 								},
@@ -2463,25 +2463,25 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple Routers import VRF, red imports default and advertises",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
 									VRF: "red",
-									Imports: []v1beta1.Import{
+									Imports: []v1beta2.Import{
 										{VRF: "default"},
 									},
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2531,21 +2531,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor without ASN or DynamicASN",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											Address: "192.0.2.22",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2562,23 +2562,23 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with both ASN and DynamicASN",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											Address:    "192.0.2.22",
 											ASN:        65010,
 											DynamicASN: "internal",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2595,22 +2595,22 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with DynamicASN",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											Address:    "192.0.2.22",
 											DynamicASN: "internal",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2649,22 +2649,22 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor with Interface and without Address",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											Interface:  "eth0",
 											DynamicASN: "internal",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2705,21 +2705,21 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Neighbor without Interface and without Address",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN: 65010,
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
 											},
 										},
@@ -2736,15 +2736,15 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single router two neighbors same address different ASN",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65001,
 									ID:  "192.0.2.1",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
@@ -2765,16 +2765,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single router two neighbors same interface different ASN",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65010,
 											Interface: "eth0",
@@ -2795,16 +2795,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Single router two neighbors different interface",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65010,
 											Interface: "eth0",
@@ -2850,16 +2850,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple routers same vrf two neighbors same interface",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "blue",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65010,
 											Interface: "eth0",
@@ -2870,7 +2870,7 @@ func TestConversion(t *testing.T) {
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "blue",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65011,
 											Interface: "eth0",
@@ -2887,16 +2887,16 @@ func TestConversion(t *testing.T) {
 		},
 		{
 			name: "Multiple routers same vrf two neighbors different interface",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "blue",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65010,
 											Interface: "eth0",
@@ -2907,7 +2907,7 @@ func TestConversion(t *testing.T) {
 									ASN: 65010,
 									ID:  "192.0.2.5",
 									VRF: "blue",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:       65011,
 											Interface: "eth1",
@@ -2952,22 +2952,22 @@ func TestConversion(t *testing.T) {
 
 		{
 			name: "ipv4 neighbor, v6 routes are not allowed to be advertised",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
 											},
 										},
@@ -2983,23 +2983,23 @@ func TestConversion(t *testing.T) {
 			err:     fmt.Errorf("refix 2001:db8::/64 is not compatible with the ipfamily ipv4"),
 		}, {
 			name: "ipv4 neighbor, v6 routes are not allowed to be advertised with Community",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "2001:db8::/64"},
 														Community: "10:100",
@@ -3019,23 +3019,23 @@ func TestConversion(t *testing.T) {
 			err:     fmt.Errorf("refix 2001:db8::/64 is not compatible with the ipfamily ipv4"),
 		}, {
 			name: "ipv4 neighbor, v6 routes are not allowed to be advertised with localpref",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
-													Mode: v1beta1.AllowAll,
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
+													Mode: v1beta2.AllowAll,
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "2001:db8::/64"},
 														LocalPref: 100,
@@ -3055,30 +3055,30 @@ func TestConversion(t *testing.T) {
 			err:     fmt.Errorf("refix 2001:db8::/64 is not compatible with the ipfamily ipv4"),
 		}, {
 			name: "ipv4 neighbor, dualstack family, v4 and v6 routes are advertised",
-			fromK8s: []v1beta1.FRRConfiguration{
+			fromK8s: []v1beta2.FRRConfiguration{
 				{
-					Spec: v1beta1.FRRConfigurationSpec{
-						BGP: v1beta1.BGPConfig{
-							Routers: []v1beta1.Router{
+					Spec: v1beta2.FRRConfigurationSpec{
+						BGP: v1beta2.BGPConfig{
+							Routers: []v1beta2.Router{
 								{
 									ASN: 65040,
 									ID:  "192.0.2.20",
-									Neighbors: []v1beta1.Neighbor{
+									Neighbors: []v1beta2.Neighbor{
 										{
 											ASN:     65041,
 											Address: "192.0.2.21",
-											ToAdvertise: v1beta1.Advertise{
-												Allowed: v1beta1.AllowedOutPrefixes{
+											ToAdvertise: v1beta2.Advertise{
+												Allowed: v1beta2.AllowedOutPrefixes{
 													Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
-													Mode:     v1beta1.AllowRestricted,
+													Mode:     v1beta2.AllowRestricted,
 												},
-												PrefixesWithCommunity: []v1beta1.CommunityPrefixes{
+												PrefixesWithCommunity: []v1beta2.CommunityPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "2001:db8::/64"},
 														Community: "10:100",
 													},
 												},
-												PrefixesWithLocalPref: []v1beta1.LocalPrefPrefixes{
+												PrefixesWithLocalPref: []v1beta2.LocalPrefPrefixes{
 													{
 														Prefixes:  []string{"192.0.2.0/24", "2001:db8::/64"},
 														LocalPref: 100,
@@ -3129,6 +3129,54 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "Logging invalid input",
+			fromK8s: []v1beta2.FRRConfiguration{
+				{
+					Spec: v1beta2.FRRConfigurationSpec{
+						LogLevel: "I'm not a valid loglevel",
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: &frr.Config{},
+			err:      nil,
+		},
+		{
+			name: "Logging debug input",
+			fromK8s: []v1beta2.FRRConfiguration{
+				{
+					Spec: v1beta2.FRRConfigurationSpec{
+						LogLevel: "debug",
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Loglevel: "debugging",
+			},
+			err: nil,
+		},
+		{
+			name: "Logging debug and error input",
+			fromK8s: []v1beta2.FRRConfiguration{
+				{
+					Spec: v1beta2.FRRConfigurationSpec{
+						LogLevel: "debug",
+					},
+				},
+				{
+					Spec: v1beta2.FRRConfigurationSpec{
+						LogLevel: "error",
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Loglevel: "errors",
+			},
+			err: nil,
+		},
 	}
 
 	for _, test := range tests {
@@ -3158,13 +3206,13 @@ func TestConversion(t *testing.T) {
 func TestFilterForSelector(t *testing.T) {
 	tests := []struct {
 		name     string
-		selector v1beta1.PrefixSelector
+		selector v1beta2.PrefixSelector
 		expected frr.IncomingFilter
 		mustFail bool
 	}{
 		{
 			name: "prefix only",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 			},
 			expected: frr.IncomingFilter{
@@ -3174,7 +3222,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix with valid modifiers",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 				LE:     32,
 				GE:     25,
@@ -3188,7 +3236,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix le smaller than mask",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 				LE:     22,
 			},
@@ -3197,7 +3245,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix le valid, ge smaller than mask",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 				LE:     32,
 				GE:     22,
@@ -3207,7 +3255,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix le nil, ge smaller than mask",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 				GE:     22,
 			},
@@ -3216,7 +3264,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix ge greater than le",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "192.168.1.0/24",
 				LE:     26,
 				GE:     28,
@@ -3226,7 +3274,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix with valid modifiers, ipv6",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "fc00:f853:ccd:e799::/64",
 				LE:     128,
 				GE:     70,
@@ -3240,7 +3288,7 @@ func TestFilterForSelector(t *testing.T) {
 		},
 		{
 			name: "prefix with invalid modifiers, ipv6",
-			selector: v1beta1.PrefixSelector{
+			selector: v1beta2.PrefixSelector{
 				Prefix: "fc00:f853:ccd:e799::/64",
 				LE:     63,
 			},

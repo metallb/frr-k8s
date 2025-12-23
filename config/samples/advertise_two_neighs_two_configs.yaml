@@ -1,4 +1,4 @@
-apiVersion: frrk8s.metallb.io/v1beta1
+apiVersion: frrk8s.metallb.io/v1beta2
 kind: FRRConfiguration
 metadata:
   name: test-0
@@ -20,7 +20,7 @@ spec:
       - 192.168.2.0/24
       - 192.169.2.0/24
 ---
-apiVersion: frrk8s.metallb.io/v1beta1
+apiVersion: frrk8s.metallb.io/v1beta2
 kind: FRRConfiguration
 metadata:
   name: test-1

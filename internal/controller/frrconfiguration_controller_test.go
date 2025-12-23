@@ -10,7 +10,7 @@ You may obtain a copy of the License at
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
+See the License for the specific language governing p] should notify when the last conversion status changedermissions and
 limitations under the License.
 */
 
@@ -30,7 +30,7 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	v1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 
@@ -52,6 +52,10 @@ type fakeFRR struct {
 }
 
 func (f *fakeFRR) ApplyConfig(config *frr.Config) error {
+	fmt.Printf("akaris - config: %+v\n", *config)
+	for _, router := range config.Routers {
+		fmt.Printf("|-- akaris - router: %+v\n", router)
+	}
 	f.lastConfig = config
 	if f.mustError {
 		return fmt.Errorf("error")
@@ -67,14 +71,14 @@ func fakeReloadStatus() {
 
 var _ = Describe("Frrk8s controller", func() {
 	AfterEach(func() {
-		toDel := &v1beta1.FRRConfiguration{}
+		toDel := &v1beta2.FRRConfiguration{}
 		err := k8sClient.DeleteAllOf(context.Background(), toDel, client.InNamespace("default"))
 		if apierrors.IsNotFound(err) {
 			return
 		}
 		Expect(err).ToNot(HaveOccurred())
 		Eventually(func() int {
-			frrConfigList := &v1beta1.FRRConfigurationList{}
+			frrConfigList := &v1beta2.FRRConfigurationList{}
 			err := k8sClient.List(context.Background(), frrConfigList)
 			Expect(err).ToNot(HaveOccurred())
 			return len(frrConfigList.Items)
@@ -84,14 +88,14 @@ var _ = Describe("Frrk8s controller", func() {
 	Context("when a FRRConfiguration is created", func() {
 
 		It("should apply the configuration to FRR", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
@@ -118,14 +122,14 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should apply and modify the configuration to FRR", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
@@ -133,6 +137,7 @@ var _ = Describe("Frrk8s controller", func() {
 					},
 				},
 			}
+			fmt.Printf("==> akaris - creating %+v\n", frrConfig.Spec.BGP.Routers)
 			err := k8sClient.Create(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() *frr.Config {
@@ -152,6 +157,7 @@ var _ = Describe("Frrk8s controller", func() {
 			frrConfig.Spec.BGP.Routers[0].ASN = uint32(43)
 			frrConfig.Spec.BGP.Routers[0].Prefixes = []string{"192.168.1.0/32"}
 
+			fmt.Printf("==> akaris - updating %+v\n", frrConfig.Spec.BGP.Routers)
 			err = k8sClient.Update(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())
 			Eventually(func() *frr.Config {
@@ -171,14 +177,14 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should create and delete the configuration to FRR", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
@@ -215,14 +221,14 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should respect the nodeSelector of configurations and react to their create/update/delete events", func() {
-			configWithoutSelector := &v1beta1.FRRConfiguration{
+			configWithoutSelector := &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "no-selector",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
@@ -233,14 +239,14 @@ var _ = Describe("Frrk8s controller", func() {
 			err := k8sClient.Create(context.Background(), configWithoutSelector)
 			Expect(err).ToNot(HaveOccurred())
 
-			configWithMatchingSelector := &v1beta1.FRRConfiguration{
+			configWithMatchingSelector := &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "with-matching-selector",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(52),
 								VRF: "red",
@@ -255,14 +261,14 @@ var _ = Describe("Frrk8s controller", func() {
 			err = k8sClient.Create(context.Background(), configWithMatchingSelector)
 			Expect(err).ToNot(HaveOccurred())
 
-			configWithNonMatchingSelectorAtFirst := &v1beta1.FRRConfiguration{
+			configWithNonMatchingSelectorAtFirst := &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "with-non-matching-selector-at-first",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(62),
 								VRF: "blue",
@@ -376,14 +382,14 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should respect the nodeSelector of configurations when node create/update/delete events happen", func() {
-			configWithoutSelector := &v1beta1.FRRConfiguration{
+			configWithoutSelector := &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "no-selector",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
@@ -394,14 +400,14 @@ var _ = Describe("Frrk8s controller", func() {
 			err := k8sClient.Create(context.Background(), configWithoutSelector)
 			Expect(err).ToNot(HaveOccurred())
 
-			configWithSelector := &v1beta1.FRRConfiguration{
+			configWithSelector := &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "with-selector",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(52),
 								VRF: "red",
@@ -494,21 +500,21 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should handle the secrets as passwords to FRR", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
-								Neighbors: []v1beta1.Neighbor{
+								Neighbors: []v1beta2.Neighbor{
 									{
 										ASN:     65012,
 										Address: "192.0.2.7",
-										PasswordSecret: v1beta1.SecretReference{
+										PasswordSecret: v1beta2.SecretReference{
 											Name:      "secret1",
 											Namespace: testNamespace,
 										},
@@ -610,20 +616,20 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should handle the raw FRR configuration", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
 						},
 					},
-					Raw: v1beta1.RawConfig{
+					Raw: v1beta2.RawConfig{
 						Config: "foo",
 					},
 				},
@@ -645,16 +651,16 @@ var _ = Describe("Frrk8s controller", func() {
 				},
 			))
 
-			secondConfig := &v1beta1.FRRConfiguration{
+			secondConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test1",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{},
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{},
 					},
-					Raw: v1beta1.RawConfig{
+					Raw: v1beta2.RawConfig{
 						Priority: 10,
 						Config:   "bar",
 					},
@@ -691,19 +697,19 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 
 		It("should handle the BFD profile", func() {
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
 								ASN: uint32(42),
 							},
 						},
-						BFDProfiles: []v1beta1.BFDProfile{
+						BFDProfiles: []v1beta2.BFDProfile{
 							{
 								Name: "foo",
 							},
@@ -756,14 +762,14 @@ var _ = Describe("Frrk8s controller", func() {
 
 		It("should notify when the last conversion status changed", func() {
 			By("making the conversion fail")
-			frrConfig := &v1beta1.FRRConfiguration{
+			frrConfig := &v1beta2.FRRConfiguration{
 				ObjectMeta: ctrl.ObjectMeta{
 					Name:      "test",
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						BFDProfiles: []v1beta1.BFDProfile{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						BFDProfiles: []v1beta2.BFDProfile{
 							{
 								Name: "foo",
 							},
@@ -782,9 +788,9 @@ var _ = Describe("Frrk8s controller", func() {
 			reloadCalled = false
 
 			By("updating to a valid config")
-			frrConfig.Spec = v1beta1.FRRConfigurationSpec{
-				BGP: v1beta1.BGPConfig{
-					Routers: []v1beta1.Router{
+			frrConfig.Spec = v1beta2.FRRConfigurationSpec{
+				BGP: v1beta2.BGPConfig{
+					Routers: []v1beta2.Router{
 						{
 							ASN: uint32(42),
 						},

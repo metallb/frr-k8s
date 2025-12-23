@@ -6,11 +6,11 @@ import (
 	"encoding/json"
 
 	"github.com/davecgh/go-spew/spew"
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/frr"
 )
 
-func dumpK8sConfigs(c frrk8sv1beta1.FRRConfigurationList) string {
+func dumpK8sConfigs(c frrk8sv1beta2.FRRConfigurationList) string {
 	res := ""
 	for _, cfg := range c.Items {
 		res = res + "\n" + dumpResource(sanitizedConfig(cfg))
@@ -44,7 +44,7 @@ func dumpResource(i interface{}) string {
 	return string(toDump)
 }
 
-func sanitizedConfig(c frrk8sv1beta1.FRRConfiguration) frrk8sv1beta1.FRRConfiguration {
+func sanitizedConfig(c frrk8sv1beta2.FRRConfiguration) frrk8sv1beta2.FRRConfiguration {
 	res := c.DeepCopy()
 	for _, router := range res.Spec.BGP.Routers {
 		for i := range router.Neighbors {

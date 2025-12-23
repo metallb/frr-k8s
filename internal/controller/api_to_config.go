@@ -12,9 +12,11 @@ import (
 	"time"
 
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/safeconvert"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,15 +25,16 @@ import (
 )
 
 type ClusterResources struct {
-	FRRConfigs      []v1beta1.FRRConfiguration
+	FRRConfigs      []v1beta2.FRRConfiguration
 	PasswordSecrets map[string]corev1.Secret
 }
 
 type namedRawConfig struct {
-	v1beta1.RawConfig
+	v1beta2.RawConfig
 	configName string
 }
 
+// apiToFRR takes a ClusterResources object ([]FRRConfigs + PasswordSecrets) and generates an frr.Config.
 func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config, error) {
 	res := &frr.Config{
 		Routers:     make([]*frr.RouterConfig, 0),
@@ -115,6 +118,14 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 
 			routersForVRF[r.VRF] = curr
 		}
+
+		// Compare log levels. If cfg.Spec.LogLevel is valid and is stricter than res.Loglevel, we set it.
+		// An invalid log level (such as the empty string) is considered the least strict, so we make sure that
+		// any log level set in any cfg will set res.Loglevel.
+		parsedLogLevel := frr.LogLevelToFRR(logging.Level(cfg.Spec.LogLevel))
+		if frr.CompareLogLevels(res.Loglevel, parsedLogLevel) > 0 {
+			res.Loglevel = parsedLogLevel
+		}
 	}
 
 	res.Routers = sortMap(routersForVRF)
@@ -124,7 +135,7 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 	return res, nil
 }
 
-func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile, routerPrefixes []string) (*frr.RouterConfig, error) {
+func routerToFRRConfig(r v1beta2.Router, alwaysBlock []frr.IncomingFilter, secrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile, routerPrefixes []string) (*frr.RouterConfig, error) {
 	res := &frr.RouterConfig{
 		MyASN:        r.ASN,
 		RouterID:     r.ID,
@@ -149,7 +160,7 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta2.Neighbor, prefixesInRouter []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
 	if n.Address == "" && n.Interface == "" {
 		return nil, fmt.Errorf("neighbor with ASN %s has no address and no interface", asnFor(n))
 	}
@@ -170,7 +181,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		return nil, fmt.Errorf("neighbor %s has both ASN and DynamicASN specified", neighborName(n))
 	}
 
-	if n.DynamicASN != "" && n.DynamicASN != v1beta1.InternalASNMode && n.DynamicASN != v1beta1.ExternalASNMode {
+	if n.DynamicASN != "" && n.DynamicASN != v1beta2.InternalASNMode && n.DynamicASN != v1beta2.ExternalASNMode {
 		return nil, fmt.Errorf("neighbor %s has invalid DynamicASN %s specified, must be one of %s,%s", neighborName(n), n.DynamicASN, v1beta1.InternalASNMode, v1beta1.ExternalASNMode)
 	}
 
@@ -217,7 +228,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	return res, nil
 }
 
-func addressFamilyForNeighbor(n v1beta1.Neighbor) (ipfamily.Family, error) {
+func addressFamilyForNeighbor(n v1beta2.Neighbor) (ipfamily.Family, error) {
 	neighborFamily := ipfamily.Unknown
 	if n.Address != "" {
 		f, err := ipfamily.ForAddresses(n.Address)
@@ -232,7 +243,7 @@ func addressFamilyForNeighbor(n v1beta1.Neighbor) (ipfamily.Family, error) {
 	return neighborFamily, nil
 }
 
-func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
+func passwordForNeighbor(n v1beta2.Neighbor, passwordSecrets map[string]corev1.Secret) (string, error) {
 	if n.Password != "" && n.PasswordSecret.Name != "" {
 		return "", fmt.Errorf("neighbor %s specifies both cleartext password and secret ref", neighborName(n))
 	}
@@ -260,7 +271,7 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 	return string(srcPass), nil
 }
 
-func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
+func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta2.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
 	neighborIPFamilies := []ipfamily.Family{neighbor.IPFamily}
 	if neighbor.IPFamily == ipfamily.DualStack {
 		neighborIPFamilies = []ipfamily.Family{ipfamily.IPv4, ipfamily.IPv6}
@@ -306,7 +317,7 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 	return res, nil
 }
 
-func prefixesWithLocalPrefToFRR(toAdd map[string]frr.LocalPrefPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string]) (map[string]frr.LocalPrefPrefixList, error) {
+func prefixesWithLocalPrefToFRR(toAdd map[string]frr.LocalPrefPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta2.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string]) (map[string]frr.LocalPrefPrefixList, error) {
 	frrFamily := frrIPFamily(ipFamily)
 	for _, prefixes := range toAdvertise.PrefixesWithLocalPref {
 		key := localPrefPrefixListKey(prefixes.LocalPref, frrFamily)
@@ -343,7 +354,7 @@ func prefixesWithLocalPrefToFRR(toAdd map[string]frr.LocalPrefPrefixList, neighb
 	return toAdd, nil
 }
 
-func prefixesWithCommunityToFRR(toAdd map[string]frr.CommunityPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string]) (map[string]frr.CommunityPrefixList, error) {
+func prefixesWithCommunityToFRR(toAdd map[string]frr.CommunityPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta2.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string]) (map[string]frr.CommunityPrefixList, error) {
 	for _, prefixes := range toAdvertise.PrefixesWithCommunity {
 		c, err := community.New(prefixes.Community)
 		if err != nil {
@@ -390,10 +401,10 @@ func neighborHasIPFamily(neighbor *frr.NeighborConfig, ipFamily ipfamily.Family)
 	return neighbor.IPFamily == ipFamily
 }
 
-func prefixesToAdvertiseForFamily(toAdvertise v1beta1.Advertise, prefixesInRouter []string, ipFamily ipfamily.Family) sets.Set[string] {
+func prefixesToAdvertiseForFamily(toAdvertise v1beta2.Advertise, prefixesInRouter []string, ipFamily ipfamily.Family) sets.Set[string] {
 	res := sets.New[string]()
 	prefixesForFamily := ipfamily.FilterPrefixes(prefixesInRouter, ipFamily)
-	if toAdvertise.Allowed.Mode == v1beta1.AllowAll {
+	if toAdvertise.Allowed.Mode == v1beta2.AllowAll {
 		for _, p := range prefixesForFamily {
 			res.Insert(p)
 		}
@@ -435,12 +446,12 @@ func localPrefPrefixListKey(localPref uint32, frrAddressFamily string) string {
 	return fmt.Sprintf("%d-%s", localPref, frrAddressFamily)
 }
 
-func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {
+func toReceiveToFRR(toReceive v1beta2.Receive) (frr.AllowedIn, error) {
 	res := frr.AllowedIn{
 		PrefixesV4: make([]frr.IncomingFilter, 0),
 		PrefixesV6: make([]frr.IncomingFilter, 0),
 	}
-	if toReceive.Allowed.Mode == v1beta1.AllowAll {
+	if toReceive.Allowed.Mode == v1beta2.AllowAll {
 		res.All = true
 		return res, nil
 	}
@@ -464,7 +475,7 @@ func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {
 	return res, nil
 }
 
-func filterForSelector(selector v1beta1.PrefixSelector) (frr.IncomingFilter, error) {
+func filterForSelector(selector v1beta2.PrefixSelector) (frr.IncomingFilter, error) {
 	_, cidr, err := net.ParseCIDR(selector.Prefix)
 	if err != nil {
 		return frr.IncomingFilter{}, fmt.Errorf("failed to parse prefix %s: %w", selector.Prefix, err)
@@ -507,7 +518,7 @@ func validateSelectorLengths(mask, le, ge uint32) error {
 	return nil
 }
 
-func validateImportVRFs(r v1beta1.Router, allVRFs map[string][]string) error {
+func validateImportVRFs(r v1beta2.Router, allVRFs map[string][]string) error {
 	for _, i := range r.Imports {
 		if i.VRF == "default" {
 			continue
@@ -519,7 +530,7 @@ func validateImportVRFs(r v1beta1.Router, allVRFs map[string][]string) error {
 	return nil
 }
 
-func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Router) error {
+func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta2.Router) error {
 	prefixesSet := sets.New(prefixesInRouter...)
 	for _, n := range routerConfig.Neighbors {
 		neighborFamily, err := addressFamilyForNeighbor(n)
@@ -547,7 +558,7 @@ func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Ro
 			}
 		}
 
-		if n.ToAdvertise.Allowed.Mode == v1beta1.AllowAll {
+		if n.ToAdvertise.Allowed.Mode == v1beta2.AllowAll {
 			continue
 		}
 
@@ -563,7 +574,7 @@ func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Ro
 	return nil
 }
 
-func asnFor(n v1beta1.Neighbor) string {
+func asnFor(n v1beta2.Neighbor) string {
 	asn := strconv.FormatUint(uint64(n.ASN), 10)
 	if n.DynamicASN != "" {
 		asn = string(n.DynamicASN)
@@ -572,14 +583,14 @@ func asnFor(n v1beta1.Neighbor) string {
 	return asn
 }
 
-func neighborName(n v1beta1.Neighbor) string {
+func neighborName(n v1beta2.Neighbor) string {
 	if n.Address == "" {
 		return fmt.Sprintf("%s@%s", asnFor(n), n.Interface)
 	}
 	return fmt.Sprintf("%s@%s", asnFor(n), n.Address)
 }
 
-func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {
+func bfdProfileToFRR(bfdProfile v1beta2.BFDProfile) *frr.BFDProfile {
 	res := &frr.BFDProfile{
 		Name:             bfdProfile.Name,
 		ReceiveInterval:  bfdProfile.ReceiveInterval,
@@ -701,7 +712,7 @@ func validatePrefixesForNeighborFamily(prefixes []string, family ipfamily.Family
 	return nil
 }
 
-func prefixesForVRFs(routers []v1beta1.Router) map[string][]string {
+func prefixesForVRFs(routers []v1beta2.Router) map[string][]string {
 	res := map[string][]string{}
 	for _, r := range routers {
 		res[r.VRF] = r.Prefixes
@@ -709,7 +720,7 @@ func prefixesForVRFs(routers []v1beta1.Router) map[string][]string {
 	return res
 }
 
-func importedPrefixes(r v1beta1.Router, prefixesInRouter map[string][]string) ([]string, error) {
+func importedPrefixes(r v1beta2.Router, prefixesInRouter map[string][]string) ([]string, error) {
 	res := []string{}
 	for _, i := range r.Imports {
 		vrf := i.VRF
