@@ -1,20 +1,20 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package webhooks
+package v1beta2
 
 import (
 	"testing"
 
 	"github.com/go-kit/log"
 	"github.com/google/go-cmp/cmp"
-	"github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/api/v1beta2"
 	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 const TestNamespace = "test-namespace"
 
-var existingConfig = v1beta1.FRRConfiguration{
+var existingConfig = v1beta2.FRRConfiguration{
 	ObjectMeta: metav1.ObjectMeta{
 		Name:      "test-config",
 		Namespace: TestNamespace,
@@ -45,25 +45,25 @@ func TestValidateFRRConfiguration(t *testing.T) {
 
 	tests := []struct {
 		desc         string
-		before       *v1beta1.FRRConfiguration
-		config       *v1beta1.FRRConfiguration
+		before       *v1beta2.FRRConfiguration
+		config       *v1beta2.FRRConfiguration
 		isNew        bool
 		failValidate bool
-		expected     *v1beta1.FRRConfigurationList
+		expected     *v1beta2.FRRConfigurationList
 		warnings     []string
 	}{
 		{
 			desc:   "Second config",
 			before: &existingConfig,
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: true,
-			expected: &v1beta1.FRRConfigurationList{
-				Items: []v1beta1.FRRConfiguration{
+			expected: &v1beta2.FRRConfigurationList{
+				Items: []v1beta2.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -82,15 +82,15 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		{
 			desc:   "Same, update",
 			before: &existingConfig,
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: false,
-			expected: &v1beta1.FRRConfigurationList{
-				Items: []v1beta1.FRRConfiguration{
+			expected: &v1beta2.FRRConfigurationList{
+				Items: []v1beta2.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -103,15 +103,15 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		{
 			desc:   "Same, new",
 			before: &existingConfig,
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
 			},
 			isNew: true,
-			expected: &v1beta1.FRRConfigurationList{
-				Items: []v1beta1.FRRConfiguration{
+			expected: &v1beta2.FRRConfigurationList{
+				Items: []v1beta2.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
@@ -124,12 +124,12 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		},
 		{
 			desc: "Validation should fail if created with an invalid nodeSelector",
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config1",
 					Namespace: TestNamespace,
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
+				Spec: v1beta2.FRRConfigurationSpec{
 					NodeSelector: metav1.LabelSelector{
 						MatchLabels: map[string]string{
 							"app": "@",
@@ -143,16 +143,16 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		},
 		{
 			desc: "return warning when enableGracefulRestart changes",
-			before: &v1beta1.FRRConfiguration{
+			before: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
-								Neighbors: []v1beta1.Neighbor{
+								Neighbors: []v1beta2.Neighbor{
 									{
 										ASN:                   65002,
 										EnableGracefulRestart: false,
@@ -163,16 +163,16 @@ func TestValidateFRRConfiguration(t *testing.T) {
 					},
 				},
 			},
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
-								Neighbors: []v1beta1.Neighbor{
+								Neighbors: []v1beta2.Neighbor{
 									{
 										ASN:                   65002,
 										EnableGracefulRestart: true,
@@ -184,18 +184,18 @@ func TestValidateFRRConfiguration(t *testing.T) {
 				},
 			},
 			isNew: false,
-			expected: &v1beta1.FRRConfigurationList{
-				Items: []v1beta1.FRRConfiguration{
+			expected: &v1beta2.FRRConfigurationList{
+				Items: []v1beta2.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
 							Namespace: TestNamespace,
 						},
-						Spec: v1beta1.FRRConfigurationSpec{
-							BGP: v1beta1.BGPConfig{
-								Routers: []v1beta1.Router{
+						Spec: v1beta2.FRRConfigurationSpec{
+							BGP: v1beta2.BGPConfig{
+								Routers: []v1beta2.Router{
 									{
-										Neighbors: []v1beta1.Neighbor{
+										Neighbors: []v1beta2.Neighbor{
 											{
 												ASN:                   65002,
 												EnableGracefulRestart: true,
@@ -214,16 +214,16 @@ func TestValidateFRRConfiguration(t *testing.T) {
 		{
 			desc:   "warning when disableMP is set",
 			before: &existingConfig,
-			config: &v1beta1.FRRConfiguration{
+			config: &v1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config",
 					Namespace: TestNamespace,
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+				Spec: v1beta2.FRRConfigurationSpec{
+					BGP: v1beta2.BGPConfig{
+						Routers: []v1beta2.Router{
 							{
-								Neighbors: []v1beta1.Neighbor{
+								Neighbors: []v1beta2.Neighbor{
 									{
 										ASN:       65002,
 										DisableMP: true,
@@ -235,18 +235,18 @@ func TestValidateFRRConfiguration(t *testing.T) {
 				},
 			},
 			isNew: true,
-			expected: &v1beta1.FRRConfigurationList{
-				Items: []v1beta1.FRRConfiguration{
+			expected: &v1beta2.FRRConfigurationList{
+				Items: []v1beta2.FRRConfiguration{
 					{
 						ObjectMeta: metav1.ObjectMeta{
 							Name:      "test-config",
 							Namespace: TestNamespace,
 						},
-						Spec: v1beta1.FRRConfigurationSpec{
-							BGP: v1beta1.BGPConfig{
-								Routers: []v1beta1.Router{
+						Spec: v1beta2.FRRConfigurationSpec{
+							BGP: v1beta2.BGPConfig{
+								Routers: []v1beta2.Router{
 									{
-										Neighbors: []v1beta1.Neighbor{
+										Neighbors: []v1beta2.Neighbor{
 											{
 												ASN:       65002,
 												DisableMP: true,
@@ -266,9 +266,9 @@ func TestValidateFRRConfiguration(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			var err error
-			getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
-				return &v1beta1.FRRConfigurationList{
-					Items: []v1beta1.FRRConfiguration{
+			getFRRConfigurations = func() (*v1beta2.FRRConfigurationList, error) {
+				return &v1beta2.FRRConfigurationList{
+					Items: []v1beta2.FRRConfiguration{
 						*test.before,
 					},
 				}, nil

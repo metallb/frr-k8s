@@ -17,8 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	"log"
-
 	"sigs.k8s.io/controller-runtime/pkg/conversion"
 
 	"github.com/metallb/frr-k8s/api/v1beta2"
@@ -27,8 +25,6 @@ import (
 // ConvertTo converts this FRRConfiguration (v1beta1) to the Hub version (v1beta2).
 func (src *FRRConfiguration) ConvertTo(dstRaw conversion.Hub) error {
 	dst := dstRaw.(*v1beta2.FRRConfiguration)
-	log.Printf("ConvertTo: Converting FRRConfiguration from Spoke version v1beta1 to Hub version v1beta2;"+
-		"source: %s/%s, target: %s/%s", src.Namespace, src.Name, dst.Namespace, dst.Name)
 
 	// Convert to dst.Spec.BGP.
 	var bfdProfiles []v1beta2.BFDProfile
@@ -204,8 +200,6 @@ func convertImportsTo(src []Import) (dst []v1beta2.Import) {
 // ConvertFrom converts the Hub version (v1beta2) to this FRRConfiguration (v1beta1).
 func (dst *FRRConfiguration) ConvertFrom(srcRaw conversion.Hub) error {
 	src := srcRaw.(*v1beta2.FRRConfiguration)
-	log.Printf("ConvertFrom: Converting FRRConfiguration from Hub version v1beta2 to Spoke version v1beta1;"+
-		"source: %s/%s, target: %s/%s", src.Namespace, src.Name, dst.Namespace, dst.Name)
 
 	// Convert to dst.Spec.BGP.
 	var bfdProfiles []BFDProfile

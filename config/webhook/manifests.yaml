@@ -12,12 +12,32 @@ webhooks:
       namespace: system
       path: /validate-frrk8s-metallb-io-v1beta1-frrconfiguration
   failurePolicy: Fail
-  name: frrconfigurationsvalidationwebhook.metallb.io
+  name: frrconfigurationsvalidationwebhook-v1beta1.metallb.io
   rules:
   - apiGroups:
     - frrk8s.metallb.io
     apiVersions:
     - v1beta1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - frrconfigurations
+  sideEffects: None
+- admissionReviewVersions:
+  - v1
+  clientConfig:
+    service:
+      name: webhook-service
+      namespace: system
+      path: /validate-frrk8s-metallb-io-v1beta2-frrconfiguration
+  failurePolicy: Fail
+  name: frrconfigurationsvalidationwebhook-v1beta2.metallb.io
+  rules:
+  - apiGroups:
+    - frrk8s.metallb.io
+    apiVersions:
+    - v1beta2
     operations:
     - CREATE
     - UPDATE

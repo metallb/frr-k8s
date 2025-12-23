@@ -1,12 +1,12 @@
 // SPDX-License-Identifier:Apache-2.0
 
-package webhooks
+package v1beta2
 
 import (
 	"fmt"
 	"testing"
 
-	"github.com/metallb/frr-k8s/api/v1beta1"
+	apiv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/controller"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,30 +30,30 @@ func BenchmarkValidateConfig(b *testing.B) {
 		return nodes, nil
 	}
 
-	getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
-		return &v1beta1.FRRConfigurationList{Items: configs}, nil
+	getFRRConfigurations = func() (*apiv1beta2.FRRConfigurationList, error) {
+		return &apiv1beta2.FRRConfigurationList{Items: configs}, nil
 	}
 
 	Validate = controller.Validate
 
-	testConfig := &v1beta1.FRRConfiguration{
+	testConfig := &apiv1beta2.FRRConfiguration{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-config",
 			Namespace: "default",
 		},
-		Spec: v1beta1.FRRConfigurationSpec{
+		Spec: apiv1beta2.FRRConfigurationSpec{
 			NodeSelector: metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"node-id": "node-0",
 				},
 			},
-			BGP: v1beta1.BGPConfig{
-				Routers: []v1beta1.Router{
+			BGP: apiv1beta2.BGPConfig{
+				Routers: []apiv1beta2.Router{
 					{
 						ASN: 65001,
 						ID:  "192.168.1.1",
 						VRF: "",
-						Neighbors: []v1beta1.Neighbor{
+						Neighbors: []apiv1beta2.Neighbor{
 							{
 								ASN:     65002,
 								Address: "192.168.1.2",
@@ -93,29 +93,29 @@ func generateNodes(count int) []corev1.Node {
 	return nodes
 }
 
-func generateFRRConfigurations(nodes []corev1.Node, configsPerNode int) []v1beta1.FRRConfiguration {
+func generateFRRConfigurations(nodes []corev1.Node, configsPerNode int) []apiv1beta2.FRRConfiguration {
 	totalConfigs := len(nodes) * configsPerNode
-	configs := make([]v1beta1.FRRConfiguration, totalConfigs)
+	configs := make([]apiv1beta2.FRRConfiguration, totalConfigs)
 
 	configIndex := 0
 	for _, node := range nodes {
 		for range configsPerNode {
-			configs[configIndex] = v1beta1.FRRConfiguration{
+			configs[configIndex] = apiv1beta2.FRRConfiguration{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      fmt.Sprintf("frr-config-%d", configIndex),
 					Namespace: "default",
 				},
-				Spec: v1beta1.FRRConfigurationSpec{
+				Spec: apiv1beta2.FRRConfigurationSpec{
 					NodeSelector: metav1.LabelSelector{
 						MatchLabels: node.Labels,
 					},
-					BGP: v1beta1.BGPConfig{
-						Routers: []v1beta1.Router{
+					BGP: apiv1beta2.BGPConfig{
+						Routers: []apiv1beta2.Router{
 							{
 								ASN: 65001,
 								ID:  "192.168.1.1",
 								VRF: "",
-								Neighbors: []v1beta1.Neighbor{
+								Neighbors: []apiv1beta2.Neighbor{
 									{
 										ASN:     65002,
 										Address: "192.168.1.2",
