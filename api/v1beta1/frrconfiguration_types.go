@@ -59,7 +59,7 @@ type RawConfig struct {
 type BGPConfig struct {
 	// Routers is the list of routers we want FRR to configure (one per VRF).
 	// +optional
-	Routers []Router `json:"routers"`
+	Routers []Router `json:"routers,omitempty"`
 	// BFDProfiles is the list of bfd profiles to be used when configuring the neighbors.
 	// +optional
 	BFDProfiles []BFDProfile `json:"bfdProfiles,omitempty"`
