@@ -5,7 +5,7 @@ package controller
 import (
 	"net"
 
-	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/api/v1beta2"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,11 +21,11 @@ func (e TransientError) Error() string { return e.Message }
 
 func Validate(resources ...client.ObjectList) error {
 	clusterResources := ClusterResources{
-		FRRConfigs: make([]v1beta1.FRRConfiguration, 0),
+		FRRConfigs: make([]v1beta2.FRRConfiguration, 0),
 	}
 
 	for _, list := range resources {
-		if l, ok := list.(*v1beta1.FRRConfigurationList); ok {
+		if l, ok := list.(*v1beta2.FRRConfigurationList); ok {
 			clusterResources.FRRConfigs = append(clusterResources.FRRConfigs, l.Items...)
 		}
 	}
@@ -36,11 +36,11 @@ func Validate(resources ...client.ObjectList) error {
 }
 
 // Resets the secrets fields of the given configurations as they can cause a transient error.
-func resetSecrets(cfgs []v1beta1.FRRConfiguration) {
+func resetSecrets(cfgs []v1beta2.FRRConfiguration) {
 	for _, cfg := range cfgs {
 		for _, r := range cfg.Spec.BGP.Routers {
 			for i := range r.Neighbors {
-				r.Neighbors[i].PasswordSecret = v1beta1.SecretReference{}
+				r.Neighbors[i].PasswordSecret = v1beta2.SecretReference{}
 			}
 		}
 	}

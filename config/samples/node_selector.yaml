@@ -1,4 +1,4 @@
-apiVersion: frrk8s.metallb.io/v1beta1
+apiVersion: frrk8s.metallb.io/v1beta2
 kind: FRRConfiguration
 metadata:
   name: test

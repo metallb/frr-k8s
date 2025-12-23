@@ -94,3 +94,29 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frroperatorconfigurations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frroperatorconfigurations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frroperatorconfigurations/status
+  verbs:
+  - get
+  - patch
+  - update

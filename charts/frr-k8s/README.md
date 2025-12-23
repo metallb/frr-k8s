@@ -14,10 +14,6 @@ A cloud native wrapper of FRR
 
 Kubernetes: `>= 1.19.0-0`
 
-| Repository | Name | Version |
-|------------|------|---------|
-|  | crds | 0.0.0 |
-
 ## Values
 
 | Key | Type | Default | Description |

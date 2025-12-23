@@ -41,8 +41,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
@@ -59,6 +59,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(frrk8sv1beta1.AddToScheme(scheme))
+	utilruntime.Must(frrk8sv1beta2.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
@@ -89,7 +90,7 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	logger, err := logging.Init(os.Stdout, params.logLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
@@ -134,7 +135,7 @@ func main() {
 	}
 }
 
-func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger log.Logger) {
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger *logging.DynamicLvlLogger) {
 	setupLog.Info("Starting controllers")
 	reloadStatusChan := make(chan event.GenericEvent)
 	reloadStatus := func() {
@@ -174,6 +175,19 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		ConversionResult: configReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
+		os.Exit(1)
+	}
+
+	operConfigReconciler := &controller.FRROperatorConfigurationReconciler{
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Logger:          logger,
+		Namespace:       params.namespace,
+		NodeName:        params.nodeName,
+		DefaultLogLevel: params.logLevel,
+	}
+	if err = operConfigReconciler.SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
 		os.Exit(1)
 	}
 }

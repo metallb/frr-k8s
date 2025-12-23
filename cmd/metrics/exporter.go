@@ -53,7 +53,7 @@ func metricsHandler(logger log.Logger) http.Handler {
 func main() {
 	flag.Parse()
 
-	logger, err := logging.Init("error")
+	logger, err := logging.Init(os.Stdout, "error")
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)

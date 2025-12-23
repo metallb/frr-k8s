@@ -1,0 +1,66 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.14.0
+  name: frroperatorconfigurations.frrk8s.metallb.io
+spec:
+  group: frrk8s.metallb.io
+  names:
+    kind: FRROperatorConfiguration
+    listKind: FRROperatorConfigurationList
+    plural: frroperatorconfigurations
+    singular: frroperatorconfiguration
+  scope: Namespaced
+  versions:
+  - name: v1beta2
+    schema:
+      openAPIV3Schema:
+        description: |-
+          FRROperatorConfiguration holds the FRR Operator configuration with global
+          settings for the Operator and FRR.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: FRROperatorConfigurationSpec defines the desired state of
+              FRROperatorConfiguration.
+            properties:
+              logLevel:
+                description: |-
+                  LogLevel defines the log level for the FRR-K8s controller.
+                  Valid values are: all, debug, info, warn, error, none.
+                enum:
+                - all
+                - debug
+                - info
+                - warn
+                - error
+                - none
+                type: string
+            type: object
+          status:
+            description: FRROperatorConfigurationStatus defines the observed state
+              of FRROperatorConfiguration.
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

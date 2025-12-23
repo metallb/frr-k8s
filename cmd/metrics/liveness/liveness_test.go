@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/metallb/frr-k8s/internal/logging"
@@ -35,7 +36,7 @@ func TestLiveness(t *testing.T) {
 		},
 	}
 
-	logger, err := logging.Init("error")
+	logger, err := logging.Init(os.Stdout, "error")
 	if err != nil {
 		t.Fatalf("failed to create logger %v", err)
 	}

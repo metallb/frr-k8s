@@ -1,4 +1,4 @@
-apiVersion: frrk8s.metallb.io/v1beta1
+apiVersion: frrk8s.metallb.io/v1beta2
 kind: FRRConfiguration
 metadata:
   name: test
@@ -32,7 +32,7 @@ spec:
         neighbor 172.18.0.5 route-map 172.18.0.5-out out
         exit-address-family
 ---
-apiVersion: frrk8s.metallb.io/v1beta1
+apiVersion: frrk8s.metallb.io/v1beta2
 kind: FRRConfiguration
 metadata:
   name: test1

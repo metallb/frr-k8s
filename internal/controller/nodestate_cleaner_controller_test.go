@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -231,6 +232,9 @@ func createTestClient(t *testing.T) clientWithScheme {
 		t.Fatalf("failed to add corev1 to scheme: %v", err)
 	}
 	if err := frrk8sv1beta1.AddToScheme(scheme); err != nil {
+		t.Fatalf("failed to add frrk8sv1beta1 to scheme: %v", err)
+	}
+	if err := frrk8sv1beta2.AddToScheme(scheme); err != nil {
 		t.Fatalf("failed to add frrk8sv1beta1 to scheme: %v", err)
 	}
 	return clientWithScheme{Client: fake.NewClientBuilder().WithScheme(scheme).Build(), scheme: scheme}
