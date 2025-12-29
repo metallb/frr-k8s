@@ -12,7 +12,6 @@ import (
 
 	"errors"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
@@ -326,11 +325,11 @@ var _ = ginkgo.Describe("Metrics", func() {
 
 	},
 		ginkgo.Entry("IPV4 - default",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV4 - full params",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "full1",
 				ReceiveInterval:  ptr.To[uint32](60),
 				TransmitInterval: ptr.To[uint32](61),
@@ -338,7 +337,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV4 - full params- VRF",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "full1",
 				ReceiveInterval:  ptr.To[uint32](60),
 				TransmitInterval: ptr.To[uint32](61),
@@ -346,7 +345,7 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.VRFName),
 		ginkgo.Entry("IPV4 - echo mode enabled",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "echo",
 				ReceiveInterval:  ptr.To[uint32](80),
 				TransmitInterval: ptr.To[uint32](81),
@@ -355,11 +354,11 @@ var _ = ginkgo.Describe("Metrics", func() {
 				MinimumTTL:       ptr.To[uint32](254),
 			}, ipfamily.IPv4, infra.DefaultVRFName),
 		ginkgo.Entry("IPV6 - default",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name: "simple",
 			}, ipfamily.IPv6, infra.DefaultVRFName),
 		ginkgo.Entry("IPV6 - echo mode enabled",
-			frrk8sv1beta1.BFDProfile{
+			frrk8sv1beta2.BFDProfile{
 				Name:             "echo",
 				ReceiveInterval:  ptr.To[uint32](80),
 				TransmitInterval: ptr.To[uint32](81),

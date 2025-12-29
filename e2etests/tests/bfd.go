@@ -9,7 +9,6 @@ import (
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	frrk8sv1beta2 "github.com/metallb/frr-k8s/api/v1beta2"
 	"github.com/metallb/frrk8stests/pkg/config"
 	"github.com/metallb/frrk8stests/pkg/dump"
@@ -58,17 +57,17 @@ var _ = ginkgo.Describe("BFD", func() {
 		cs = k8sclient.New()
 	})
 
-	simpleProfile := frrk8sv1beta1.BFDProfile{
+	simpleProfile := frrk8sv1beta2.BFDProfile{
 		Name: "simple",
 	}
-	fullProfile := frrk8sv1beta1.BFDProfile{
+	fullProfile := frrk8sv1beta2.BFDProfile{
 		Name:             "full1",
 		ReceiveInterval:  ptr.To[uint32](60),
 		TransmitInterval: ptr.To[uint32](61),
 		EchoInterval:     ptr.To[uint32](62),
 		MinimumTTL:       ptr.To[uint32](254),
 	}
-	withEchoMode := frrk8sv1beta1.BFDProfile{
+	withEchoMode := frrk8sv1beta2.BFDProfile{
 		Name:             "echo",
 		ReceiveInterval:  ptr.To[uint32](80),
 		TransmitInterval: ptr.To[uint32](81),
