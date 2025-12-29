@@ -15,15 +15,18 @@ import (
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/cmd/metrics/vtysh"
 	"github.com/metallb/frr-k8s/cmd/status/controller"
+	internalcontroller "github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/metallb/frr-k8s/internal/version"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 )
@@ -65,10 +68,22 @@ func main() {
 
 	ctx := ctrl.SetupSignalHandler()
 
-	logger, err := logging.Init(logLevel)
+	// Parse the default log level once, and from here on forward use the parsed *logging.Level everywhere for
+	// the default log level.
+	defaultLogLevel, err := logging.ParseLevel(logLevel)
 	if err != nil {
+		setupLog.Error(err, "failed to parse log-level", "log-level", logLevel)
+		os.Exit(1)
+	}
+
+	if err := logging.Init(); err != nil {
 		fmt.Printf("failed to initialize logging: %v\n", err)
 		os.Exit(1)
+	}
+	logging.GetLogger().SetLogLevel(defaultLogLevel)
+
+	namespaceSelector := cache.ByObject{
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
 	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
@@ -76,6 +91,13 @@ func main() {
 		HealthProbeBindAddress: "",
 		Metrics: metricsserver.Options{
 			BindAddress: "0",
+		},
+		Cache: cache.Options{
+			ByObject: map[client.Object]cache.ByObject{
+				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
+				&frrk8sv1beta1.BGPSessionState{}:     namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}:        {},
+			},
 		},
 	})
 	if err != nil {
@@ -97,7 +119,6 @@ func main() {
 
 	if err = (&controller.BGPSessionStateReconciler{
 		Client:          mgr.GetClient(),
-		Logger:          logger,
 		BGPPeersFetcher: func() (map[string][]*frr.Neighbor, error) { return vtysh.GetBGPNeighbors(vtysh.Run) },
 		NodeName:        nodeName,
 		Namespace:       namespace,
@@ -105,6 +126,16 @@ func main() {
 		ResyncPeriod:    resyncPeriod,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "BGPSessionState")
+		os.Exit(1)
+	}
+
+	if err = (&internalcontroller.FRRK8sConfigurationReconciler{
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		DefaultLogLevel: defaultLogLevel,
+		Namespace:       namespace,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRK8sConfiguration")
 		os.Exit(1)
 	}
 

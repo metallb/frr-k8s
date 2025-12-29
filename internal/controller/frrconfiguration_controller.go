@@ -36,10 +36,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 const ConversionSuccess = "success"
@@ -49,14 +49,13 @@ type FRRConfigurationReconciler struct {
 	client.Client
 	Scheme             *runtime.Scheme
 	FRRHandler         frr.ConfigHandler
-	Logger             log.Logger
-	DumpResources      bool
 	NodeName           string
 	Namespace          string
 	ReloadStatus       func()
 	conversionResult   string
 	conversionResMutex sync.Mutex
 	AlwaysBlockCIDRS   []net.IPNet
+	DefaultLogLevel    logging.Level
 }
 
 func (r *FRRConfigurationReconciler) ConversionResult() string {
@@ -71,10 +70,14 @@ func (r *FRRConfigurationReconciler) ConversionResult() string {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,verbs=get;list;watch
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,resourceNames="frr-k8s-validating-webhook-configuration",verbs=update
+// +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrk8sconfigurations,verbs=get;list;watch
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.String())
-	defer level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.String())
+	l := logging.GetLogger()
+	level.Info(l).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.String())
+	defer level.Info(l).Log("controller", "FRRConfigurationReconciler", "end reconcile", req.String())
+	level.Debug(l).Log("controller", "FRRConfigurationReconciler", "log level controller", "debug")
+
 	lastConversionResult := r.conversionResult
 	conversionResult := ConversionSuccess
 
@@ -97,13 +100,21 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	k8sDump := ""
-	if r.DumpResources {
+	if l.GetLogLevel().IsAllOrDebug() {
 		k8sDump = dumpK8sConfigs(configs)
 	}
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", k8sDump)
+	level.Debug(l).Log("controller", "FRRConfigurationReconciler", "k8s config", k8sDump)
+
+	// logLevel is used exclusively to set the FRR instance's log level. The log level for the controllers is
+	// set via the FRRK8sConfiguration controller.
+	logLevel, err := getLogLevel(ctx, r, r.Namespace, r.DefaultLogLevel)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	level.Debug(l).Log("controller", "FRRConfigurationReconciler", "log level FRR", logLevel)
 
 	if len(configs.Items) == 0 {
-		err := r.applyEmptyConfig()
+		err := r.applyEmptyConfig(logLevel)
 		if err != nil {
 			updateErrors.Inc()
 			configStale.Set(1)
@@ -141,22 +152,23 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	if err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to convert the config, error", err)
+		level.Error(l).Log("controller", "FRRConfigurationReconciler", "failed to convert the config, error", err)
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, nil
 	}
 
 	frrDump := ""
-	if r.DumpResources {
+	if l.GetLogLevel().IsAllOrDebug() {
 		frrDump = dumpFRRConfig(config)
 	}
-	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", frrDump)
+	level.Debug(l).Log("controller", "FRRConfigurationReconciler", "frr config", frrDump)
 
+	config.Loglevel = frr.LevelFrom(logLevel)
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
 		conversionResult = fmt.Sprintf("failed: %v", err)
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the config, error", err)
+		level.Error(l).Log("controller", "FRRConfigurationReconciler", "failed to apply the config, error", err)
 		return ctrl.Result{}, err
 	}
 
@@ -166,15 +178,23 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *FRRConfigurationReconciler) applyEmptyConfig() error {
+// applyEmptyConfig generates and applies an empty FRR configuration with the specified log level.
+// This is called when no FRRConfiguration resources exist in the cluster, ensuring FRR is configured
+// with a minimal valid configuration rather than leaving it in an undefined state. The function
+// translates empty cluster resources to FRR configuration format, sets the provided log level,
+// and applies the configuration via the FRR handler. Returns an error if applying the configuration
+// fails. Panics if translating the empty configuration fails, as this indicates a critical bug.
+func (r *FRRConfigurationReconciler) applyEmptyConfig(logLevel logging.Level) error {
+	l := logging.GetLogger()
 	config, err := apiToFRR(ClusterResources{}, []net.IPNet{})
 	if err != nil {
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config, error", err)
+		level.Error(l).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config, error", err)
 		panic("failed to translate empty config")
 	}
+	config.Loglevel = frr.LevelFrom(logLevel)
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config, error", err)
+		level.Error(l).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config, error", err)
 		return err
 	}
 	return nil
@@ -224,18 +244,20 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		For(&corev1.Node{}).
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
+		Watches(&frrk8sv1beta1.FRRK8sConfiguration{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
 }
 
 func (r *FRRConfigurationReconciler) getSecrets(ctx context.Context) (map[string]corev1.Secret, error) {
 	var secrets corev1.SecretList
+	l := logging.GetLogger()
 	err := r.List(ctx, &secrets, client.InNamespace(r.Namespace))
 	if k8serrors.IsNotFound(err) {
 		return map[string]corev1.Secret{}, nil
 	}
 	if err != nil {
-		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "error", "failed to get secrets", "error", err)
+		level.Error(l).Log("controller", "FRRConfigurationReconciler", "error", "failed to get secrets", "error", err)
 		return nil, err
 	}
 	secretsMap := make(map[string]corev1.Secret)
