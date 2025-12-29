@@ -49,7 +49,7 @@ spec:
         - "--namespace=$(NAMESPACE)"
         image: controller:latest
         imagePullPolicy: IfNotPresent
-        name: frr-k8s
+        name: controller
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:

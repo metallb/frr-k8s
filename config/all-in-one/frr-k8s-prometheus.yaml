@@ -724,7 +724,7 @@ spec:
             port: monitoring
           initialDelaySeconds: 15
           periodSeconds: 20
-        name: frr-k8s
+        name: controller
         ports:
         - containerPort: 7572
           name: monitoring
