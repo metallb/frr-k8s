@@ -15,6 +15,7 @@ import (
 
 	"errors"
 
+	"github.com/metallb/frr-k8s/internal/logging"
 	"github.com/ory/dockertest/v3"
 )
 
@@ -28,6 +29,10 @@ const (
 )
 
 func TestMain(m *testing.M) {
+	if err := logging.InitWithWriter(os.Stdout); err != nil {
+		panic(err)
+	}
+
 	// override reloadConfig so it doesn't try to reload it.
 	debounceTimeout = time.Millisecond
 	reloadConfig = func() error { return nil }

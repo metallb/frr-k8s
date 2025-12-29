@@ -11,6 +11,7 @@ import (
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -22,7 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
@@ -39,7 +39,6 @@ type BGPPeersFetcher func() (map[string][]*frr.Neighbor, error)
 type BGPSessionStateReconciler struct {
 	client.Client
 	BGPPeersFetcher
-	Logger       log.Logger
 	NodeName     string
 	Namespace    string
 	DaemonPod    *corev1.Pod
@@ -80,8 +79,10 @@ func (ps peersStatus) remove(peer string) {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "BGPSessionState", "start reconcile", req.String())
-	defer level.Info(r.Logger).Log("controller", "BGPSessionState", "end reconcile", req.String())
+	logger := logging.GetLogger()
+	level.Info(logger).Log("controller", "BGPSessionState", "start reconcile", req.String())
+	defer level.Info(logger).Log("controller", "BGPSessionState", "end reconcile", req.String())
+	level.Debug(logger).Log("controller", "BGPSessionState", "log level controller", "debug")
 
 	l := frrk8sv1beta1.BGPSessionStateList{}
 	err := r.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})

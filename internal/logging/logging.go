@@ -8,10 +8,12 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
+	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,41 +23,35 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const (
-	LevelAll   = "all"
-	LevelDebug = "debug"
-	LevelInfo  = "info"
-	LevelWarn  = "warn"
-	LevelError = "error"
-	LevelNone  = "none"
-)
-
-type Level string
-type levelSlice []Level
-
 var (
-	// Levels returns an array of valid log levels.
-	Levels = levelSlice{LevelAll, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelNone}
+	instance *Logger
+	once     sync.Once
+	initErr  error
 )
 
-func (l levelSlice) String() string {
-	strs := make([]string, len(l))
-	for i, v := range l {
-		strs[i] = string(v)
-	}
-	return strings.Join(strs, ", ")
-}
-
-// Init returns a logger configured with common settings like
+// Init configures the logger singleton to write to os.Stdout.
+// It configures the logger singleton with common settings like
 // timestamping and source code locations. Both the stdlib logger and
 // glog are reconfigured to push logs into this logger.
 //
-// Init must be called as early as possible in main(), before any
-// application-specific flag parsing or logging occurs, because it
-// mutates the contents of the flag package as well as os.Stderr.
-func Init(lvl string) (log.Logger, error) {
-	l := log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+// Must be called early in main() before flag parsing or logging, as it mutates
+// the flag package and os.Stderr. Protected by sync.Once. Default log level is Info.
+func Init() error {
+	once.Do(func() {
+		instance, initErr = initLogger(os.Stdout)
+	})
+	return initErr
+}
 
+// InitWithWriter is for unit tests only - allows multiple initializations.
+// NOT thread-safe. Resets the logger each time it's called.
+func InitWithWriter(w io.Writer) error {
+	instance, initErr = initLogger(w)
+	return initErr
+}
+
+func initLogger(writer io.Writer) (*Logger, error) {
+	l := log.NewJSONLogger(log.NewSyncWriter(writer))
 	r, w, err := os.Pipe()
 	if err != nil {
 		return nil, fmt.Errorf("creating pipe for glog redirection: %s", err)
@@ -64,24 +60,72 @@ func Init(lvl string) (log.Logger, error) {
 	klog.SetOutput(w)
 	go collectGlogs(r, l)
 
-	opt, err := parseLevel(lvl)
-	if err != nil {
-		return nil, err
-	}
-
 	timeStampValuer := log.TimestampFormat(time.Now, time.RFC3339)
 	l = log.With(l, "ts", timeStampValuer)
-	l = level.NewFilter(l, opt)
 
 	// Note: caller must be added after everything else that decorates the
 	// logger (otherwise we get incorrect caller reference).
 	l = log.With(l, "caller", log.DefaultCaller)
 
+	// Create our dynamic level logger with the initial log level.
+	filtered := level.NewFilter(l, optionFallback)
+	dl := &Logger{
+		logger: l,
+	}
+	dl.filteredLogger.Store(&loggerAndLevel{filtered, LevelFallback})
+
 	// Setting a controller-runtime logger is required to
 	// get any log created by it.
 	ctrl.SetLogger(zap.New())
 
-	return l, nil
+	return dl, nil
+}
+
+// GetLogger returns the initialized logger instance. The logger must have been initialized
+// first with Init(). Panics if the logger was not initialized or if initialization failed.
+func GetLogger() *Logger {
+	if initErr != nil {
+		panic(fmt.Sprintf("logging: initialization failed: %v", initErr))
+	}
+	if instance == nil {
+		panic("logging: Init() must be called before GetLogger()")
+	}
+	return instance
+}
+
+// Logger is a logger with a log level that can be set at runtime.
+type Logger struct {
+	logger         log.Logger
+	filteredLogger atomic.Pointer[loggerAndLevel]
+}
+
+// loggerAndLevel is just used internally so that we can atomically store the logger with the correct filter applied,
+// as well as the applied level for GetLogLevel().
+type loggerAndLevel struct {
+	logger log.Logger
+	level  Level
+}
+
+// Log prints log output.
+func (l *Logger) Log(keyvals ...interface{}) error {
+	return l.filteredLogger.Load().logger.Log(keyvals...)
+}
+
+// SetLogLevel dynamically updates the log level of the Logger at runtime.
+// This allows changing the verbosity of logging without restarting the application.
+// Uses atomic operations to ensure thread-safety when called concurrently by multiple controllers.
+func (l *Logger) SetLogLevel(lvl Level) {
+	opt, err := lvl.ToOption()
+	if err != nil {
+		lvl = LevelFallback
+	}
+	filtered := level.NewFilter(l.logger, opt)
+	l.filteredLogger.Store(&loggerAndLevel{filtered, lvl})
+}
+
+// GetLogLevel returns the current log level.
+func (l *Logger) GetLogLevel() Level {
+	return l.filteredLogger.Load().level
 }
 
 func collectGlogs(f *os.File, logger log.Logger) {
@@ -173,23 +217,4 @@ func deformat(logger log.Logger, b []byte) (leveledLogger log.Logger, ts time.Ti
 	msg = string(ms[9])
 
 	return
-}
-
-func parseLevel(lvl string) (level.Option, error) {
-	switch lvl {
-	case LevelAll:
-		return level.AllowAll(), nil
-	case LevelDebug:
-		return level.AllowDebug(), nil
-	case LevelInfo:
-		return level.AllowInfo(), nil
-	case LevelWarn:
-		return level.AllowWarn(), nil
-	case LevelError:
-		return level.AllowError(), nil
-	case LevelNone:
-		return level.AllowNone(), nil
-	}
-
-	return nil, fmt.Errorf("failed to parse log level: %s", lvl)
 }
