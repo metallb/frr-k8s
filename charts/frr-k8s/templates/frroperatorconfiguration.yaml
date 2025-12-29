@@ -1,0 +1,7 @@
+apiVersion: frrk8s.metallb.io/v1beta2
+kind: FRROperatorConfiguration
+metadata:
+  name: {{ template "frrk8s.fullname" . }}-config
+  namespace: {{ .Release.Namespace | quote }}
+spec:
+  logLevel: {{ .Values.frrk8s.logLevelOperator }}

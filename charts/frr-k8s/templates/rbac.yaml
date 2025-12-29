@@ -7,6 +7,9 @@ metadata:
   labels: {{- include "frrk8s.labels" . | nindent 4 }}
 rules:
 - apiGroups: ["frrk8s.metallb.io"]
+  resources: ["frroperatorconfigurations"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["frrk8s.metallb.io"]
   resources: ["frrconfigurations"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["frrk8s.metallb.io"]
@@ -32,6 +35,9 @@ rules:
   verbs: ["create"]
 - apiGroups: ["admissionregistration.k8s.io"]
   resources: ["validatingwebhookconfigurations"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["admissionregistration.k8s.io"]
+  resources: ["mutatingwebhookconfigurations"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["admissionregistration.k8s.io"]
   resourceNames: ["frr-k8s-validating-webhook-configuration"]
