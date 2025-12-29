@@ -394,13 +394,17 @@ var _ = ginkgo.Describe("Verifyng dynamic logging levels for FRR configuration",
 		ginkgo.When("no logLevel configuration is present", func() {
 			ginkgo.It("logs with default log level", func() {
 
-				// Get the default log level. Falls back to info.
-				ds, err := cs.AppsV1().DaemonSets(k8s.FRRK8sNamespace).Get(context.Background(), k8s.FRRK8sDaemonset, metav1.GetOptions{})
+				// Get the default log level. Requires a single FRR DaemonSet to match the label selector.
+				ds, err := cs.AppsV1().DaemonSets(k8s.FRRK8sNamespace).List(context.Background(), metav1.ListOptions{
+					LabelSelector: k8s.FRRK8sDaemonsetLS,
+				})
 				Expect(err).NotTo(HaveOccurred())
+				Expect(len(ds.Items)).To(Equal(1))
 
+				// Get the default log level. Falls back to `info` if `--log-level` isn't found in the args list.
 				re := regexp.MustCompile(`^--log-level=(.*)$`)
 				defaultLogLevel := "info"
-				for _, container := range ds.Spec.Template.Spec.Containers {
+				for _, container := range ds.Items[0].Spec.Template.Spec.Containers {
 					if container.Name == frrK8SContainerName {
 						for _, arg := range container.Args {
 							m := re.FindStringSubmatch(arg)
