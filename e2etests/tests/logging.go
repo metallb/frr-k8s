@@ -26,7 +26,7 @@ import (
 )
 
 const (
-	frrK8SContainerName = "frr-k8s"
+	frrK8SContainerName = "controller"
 	frrContainerName    = "frr"
 )
 
