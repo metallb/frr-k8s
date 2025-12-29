@@ -89,8 +89,10 @@ prometheus:
 # controller contains configuration specific to the FRRK8s controller
 # daemonset.
 frrk8s:
-  # -- Controller log level. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
+  # -- Controller default log level. Passed as CLI parameter log-level to components. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
   logLevel: info
+  # -- Operator log level for FRROperatorConfiguration. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
+  logLevelOperator: info
   tolerateMaster: true
   image:
     repository: quay.io/metallb/frr-k8s

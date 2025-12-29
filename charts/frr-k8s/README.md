@@ -48,7 +48,8 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.livenessProbe.periodSeconds | int | `10` |  |
 | frrk8s.livenessProbe.successThreshold | int | `1` |  |
 | frrk8s.livenessProbe.timeoutSeconds | int | `1` |  |
-| frrk8s.logLevel | string | `"info"` | Controller log level. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none` |
+| frrk8s.logLevel | string | `"info"` | Controller default log level. Passed as CLI parameter log-level to components. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none` |
+| frrk8s.logLevelOperator | string | `"info"` | Operator log level for FRROperatorConfiguration. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none` |
 | frrk8s.nodeSelector | object | `{}` |  |
 | frrk8s.podAnnotations | object | `{}` |  |
 | frrk8s.priorityClassName | string | `""` |  |

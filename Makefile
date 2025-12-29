@@ -177,7 +177,8 @@ deploy-controller: kubectl kustomize install ## Deploy controller to the K8s clu
 deploy-helm: helm deploy-cluster deploy-prometheus
 	$(KUBECTL) create ns ${NAMESPACE} || true
 	$(KUBECTL) label ns ${NAMESPACE} pod-security.kubernetes.io/enforce=privileged
-	$(HELM) install frrk8s charts/frr-k8s/ --set frrk8s.image.tag=${IMG_TAG} --set frrk8s.logLevel=debug --set prometheus.rbacPrometheus=true \
+	$(HELM) install frrk8s charts/frr-k8s/ --set frrk8s.image.tag=${IMG_TAG} \
+	--set frrk8s.logLevel=debug --set frrk8s.logLevelOperator=debug --set prometheus.rbacPrometheus=true \
 	--set prometheus.serviceAccount=prometheus-k8s --set prometheus.namespace=monitoring --set prometheus.serviceMonitor.enabled=true \
 	--set frrk8s.alwaysBlock='192.167.9.0/24\,fc00:f553:ccd:e799::/64' --set frrk8s.frrStatus.pollInterval='5s' --namespace ${NAMESPACE} $(HELM_ARGS)
 	sleep 2s # wait for daemonset to be created
