@@ -105,9 +105,11 @@ func main() {
 		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}:                  namespaceSelector,
-				&corev1.Pod{}:                     namespaceSelector,
-				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+				&corev1.Secret{}:                          namespaceSelector,
+				&corev1.Pod{}:                             namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}:         namespaceSelector,
+				&frrk8sv1beta2.FRRConfiguration{}:         namespaceSelector,
+				&frrk8sv1beta2.FRROperatorConfiguration{}: namespaceSelector,
 			},
 		},
 		Metrics: metricsserver.Options{
