@@ -7,8 +7,10 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,25 +19,44 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 // NodeStateCleaner reconciles Pod objects to clean up FRRNodeState resources.
 type NodeStateCleaner struct {
 	client.Client
-	Scheme         *runtime.Scheme
-	Logger         log.Logger
-	Namespace      string
-	FRRK8sSelector labels.Selector
+	Scheme                       *runtime.Scheme
+	Logger                       *logging.DynamicLvlLogger
+	Namespace                    string
+	FRRK8sSelector               labels.Selector
+	DefaultLogLevel              logging.Level
+	FRROperatorConfigurationName string
 }
 
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch;delete
+// +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frroperatorconfigurations,verbs=get;list;watch
 
 func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "NodeStateCleaner", "start reconcile", req.String())
 	defer level.Info(r.Logger).Log("controller", "NodeStateCleaner", "end reconcile", req.String())
+
+	operatorConfig := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.FRROperatorConfigurationName}, &operatorConfig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	// Parse the current log level once here. Either, the FrrOperatorConfiguration log level is invalid (the empty
+	// string is also considered invalid): in that case, we use the r.DefaultLogLevel. Otherwise, the currentLogLevel is
+	// set according to FRROperatorConfiguration. The DefaultLogLevel is passed in from main.go and is guaranteed to be
+	// valid (not the zero value) because it's parsed and validated before being passed to this reconciler.
+	currentLogLevel := getOperatorConfigurationLogLevel(operatorConfig, r.DefaultLogLevel)
+
+	// Dynamically set log level for the controller and log what the current log level is.
+	r.Logger.SetLogLevel(currentLogLevel)
+	level.Debug(r.Logger).Log("controller", "NodeStateCleaner", "log level controller", currentLogLevel)
 
 	pods := &corev1.PodList{}
 	if err := r.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabelsSelector{Selector: r.FRRK8sSelector}); err != nil {
@@ -78,20 +99,24 @@ func (r *NodeStateCleaner) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&corev1.Pod{}).
 		Watches(&frrk8sv1beta1.FRRNodeState{}, &handler.EnqueueRequestForObject{}).
+		Watches(&frrk8sv1beta1.FRROperatorConfiguration{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(predicate.Funcs{
 			CreateFunc: func(e event.CreateEvent) bool {
 				_, isPod := e.Object.(*corev1.Pod)
 				return !isPod
 			},
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				return false
+				_, isFRROperatorConfiguration := e.ObjectNew.(*frrk8sv1beta1.FRROperatorConfiguration)
+				return isFRROperatorConfiguration
 			},
 			GenericFunc: func(e event.GenericEvent) bool {
-				return false
+				_, isFRROperatorConfiguration := e.Object.(*frrk8sv1beta1.FRROperatorConfiguration)
+				return isFRROperatorConfiguration
 			},
 			DeleteFunc: func(e event.DeleteEvent) bool {
 				_, isPod := e.Object.(*corev1.Pod)
-				return isPod
+				_, isFRROperatorConfiguration := e.Object.(*frrk8sv1beta1.FRROperatorConfiguration)
+				return isPod || isFRROperatorConfiguration
 			},
 		}).
 		Complete(r)

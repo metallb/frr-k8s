@@ -36,27 +36,31 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 const ConversionSuccess = "success"
 
+// FRROperatorConfigurationName is the name of the FRROperatorConfiguration CR to watch.
+const FRROperatorConfigurationName = "config"
+
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
 	client.Client
-	Scheme             *runtime.Scheme
-	FRRHandler         frr.ConfigHandler
-	Logger             log.Logger
-	DumpResources      bool
-	NodeName           string
-	Namespace          string
-	ReloadStatus       func()
-	conversionResult   string
-	conversionResMutex sync.Mutex
-	AlwaysBlockCIDRS   []net.IPNet
+	Scheme                       *runtime.Scheme
+	FRRHandler                   frr.ConfigHandler
+	Logger                       *logging.DynamicLvlLogger
+	NodeName                     string
+	Namespace                    string
+	ReloadStatus                 func()
+	conversionResult             string
+	conversionResMutex           sync.Mutex
+	AlwaysBlockCIDRS             []net.IPNet
+	DefaultLogLevel              logging.Level
+	FRROperatorConfigurationName string
 }
 
 func (r *FRRConfigurationReconciler) ConversionResult() string {
@@ -71,6 +75,7 @@ func (r *FRRConfigurationReconciler) ConversionResult() string {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,verbs=get;list;watch
 // +kubebuilder:rbac:groups="admissionregistration.k8s.io",resources=validatingwebhookconfigurations,resourceNames="frr-k8s-validating-webhook-configuration",verbs=update
+// +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frroperatorconfigurations,verbs=get;list;watch
 
 func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "FRRConfigurationReconciler", "start reconcile", req.String())
@@ -89,21 +94,37 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 
 	updates.Inc()
 
+	operatorConfig := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.FRROperatorConfigurationName}, &operatorConfig)
+	if err != nil && !k8serrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	// Parse the current log level once here. Either, the FrrOperatorConfiguration log level is invalid (the empty
+	// string is also considered invalid): in that case, we use the r.DefaultLogLevel. Otherwise, the currentLogLevel is
+	// set according to FRROperatorConfiguration. The DefaultLogLevel is passed in from main.go and is guaranteed to be
+	// valid (not the zero value) because it's parsed and validated before being passed to this reconciler.
+	currentLogLevel := getOperatorConfigurationLogLevel(operatorConfig, r.DefaultLogLevel)
+
+	// Dynamically set log level for the controller and log what the current log level is.
+	r.Logger.SetLogLevel(currentLogLevel)
+	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "log level controller", currentLogLevel)
+
 	configs := frrk8sv1beta1.FRRConfigurationList{}
-	err := r.List(ctx, &configs)
+	err = r.List(ctx, &configs)
 	if err != nil {
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
 	}
 
 	k8sDump := ""
-	if r.DumpResources {
+	if currentLogLevel.IsAllOrDebug() {
 		k8sDump = dumpK8sConfigs(configs)
 	}
 	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "k8s config", k8sDump)
 
 	if len(configs.Items) == 0 {
-		err := r.applyEmptyConfig()
+		err := r.applyEmptyConfig(currentLogLevel)
 		if err != nil {
 			updateErrors.Inc()
 			configStale.Set(1)
@@ -147,11 +168,12 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	frrDump := ""
-	if r.DumpResources {
+	if currentLogLevel.IsAllOrDebug() {
 		frrDump = dumpFRRConfig(config)
 	}
 	level.Debug(r.Logger).Log("controller", "FRRConfigurationReconciler", "frr config", frrDump)
 
+	config.Loglevel = currentLogLevel.ToLevelFRR()
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		updateErrors.Inc()
 		configStale.Set(1)
@@ -166,12 +188,19 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	return ctrl.Result{}, nil
 }
 
-func (r *FRRConfigurationReconciler) applyEmptyConfig() error {
+// applyEmptyConfig generates and applies an empty FRR configuration with the specified log level.
+// This is called when no FRRConfiguration resources exist in the cluster, ensuring FRR is configured
+// with a minimal valid configuration rather than leaving it in an undefined state. The function
+// translates empty cluster resources to FRR configuration format, sets the provided log level,
+// and applies the configuration via the FRR handler. Returns an error if applying the configuration
+// fails. Panics if translating the empty configuration fails, as this indicates a critical bug.
+func (r *FRRConfigurationReconciler) applyEmptyConfig(logLevel logging.Level) error {
 	config, err := apiToFRR(ClusterResources{}, []net.IPNet{})
 	if err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to translate the empty config, error", err)
 		panic("failed to translate empty config")
 	}
+	config.Loglevel = logLevel.ToLevelFRR()
 
 	if err := r.FRRHandler.ApplyConfig(config); err != nil {
 		level.Error(r.Logger).Log("controller", "FRRConfigurationReconciler", "failed to apply the empty config, error", err)
@@ -224,6 +253,7 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		).
 		For(&corev1.Node{}).
 		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
+		Watches(&frrk8sv1beta1.FRROperatorConfiguration{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
 }
@@ -272,4 +302,20 @@ func filterNodeEvent(e event.UpdateEvent, thisNode string) bool {
 	}
 
 	return true
+}
+
+// getOperatorConfigurationLogLevel extracts the log level from an FRROperatorConfiguration resource.
+// It attempts to parse the LogLevel field from the configuration spec. If the field is empty or
+// parsing fails, it falls back to the provided defaultLogLevel.
+func getOperatorConfigurationLogLevel(config frrk8sv1beta1.FRROperatorConfiguration, defaultLogLevel logging.Level) logging.Level {
+	l := ""
+	if config.Spec.LogLevel != "" {
+		l = config.Spec.LogLevel
+	}
+
+	level, err := logging.NewLevel(l)
+	if err != nil {
+		return defaultLogLevel
+	}
+	return level
 }

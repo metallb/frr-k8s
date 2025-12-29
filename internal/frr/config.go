@@ -21,6 +21,7 @@ import (
 	"github.com/go-kit/log/level"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -32,7 +33,7 @@ var (
 )
 
 type Config struct {
-	Loglevel    string
+	Loglevel    logging.LevelFRR
 	Hostname    string
 	Routers     []*RouterConfig
 	BFDProfiles []BFDProfile

@@ -5,7 +5,7 @@ package controller
 import (
 	"net"
 
-	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 

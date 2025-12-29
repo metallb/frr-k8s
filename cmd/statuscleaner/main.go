@@ -93,7 +93,15 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	// Parse the default log level once, and from here on forward use the parsed *logging.Level everywhere for
+	// the default log level.
+	defaultLogLevel, err := logging.NewLevel(params.logLevel)
+	if err != nil {
+		setupLog.Error(err, "failed to parse log-level", "log-level", params.logLevel)
+		os.Exit(1)
+	}
+
+	logger, err := logging.Init(os.Stdout, defaultLogLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
@@ -108,8 +116,9 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Pod{}:                 namespaceSelector,
-				&frrk8sv1beta1.FRRNodeState{}: {},
+				&corev1.Pod{}:                             namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}:             {},
+				&frrk8sv1beta1.FRROperatorConfiguration{}: namespaceSelector,
 			},
 		},
 		WebhookServer: webhook.NewServer(
@@ -149,7 +158,8 @@ func main() {
 		<-startListeners
 
 		setupWebhook(mgr, logger)
-		startNodeStateCleaner(mgr, logger, params.namespace, params.frrk8sSelector)
+		startNodeStateCleaner(mgr, logger, params.namespace, params.frrk8sSelector,
+			controller.FRROperatorConfigurationName, defaultLogLevel)
 	}()
 
 	setupLog.Info("starting frr-k8s webhook", "version", version.String(), "params", fmt.Sprintf("%+v", params))
@@ -159,7 +169,8 @@ func main() {
 	}
 }
 
-func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace, frrk8sSelector string) {
+func startNodeStateCleaner(mgr manager.Manager, logger *logging.DynamicLvlLogger, namespace, frrk8sSelector string,
+	frrOperatorConfigurationName string, defaultLogLevel logging.Level) {
 	setupLog.Info("Starting node state cleaner controller")
 
 	selector, err := labels.Parse(frrk8sSelector)
@@ -169,11 +180,13 @@ func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace, fr
 	}
 
 	nodeStateCleaner := &controller.NodeStateCleaner{
-		Client:         mgr.GetClient(),
-		Scheme:         mgr.GetScheme(),
-		Logger:         logger,
-		Namespace:      namespace,
-		FRRK8sSelector: selector,
+		Client:                       mgr.GetClient(),
+		Scheme:                       mgr.GetScheme(),
+		Logger:                       logger,
+		Namespace:                    namespace,
+		FRRK8sSelector:               selector,
+		FRROperatorConfigurationName: frrOperatorConfigurationName,
+		DefaultLogLevel:              defaultLogLevel,
 	}
 	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")

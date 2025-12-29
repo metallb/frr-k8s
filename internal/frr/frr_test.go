@@ -102,7 +102,7 @@ var emptyCB = func() {}
 func TestSingleSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -126,6 +126,7 @@ func TestSingleSession(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -138,7 +139,7 @@ func TestSingleSession(t *testing.T) {
 func TestTwoRoutersTwoNeighbors(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -191,6 +192,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -203,7 +205,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 func TestTwoSessionsAcceptAll(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -229,6 +231,7 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 				},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -241,7 +244,7 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -281,6 +284,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 				},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -293,7 +297,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -397,6 +401,7 @@ func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 				},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -412,7 +417,7 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -433,6 +438,7 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -449,7 +455,7 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -470,6 +476,7 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -486,7 +493,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -518,6 +525,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -534,7 +542,7 @@ func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -565,6 +573,7 @@ func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -581,7 +590,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -640,6 +649,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 				IPV6Prefixes: []string{"2001:db9:abcd::/48"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -656,7 +666,7 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -677,6 +687,7 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel:    logging.LevelInfo.ToLevelFRR(),
 		ExtraConfig: "# foo\n# baar",
 	}
 
@@ -694,7 +705,7 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -749,6 +760,7 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 				},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -765,7 +777,7 @@ func TestSingleSessionWithGracefulRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -781,6 +793,7 @@ func TestSingleSessionWithGracefulRestart(t *testing.T) {
 				},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -797,7 +810,7 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -828,6 +841,7 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 				ImportVRFs:   []string{"default"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 
 	err := frr.ApplyConfig(&config)
@@ -841,7 +855,7 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 func TestSingleSessionWithInternalASN(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -863,6 +877,7 @@ func TestSingleSessionWithInternalASN(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -875,7 +890,7 @@ func TestSingleSessionWithInternalASN(t *testing.T) {
 func TestSingleSessionWithExternalASN(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -897,6 +912,7 @@ func TestSingleSessionWithExternalASN(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -908,7 +924,7 @@ func TestSingleSessionWithExternalASN(t *testing.T) {
 func TestSingleUnnumberedSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -930,6 +946,29 @@ func TestSingleUnnumberedSession(t *testing.T) {
 				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+// TestLogLevelDebugging validates that when the log level is set to debug, the FRR configuration
+// includes both the `log stdout debugging` directive and all associated debug statements for
+// zebra, bgp, and bfd subsystems. This test is necessary because the other tests use info-level
+// logging and do not verify that debug-specific configuration is properly generated. It also
+// checks that *logging.LevelFRR is correctly rendered in the templates.
+func TestLogLevelDebugging(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, log.NewNopLogger())
+	defer cancel()
+
+	config := Config{
+		Loglevel: logging.LevelDebug.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {

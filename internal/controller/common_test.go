@@ -9,6 +9,7 @@ import (
 
 	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -71,14 +72,18 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	defaultLogLevel := logging.LevelDebug
+	logger := logging.NewDynamicLvlLogger(log.NewNopLogger(), defaultLogLevel)
+
 	err = (&FRRConfigurationReconciler{
-		Client:       k8sManager.GetClient(),
-		Scheme:       k8sManager.GetScheme(),
-		FRRHandler:   &fakeFRRConfigHandler,
-		Logger:       log.NewNopLogger(),
-		NodeName:     testNodeName,
-		Namespace:    testNamespace,
-		ReloadStatus: fakeReloadStatus,
+		Client:          k8sManager.GetClient(),
+		Scheme:          k8sManager.GetScheme(),
+		FRRHandler:      &fakeFRRConfigHandler,
+		Logger:          logger,
+		NodeName:        testNodeName,
+		Namespace:       testNamespace,
+		ReloadStatus:    fakeReloadStatus,
+		DefaultLogLevel: defaultLogLevel,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

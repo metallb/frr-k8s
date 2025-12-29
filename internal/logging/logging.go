@@ -8,6 +8,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
@@ -22,15 +23,100 @@ import (
 )
 
 const (
-	LevelAll   = "all"
-	LevelDebug = "debug"
-	LevelInfo  = "info"
-	LevelWarn  = "warn"
-	LevelError = "error"
-	LevelNone  = "none"
+	LevelAll   Level = "all"
+	LevelDebug Level = "debug"
+	LevelInfo  Level = "info"
+	LevelWarn  Level = "warn"
+	LevelError Level = "error"
+	LevelNone  Level = "none"
+
+	FRRDebugging     LevelFRR = "debugging"
+	FRRInformational LevelFRR = "informational"
+	FRRWarnings      LevelFRR = "warnings"
+	FRRErrors        LevelFRR = "errors"
+	FRREmergencies   LevelFRR = "emergencies"
 )
 
+var (
+	levelFallback  = LevelInfo
+	frrFallback    = FRRInformational
+	optionFallback = level.AllowInfo()
+)
+
+// Level represents a log level.
 type Level string
+
+// NewLevel parses the provided string and returns a pointer to a Level, or an error if the provided
+// level string is invalid.
+func NewLevel(l string) (Level, error) {
+	switch l {
+	case string(LevelAll), string(LevelDebug):
+		return LevelDebug, nil
+	case string(LevelInfo):
+		return LevelInfo, nil
+	case string(LevelWarn):
+		return LevelWarn, nil
+	case string(LevelError):
+		return LevelError, nil
+	case string(LevelNone):
+		return LevelNone, nil
+	}
+
+	return levelFallback, fmt.Errorf("invalid log level %q", l)
+}
+
+// IsAllOrDebug returns true if the log level is All or Debug.
+func (l Level) IsAllOrDebug() bool {
+	return l == LevelAll || l == LevelDebug
+}
+
+// ToLevelFRR converts the Level to its corresponding FRR daemon log level.
+// Returns a pointer to the appropriate LevelFRR constant (FRRDebugging, FRRInformational,
+// FRRWarnings, FRRErrors, or FRREmergencies). Falls back to FRRInformational if the level
+// is anything unexpected.
+func (l Level) ToLevelFRR() LevelFRR {
+	switch l {
+	case LevelAll, LevelDebug:
+		return FRRDebugging
+	case LevelInfo:
+		return FRRInformational
+	case LevelWarn:
+		return FRRWarnings
+	case LevelError:
+		return FRRErrors
+	case LevelNone:
+		return FRREmergencies
+	}
+
+	return frrFallback
+}
+
+// ToOption converts the Level to a log level.Option for filtering log output.
+// Returns the appropriate level.Option (AllowAll, AllowDebug, AllowInfo, AllowWarn,
+// AllowError, or AllowNone) based on the Level value. Falls back to AllowInfo if
+// the level is anything unexpected.
+func (l Level) ToOption() level.Option {
+	switch l {
+	case LevelAll:
+		return level.AllowAll()
+	case LevelDebug:
+		return level.AllowDebug()
+	case LevelInfo:
+		return level.AllowInfo()
+	case LevelWarn:
+		return level.AllowWarn()
+	case LevelError:
+		return level.AllowError()
+	case LevelNone:
+		return level.AllowNone()
+	}
+
+	return optionFallback
+}
+
+// LevelFRR represents a log level as expected by FRR.
+type LevelFRR string
+
 type levelSlice []Level
 
 var (
@@ -53,8 +139,8 @@ func (l levelSlice) String() string {
 // Init must be called as early as possible in main(), before any
 // application-specific flag parsing or logging occurs, because it
 // mutates the contents of the flag package as well as os.Stderr.
-func Init(lvl string) (log.Logger, error) {
-	l := log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+func Init(w io.Writer, lvl Level) (*DynamicLvlLogger, error) {
+	l := log.NewJSONLogger(log.NewSyncWriter(w))
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -64,24 +150,54 @@ func Init(lvl string) (log.Logger, error) {
 	klog.SetOutput(w)
 	go collectGlogs(r, l)
 
-	opt, err := parseLevel(lvl)
-	if err != nil {
-		return nil, err
-	}
-
 	timeStampValuer := log.TimestampFormat(time.Now, time.RFC3339)
 	l = log.With(l, "ts", timeStampValuer)
-	l = level.NewFilter(l, opt)
 
 	// Note: caller must be added after everything else that decorates the
 	// logger (otherwise we get incorrect caller reference).
 	l = log.With(l, "caller", log.DefaultCaller)
 
+	// Create our dynamic level logger with the initial log level.
+	dl := NewDynamicLvlLogger(l, lvl)
+
 	// Setting a controller-runtime logger is required to
 	// get any log created by it.
 	ctrl.SetLogger(zap.New())
 
-	return l, nil
+	return dl, nil
+}
+
+// DynamicLvlLogger is a logger with a log level that can be set at runtime.
+// We need this new struct because `level.NewFilter“ can restrict log levels, but it cannot make them less strict.
+// So if we set (pseudo code), in that order:
+// 1. LVL = level.NewFilter(LVL, "debug")
+// 2. LVL = level.NewFilter(LVL, "error")
+// 3. LVL = level.NewFilter(LVL, "info")
+// Then the log level would still be 'error', because that's the most restrictive.
+// This new struct stores a logger (without the filter applied), and the desired log level. Then, right before logging,
+// it applies the filter once to get the desired log level.
+type DynamicLvlLogger struct {
+	logger log.Logger
+	lvl    level.Option
+}
+
+// NewDynamicLvlLogger creates a new DynamicLvlLogger that wraps the provided logger with
+// a dynamically adjustable log level filter. The initial log level is set according to the
+// provided level parameter.
+func NewDynamicLvlLogger(logger log.Logger, level Level) *DynamicLvlLogger {
+	return &DynamicLvlLogger{logger, level.ToOption()}
+}
+
+// Log prints log output.
+func (dl *DynamicLvlLogger) Log(keyvals ...interface{}) error {
+	lvlLogger := level.NewFilter(dl.logger, dl.lvl)
+	return lvlLogger.Log(keyvals...)
+}
+
+// SetLogLevel dynamically updates the log level of the DynamicLvlLogger at runtime.
+// This allows changing the verbosity of logging without restarting the application.
+func (dl *DynamicLvlLogger) SetLogLevel(level Level) {
+	dl.lvl = level.ToOption()
 }
 
 func collectGlogs(f *os.File, logger log.Logger) {
@@ -173,23 +289,4 @@ func deformat(logger log.Logger, b []byte) (leveledLogger log.Logger, ts time.Ti
 	msg = string(ms[9])
 
 	return
-}
-
-func parseLevel(lvl string) (level.Option, error) {
-	switch lvl {
-	case LevelAll:
-		return level.AllowAll(), nil
-	case LevelDebug:
-		return level.AllowDebug(), nil
-	case LevelInfo:
-		return level.AllowInfo(), nil
-	case LevelWarn:
-		return level.AllowWarn(), nil
-	case LevelError:
-		return level.AllowError(), nil
-	case LevelNone:
-		return level.AllowNone(), nil
-	}
-
-	return nil, fmt.Errorf("failed to parse log level: %s", lvl)
 }
