@@ -155,7 +155,7 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	}
 
 	if containsDisableMP(frrConfig.Spec.BGP.Routers) {
-		warnings = append(warnings, "disableMP is deprecated and will be removed in a future release")
+		warnings = append(warnings, "disableMP is deprecated, is ignored and will be removed in a future release")
 	}
 
 	existingFRRConfigurations, err := getFRRConfigurations()
