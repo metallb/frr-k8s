@@ -71,7 +71,7 @@ spec:
           capabilities:
             drop:
             - ALL
-      - name: frr-k8s
+      - name: controller
         args:
         - "--metrics-bind-address=127.0.0.1:7572"
         - "--node-name=$(NODE_NAME)"
