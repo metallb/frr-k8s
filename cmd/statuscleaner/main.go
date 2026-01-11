@@ -108,9 +108,8 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}:                  namespaceSelector,
-				&corev1.Pod{}:                     namespaceSelector,
-				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+				&corev1.Pod{}:                 namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}: {},
 			},
 		},
 		WebhookServer: webhook.NewServer(
