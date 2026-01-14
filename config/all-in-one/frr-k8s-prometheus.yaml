@@ -1111,7 +1111,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
-    app.kubernetes.io/component: frr-k8s
+    app.kubernetes.io/component: statuscleaner
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/instance: frr-k8s
     app.kubernetes.io/managed-by: kustomize
@@ -1130,6 +1130,7 @@ spec:
         kubectl.kubernetes.io/default-container: frr-k8s-webhook-server
       labels:
         app: frr-k8s-webhook-server
+        app.kubernetes.io/component: statuscleaner
         control-plane: statuscleaner
     spec:
       containers:
@@ -1152,7 +1153,7 @@ spec:
             scheme: HTTPS
           initialDelaySeconds: 15
           periodSeconds: 20
-        name: frr-k8s-webhook-server
+        name: frr-k8s-statuscleaner
         ports:
         - containerPort: 19443
           name: webhook
