@@ -77,6 +77,14 @@ rules:
 - apiGroups:
   - frrk8s.metallb.io
   resources:
+  - frrk8sconfigurations
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
   - frrnodestates
   verbs:
   - create

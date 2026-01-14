@@ -20,4 +20,5 @@ spec:
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--pod-name=$(POD_NAME)"
-        - "--poll-interval=5s" 
+        - "--poll-interval=5s"
+        - "--log-level=debug"

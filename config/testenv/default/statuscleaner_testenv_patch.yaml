@@ -1,0 +1,13 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: statuscleaner
+  namespace: frr-k8s-system
+spec:
+  template:
+    spec:
+      containers:
+      - name: frr-k8s-statuscleaner
+        args:
+        - "--log-level=debug"
+        - "--namespace=$(NAMESPACE)"

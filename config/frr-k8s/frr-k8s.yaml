@@ -155,6 +155,7 @@ spec:
           - "--node-name=$(NODE_NAME)"
           - "--namespace=$(NAMESPACE)"
           - "--pod-name=$(POD_NAME)"
+          - "--log-level=info"
         volumeMounts:
           - name: frr-sockets
             mountPath: /var/run/frr
