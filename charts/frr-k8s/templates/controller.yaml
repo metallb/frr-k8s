@@ -363,6 +363,9 @@ spec:
           - --node-name=$(NODE_NAME)
           - --namespace=$(NAMESPACE)
           - --pod-name=$(POD_NAME)
+          {{- with .Values.frrk8s.logLevel }}
+          - --log-level={{ . }}
+          {{- end }}
           {{- if .Values.frrk8s.frrStatus.pollInterval }}
           - --poll-interval={{ .Values.frrk8s.frrStatus.pollInterval }}
           {{- end }}

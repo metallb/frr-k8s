@@ -18,6 +18,10 @@ func (c *FakeApiV1beta1) FRRConfigurations(namespace string) v1beta1.FRRConfigur
 	return &FakeFRRConfigurations{c, namespace}
 }
 
+func (c *FakeApiV1beta1) FRRK8sConfigurations(namespace string) v1beta1.FRRK8sConfigurationInterface {
+	return &FakeFRRK8sConfigurations{c, namespace}
+}
+
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
 func (c *FakeApiV1beta1) RESTClient() rest.Interface {
