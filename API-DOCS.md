@@ -12,6 +12,7 @@ Package v1alpha1 contains API Schema definitions for the frrk8s v1alpha1 API gro
 - [BGPSessionState](#bgpsessionstate)
 - [FRRConfiguration](#frrconfiguration)
 - [FRRNodeState](#frrnodestate)
+- [FRROperatorConfiguration](#frroperatorconfiguration)
 
 
 
@@ -286,6 +287,55 @@ _Appears in:_
 | `runningConfig` _string_ | RunningConfig represents the current FRR running config, which is the configuration the FRR instance is currently running with. |  |  |
 | `lastConversionResult` _string_ | LastConversionResult is the status of the last translation between the `FRRConfiguration`s resources and FRR's configuration, contains "success" or an error. |  |  |
 | `lastReloadResult` _string_ | LastReloadResult represents the status of the last configuration update operation by FRR, contains "success" or an error. |  |  |
+
+
+#### FRROperatorConfiguration
+
+
+
+FRROperatorConfiguration holds the FRR Operator configuration with global
+settings for the Operator and FRR.
+
+
+
+
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `frrk8s.metallb.io/v1beta1` | | |
+| `kind` _string_ | `FRROperatorConfiguration` | | |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[FRROperatorConfigurationSpec](#frroperatorconfigurationspec)_ |  |  |  |
+| `status` _[FRROperatorConfigurationStatus](#frroperatorconfigurationstatus)_ |  |  |  |
+
+
+#### FRROperatorConfigurationSpec
+
+
+
+FRROperatorConfigurationSpec defines the desired state of FRROperatorConfiguration.
+
+
+
+_Appears in:_
+- [FRROperatorConfiguration](#frroperatorconfiguration)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `logLevel` _string_ | LogLevel sets the logging verbosity for the FRR-K8s components at runtime.<br />When configured, this value overrides the defaults established by the --log-level CLI flag.<br />Valid values are: all, debug, info, warn, error, none. |  | Enum: [all debug info warn error none] <br /> |
+
+
+#### FRROperatorConfigurationStatus
+
+
+
+FRROperatorConfigurationStatus defines the observed state of FRROperatorConfiguration.
+
+
+
+_Appears in:_
+- [FRROperatorConfiguration](#frroperatorconfiguration)
+
 
 
 #### Import
