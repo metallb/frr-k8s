@@ -14,6 +14,7 @@ import (
 
 	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -181,13 +182,17 @@ func TestNodeStateCleaner_Reconcile(t *testing.T) {
 				}
 			}
 
+			level := logging.LevelInfo
+			logger := logging.NewDynamicLvlLogger(log.NewNopLogger(), level)
+
 			reconciler := &NodeStateCleaner{
 				Client:    client,
-				Logger:    log.NewNopLogger(),
+				Logger:    logger,
 				Namespace: "test-namespace",
 				FRRK8sSelector: labels.SelectorFromSet(map[string]string{
 					"app.kubernetes.io/component": "frr-k8s",
 				}),
+				DefaultLogLevel: level,
 			}
 
 			req := ctrl.Request{

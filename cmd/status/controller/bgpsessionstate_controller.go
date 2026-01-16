@@ -11,10 +11,12 @@ import (
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
 	utilerrors "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -22,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 )
 
@@ -39,11 +40,13 @@ type BGPPeersFetcher func() (map[string][]*frr.Neighbor, error)
 type BGPSessionStateReconciler struct {
 	client.Client
 	BGPPeersFetcher
-	Logger       log.Logger
-	NodeName     string
-	Namespace    string
-	DaemonPod    *corev1.Pod
-	ResyncPeriod time.Duration
+	Logger                       *logging.Logger
+	NodeName                     string
+	Namespace                    string
+	DaemonPod                    *corev1.Pod
+	ResyncPeriod                 time.Duration
+	DefaultLogLevel              logging.Level
+	FRROperatorConfigurationName string
 }
 
 type peersStatus map[string]*frrk8sv1beta1.BGPSessionState
@@ -78,13 +81,29 @@ func (ps peersStatus) remove(peer string) {
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates/status,verbs=get
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frroperatorconfigurations,verbs=get;list;watch
 
 func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	level.Info(r.Logger).Log("controller", "BGPSessionState", "start reconcile", req.String())
 	defer level.Info(r.Logger).Log("controller", "BGPSessionState", "end reconcile", req.String())
 
+	operatorConfig := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.FRROperatorConfigurationName}, &operatorConfig)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return ctrl.Result{}, err
+	}
+
+	currentLogLevel, err := getLogLevel(ctx, r, r.Namespace, r.FRROperatorConfigurationName, r.DefaultLogLevel)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	// Dynamically set log level for the controller and log what the current log level is.
+	r.Logger.SetLogLevel(currentLogLevel)
+	level.Debug(r.Logger).Log("controller", "BGPSessionState", "log level controller", currentLogLevel)
+
 	l := frrk8sv1beta1.BGPSessionStateList{}
-	err := r.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})
+	err = r.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -149,6 +168,7 @@ func (r *BGPSessionStateReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&frrk8sv1beta1.BGPSessionState{}).
 		Watches(&frrk8sv1beta1.FRRNodeState{}, &handler.EnqueueRequestForObject{}).
+		Watches(&frrk8sv1beta1.FRROperatorConfiguration{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
 }
@@ -297,4 +317,49 @@ func peersStatusPerVRF(statuses []frrk8sv1beta1.BGPSessionState) (map[string]pee
 		duplicates = append(duplicates, s)
 	}
 	return existing, duplicates
+}
+
+// getLogLevel extracts the log level from an FRROperatorConfiguration resource.
+// It attempts to parse the LogLevel field from the configuration spec. If the field is empty or
+// parsing fails, it falls back to the provided defaultLogLevel.
+func (r *BGPSessionStateReconciler) getLogLevel(ctx context.Context) (logging.Level, error) {
+	config := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.FRROperatorConfigurationName}, &config)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return logging.LevelFallback, err
+	}
+
+	l := ""
+	if config.Spec.LogLevel != "" {
+		l = config.Spec.LogLevel
+	}
+
+	level, err := logging.NewLevel(l)
+	if err != nil {
+		return r.DefaultLogLevel, nil
+	}
+	return level, nil
+}
+
+// getLogLevel extracts the log level from an FRROperatorConfiguration resource.
+// It attempts to parse the LogLevel field from the configuration spec. If the field is empty or
+// parsing fails, it falls back to the provided defaultLogLevel.
+func getLogLevel(ctx context.Context, r client.Reader, namespace, frrOperatorConfigurationName string,
+	defaultLogLevel logging.Level) (logging.Level, error) {
+	config := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: frrOperatorConfigurationName}, &config)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return logging.LevelFallback, err
+	}
+
+	l := ""
+	if config.Spec.LogLevel != "" {
+		l = config.Spec.LogLevel
+	}
+
+	level, err := logging.NewLevel(l)
+	if err != nil {
+		return defaultLogLevel, nil
+	}
+	return level, nil
 }

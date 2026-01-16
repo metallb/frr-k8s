@@ -4,6 +4,7 @@ package config
 
 import (
 	"context"
+	"time"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/k8s"
@@ -11,6 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/util/wait"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -68,8 +70,49 @@ func (u *Updater) Update(secrets []v1.Secret, configs ...frrk8sv1beta1.FRRConfig
 	return nil
 }
 
+// UpdateFrrOperatorConfiguration creates or updates the given FRROperatorConfiguration.
+func (u *Updater) UpdateFrrOperatorConfiguration(config frrk8sv1beta1.FRROperatorConfiguration) error {
+	desiredSpec := config.Spec.DeepCopy()
+	_, err := controllerutil.CreateOrUpdate(context.Background(), u.client, &config, func() error {
+		config.Spec = *desiredSpec
+		return nil
+	})
+
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// CleanFRROperatorConfiguration deletes all FRROperatorConfigurations inside FRRK8sNamespace.
+// It will return after all resources are gone, or after a maximum of 60 seconds, whichever comes first.
+func (u *Updater) CleanFRROperatorConfiguration() error {
+	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRROperatorConfiguration{}, client.InNamespace(k8s.FRRK8sNamespace))
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	deadlineCtx, deadlineCancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer deadlineCancel()
+
+	return wait.PollUntilContextCancel(deadlineCtx, 1*time.Second, true,
+		func(ctx context.Context) (bool, error) {
+			var resourceList frrk8sv1beta1.FRROperatorConfigurationList
+			if err = u.client.List(ctx, &resourceList, client.InNamespace(k8s.FRRK8sNamespace)); err != nil {
+				return false, err
+			}
+			if len(resourceList.Items) == 0 {
+				return true, nil
+			}
+			return false, nil
+		})
+}
+
+// Clean deletes all FRR configurations, secrets, and operator configurations in the FRRK8sNamespace.
 func (u *Updater) Clean() error {
-	err := u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{}, client.InNamespace(k8s.FRRK8sNamespace))
+	err := u.CleanFRROperatorConfiguration()
+
+	err = u.client.DeleteAllOf(context.Background(), &frrk8sv1beta1.FRRConfiguration{}, client.InNamespace(k8s.FRRK8sNamespace))
 	if err != nil && !errors.IsNotFound(err) {
 		return err
 	}

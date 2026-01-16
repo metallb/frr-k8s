@@ -41,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
@@ -89,7 +88,15 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	// Parse the default log level once, and from here on forward use the parsed *logging.Level everywhere for
+	// the default log level.
+	defaultLogLevel, err := logging.NewLevel(params.logLevel)
+	if err != nil {
+		setupLog.Error(err, "failed to parse log-level", "log-level", params.logLevel)
+		os.Exit(1)
+	}
+
+	logger, err := logging.NewLogger(os.Stdout, defaultLogLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
@@ -104,9 +111,10 @@ func main() {
 		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}:                  namespaceSelector,
-				&corev1.Pod{}:                     namespaceSelector,
-				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+				&corev1.Secret{}:                          namespaceSelector,
+				&corev1.Pod{}:                             namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}:         namespaceSelector,
+				&frrk8sv1beta1.FRROperatorConfiguration{}: namespaceSelector,
 			},
 		},
 		Metrics: metricsserver.Options{
@@ -125,7 +133,7 @@ func main() {
 
 	//+kubebuilder:scaffold:builder
 
-	startFRRControllers(ctx, mgr, params, logger)
+	startFRRControllers(ctx, mgr, params, logger, defaultLogLevel)
 
 	setupLog.Info("starting frr-k8s", "version", version.String(), "params", fmt.Sprintf("%+v", params))
 	if err := mgr.Start(ctx); err != nil {
@@ -134,13 +142,14 @@ func main() {
 	}
 }
 
-func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger log.Logger) {
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger *logging.Logger,
+	defaultLogLevel logging.Level) {
 	setupLog.Info("Starting controllers")
 	reloadStatusChan := make(chan event.GenericEvent)
 	reloadStatus := func() {
 		reloadStatusChan <- controller.NewStateEvent()
 	}
-	frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(params.logLevel))
+	frrInstance := frr.NewFRR(ctx, reloadStatus, logger)
 
 	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
 	if err != nil {
@@ -148,16 +157,17 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		os.Exit(1)
 	}
 
-	dumpResources := params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll
 	configReconciler := &controller.FRRConfigurationReconciler{
-		Client:           mgr.GetClient(),
-		Scheme:           mgr.GetScheme(),
-		FRRHandler:       frrInstance,
-		Logger:           logger,
-		NodeName:         params.nodeName,
-		ReloadStatus:     reloadStatus,
-		AlwaysBlockCIDRS: alwaysBlock,
-		DumpResources:    dumpResources,
+		Client:                       mgr.GetClient(),
+		Scheme:                       mgr.GetScheme(),
+		FRRHandler:                   frrInstance,
+		Logger:                       logger,
+		NodeName:                     params.nodeName,
+		ReloadStatus:                 reloadStatus,
+		AlwaysBlockCIDRS:             alwaysBlock,
+		DefaultLogLevel:              defaultLogLevel,
+		FRROperatorConfigurationName: controller.FRROperatorConfigurationName,
+		Namespace:                    params.namespace,
 	}
 	if err = configReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")

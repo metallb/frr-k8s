@@ -11,3 +11,11 @@ type FRRConfigurationListerExpansion interface{}
 // FRRConfigurationNamespaceListerExpansion allows custom methods to be added to
 // FRRConfigurationNamespaceLister.
 type FRRConfigurationNamespaceListerExpansion interface{}
+
+// FRROperatorConfigurationListerExpansion allows custom methods to be added to
+// FRROperatorConfigurationLister.
+type FRROperatorConfigurationListerExpansion interface{}
+
+// FRROperatorConfigurationNamespaceListerExpansion allows custom methods to be added to
+// FRROperatorConfigurationNamespaceLister.
+type FRROperatorConfigurationNamespaceListerExpansion interface{}

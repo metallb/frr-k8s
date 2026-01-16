@@ -12,6 +12,8 @@ import (
 type Interface interface {
 	// FRRConfigurations returns a FRRConfigurationInformer.
 	FRRConfigurations() FRRConfigurationInformer
+	// FRROperatorConfigurations returns a FRROperatorConfigurationInformer.
+	FRROperatorConfigurations() FRROperatorConfigurationInformer
 }
 
 type version struct {
@@ -28,4 +30,9 @@ func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakList
 // FRRConfigurations returns a FRRConfigurationInformer.
 func (v *version) FRRConfigurations() FRRConfigurationInformer {
 	return &fRRConfigurationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
+}
+
+// FRROperatorConfigurations returns a FRROperatorConfigurationInformer.
+func (v *version) FRROperatorConfigurations() FRROperatorConfigurationInformer {
+	return &fRROperatorConfigurationInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -110,14 +111,18 @@ var _ = BeforeSuite(func() {
 	err = k8sClient.Create(ctx, nodeState)
 	Expect(err).ToNot(HaveOccurred())
 
+	logger := logging.NewDynamicLvlLogger(log.NewNopLogger(), logging.LevelInfo)
+	defaultLogLevel := logging.LevelDebug
+
 	err = (&BGPSessionStateReconciler{
 		Client:          k8sManager.GetClient(),
 		BGPPeersFetcher: fakeBGP.GetBGPNeighbors,
-		Logger:          log.NewNopLogger(),
+		Logger:          logger,
 		NodeName:        testNodeName,
 		Namespace:       testNamespace,
 		DaemonPod:       daemonPod,
 		ResyncPeriod:    1 * time.Second,
+		DefaultLogLevel: defaultLogLevel,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

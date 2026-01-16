@@ -8,10 +8,11 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"regexp"
 	"strconv"
-	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -21,40 +22,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-const (
-	LevelAll   = "all"
-	LevelDebug = "debug"
-	LevelInfo  = "info"
-	LevelWarn  = "warn"
-	LevelError = "error"
-	LevelNone  = "none"
-)
-
-type Level string
-type levelSlice []Level
-
-var (
-	// Levels returns an array of valid log levels.
-	Levels = levelSlice{LevelAll, LevelDebug, LevelInfo, LevelWarn, LevelError, LevelNone}
-)
-
-func (l levelSlice) String() string {
-	strs := make([]string, len(l))
-	for i, v := range l {
-		strs[i] = string(v)
-	}
-	return strings.Join(strs, ", ")
-}
-
-// Init returns a logger configured with common settings like
+// NewLogger returns a logger configured with common settings like
 // timestamping and source code locations. Both the stdlib logger and
 // glog are reconfigured to push logs into this logger.
 //
-// Init must be called as early as possible in main(), before any
+// NewLogger must be called as early as possible in main(), before any
 // application-specific flag parsing or logging occurs, because it
 // mutates the contents of the flag package as well as os.Stderr.
-func Init(lvl string) (log.Logger, error) {
-	l := log.NewJSONLogger(log.NewSyncWriter(os.Stdout))
+func NewLogger(w io.Writer, lvl Level) (*Logger, error) {
+	l := log.NewJSONLogger(log.NewSyncWriter(w))
 
 	r, w, err := os.Pipe()
 	if err != nil {
@@ -64,24 +40,52 @@ func Init(lvl string) (log.Logger, error) {
 	klog.SetOutput(w)
 	go collectGlogs(r, l)
 
-	opt, err := parseLevel(lvl)
-	if err != nil {
-		return nil, err
-	}
-
 	timeStampValuer := log.TimestampFormat(time.Now, time.RFC3339)
 	l = log.With(l, "ts", timeStampValuer)
-	l = level.NewFilter(l, opt)
 
 	// Note: caller must be added after everything else that decorates the
 	// logger (otherwise we get incorrect caller reference).
 	l = log.With(l, "caller", log.DefaultCaller)
 
+	// Create our dynamic level logger with the initial log level.
+	dl := NewDynamicLvlLogger(l, lvl)
+
 	// Setting a controller-runtime logger is required to
 	// get any log created by it.
 	ctrl.SetLogger(zap.New())
 
-	return l, nil
+	return dl, nil
+}
+
+// Logger is a logger with a log level that can be set at runtime.
+type Logger struct {
+	logger         log.Logger
+	filteredLogger atomic.Pointer[log.Logger]
+}
+
+// NewDynamicLvlLogger creates a new DynamicLvlLogger that wraps the provided logger with
+// a dynamically adjustable log level filter. The initial log level is set according to the
+// provided level parameter.
+func NewDynamicLvlLogger(logger log.Logger, lvl Level) *Logger {
+	filtered := level.NewFilter(logger, lvl.ToOption())
+	dl := &Logger{
+		logger: logger,
+	}
+	dl.filteredLogger.Store(&filtered)
+	return dl
+}
+
+// Log prints log output.
+func (dl *Logger) Log(keyvals ...interface{}) error {
+	return (*dl.filteredLogger.Load()).Log(keyvals...)
+}
+
+// SetLogLevel dynamically updates the log level of the DynamicLvlLogger at runtime.
+// This allows changing the verbosity of logging without restarting the application.
+// Uses atomic operations to ensure thread-safety when called concurrently by multiple controllers.
+func (dl *Logger) SetLogLevel(lvl Level) {
+	filtered := level.NewFilter(dl.logger, lvl.ToOption())
+	dl.filteredLogger.Store(&filtered)
 }
 
 func collectGlogs(f *os.File, logger log.Logger) {
@@ -173,23 +177,4 @@ func deformat(logger log.Logger, b []byte) (leveledLogger log.Logger, ts time.Ti
 	msg = string(ms[9])
 
 	return
-}
-
-func parseLevel(lvl string) (level.Option, error) {
-	switch lvl {
-	case LevelAll:
-		return level.AllowAll(), nil
-	case LevelDebug:
-		return level.AllowDebug(), nil
-	case LevelInfo:
-		return level.AllowInfo(), nil
-	case LevelWarn:
-		return level.AllowWarn(), nil
-	case LevelError:
-		return level.AllowError(), nil
-	case LevelNone:
-		return level.AllowNone(), nil
-	}
-
-	return nil, fmt.Errorf("failed to parse log level: %s", lvl)
 }

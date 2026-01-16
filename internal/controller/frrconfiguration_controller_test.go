@@ -33,6 +33,7 @@ import (
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/logging"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -66,6 +67,9 @@ func fakeReloadStatus() {
 }
 
 var _ = Describe("Frrk8s controller", func() {
+	// This is our expected log level because in common_test.go, we set	defaultLogLevel := logging.LevelDebug.
+	logLevel := logging.LevelDebug
+
 	AfterEach(func() {
 		toDel := &v1beta1.FRRConfiguration{}
 		err := k8sClient.DeleteAllOf(context.Background(), toDel, client.InNamespace("default"))
@@ -113,6 +117,7 @@ var _ = Describe("Frrk8s controller", func() {
 						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -146,6 +151,7 @@ var _ = Describe("Frrk8s controller", func() {
 						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -165,6 +171,7 @@ var _ = Describe("Frrk8s controller", func() {
 						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -199,6 +206,7 @@ var _ = Describe("Frrk8s controller", func() {
 						ImportVRFs:   []string{},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -210,6 +218,7 @@ var _ = Describe("Frrk8s controller", func() {
 				&frr.Config{
 					Routers:     []*frr.RouterConfig{},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -300,6 +309,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -341,6 +351,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -371,6 +382,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -431,6 +443,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -466,6 +479,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -489,6 +503,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -566,6 +581,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -605,6 +621,7 @@ var _ = Describe("Frrk8s controller", func() {
 						},
 					}},
 					BFDProfiles: []frr.BFDProfile{},
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -642,6 +659,7 @@ var _ = Describe("Frrk8s controller", func() {
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "foo\n",
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -674,6 +692,7 @@ var _ = Describe("Frrk8s controller", func() {
 					}},
 					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "foo\nbar\n",
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 
@@ -686,6 +705,7 @@ var _ = Describe("Frrk8s controller", func() {
 					Routers:     []*frr.RouterConfig{},
 					BFDProfiles: []frr.BFDProfile{},
 					ExtraConfig: "bar\n",
+					Loglevel:    logLevel.ToLevelFRR(),
 				},
 			))
 		})
@@ -743,6 +763,7 @@ var _ = Describe("Frrk8s controller", func() {
 							Name: "foo",
 						},
 					},
+					Loglevel: logLevel.ToLevelFRR(),
 				},
 			))
 		})

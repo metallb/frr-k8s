@@ -463,7 +463,7 @@ var _ = ginkgo.Describe("Exposing FRR status", func() {
 			_, err = cs.CoreV1().Nodes().Update(context.Background(), excludedNodePtr, metav1.UpdateOptions{})
 			Expect(err).NotTo(HaveOccurred())
 
-      ginkgo.By("Waiting that all pods of the daemonset running")
+			ginkgo.By("Waiting that all pods of the daemonset running")
 			_, err = k8s.FRRK8sDaemonSet(cs)
 			Expect(err).NotTo(HaveOccurred())
 		})

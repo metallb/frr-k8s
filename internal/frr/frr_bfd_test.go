@@ -15,7 +15,7 @@ import (
 func TestSingleSessionBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -46,6 +46,7 @@ func TestSingleSessionBFD(t *testing.T) {
 				Name: "testdefault",
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
@@ -58,7 +59,7 @@ func TestSingleSessionBFD(t *testing.T) {
 func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {}, log.NewNopLogger(), logging.LevelInfo)
+	frr := NewFRR(ctx, func() {}, log.NewNopLogger())
 	defer cancel()
 
 	config := Config{
@@ -100,6 +101,7 @@ func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 				Name: "testdefault",
 			},
 		},
+		Loglevel: logging.LevelInfo.ToLevelFRR(),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
