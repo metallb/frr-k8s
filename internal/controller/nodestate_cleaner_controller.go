@@ -28,7 +28,7 @@ import (
 type NodeStateCleaner struct {
 	client.Client
 	Scheme                       *runtime.Scheme
-	Logger                       *logging.DynamicLvlLogger
+	Logger                       *logging.Logger
 	Namespace                    string
 	FRRK8sSelector               labels.Selector
 	DefaultLogLevel              logging.Level

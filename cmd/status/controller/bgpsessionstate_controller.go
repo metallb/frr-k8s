@@ -40,7 +40,7 @@ type BGPPeersFetcher func() (map[string][]*frr.Neighbor, error)
 type BGPSessionStateReconciler struct {
 	client.Client
 	BGPPeersFetcher
-	Logger                       *logging.DynamicLvlLogger
+	Logger                       *logging.Logger
 	NodeName                     string
 	Namespace                    string
 	DaemonPod                    *corev1.Pod

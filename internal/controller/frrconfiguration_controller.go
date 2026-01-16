@@ -52,7 +52,7 @@ type FRRConfigurationReconciler struct {
 	client.Client
 	Scheme                       *runtime.Scheme
 	FRRHandler                   frr.ConfigHandler
-	Logger                       *logging.DynamicLvlLogger
+	Logger                       *logging.Logger
 	NodeName                     string
 	Namespace                    string
 	ReloadStatus                 func()

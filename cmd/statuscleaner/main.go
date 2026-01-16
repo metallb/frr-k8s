@@ -169,7 +169,7 @@ func main() {
 	}
 }
 
-func startNodeStateCleaner(mgr manager.Manager, logger *logging.DynamicLvlLogger, namespace, frrk8sSelector string,
+func startNodeStateCleaner(mgr manager.Manager, logger *logging.Logger, namespace, frrk8sSelector string,
 	frrOperatorConfigurationName string, defaultLogLevel logging.Level) {
 	setupLog.Info("Starting node state cleaner controller")
 

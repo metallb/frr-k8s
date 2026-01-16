@@ -142,7 +142,7 @@ func main() {
 	}
 }
 
-func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger *logging.DynamicLvlLogger,
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger *logging.Logger,
 	defaultLogLevel logging.Level) {
 	setupLog.Info("Starting controllers")
 	reloadStatusChan := make(chan event.GenericEvent)
