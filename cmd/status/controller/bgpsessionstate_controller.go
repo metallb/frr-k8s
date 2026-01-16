@@ -93,11 +93,10 @@ func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 		return ctrl.Result{}, err
 	}
 
-	// Parse the current log level once here. Either, the FrrOperatorConfiguration log level is invalid (the empty
-	// string is also considered invalid): in that case, we use the r.DefaultLogLevel. Otherwise, the currentLogLevel is
-	// set according to FRROperatorConfiguration. The DefaultLogLevel is passed in from main.go and is guaranteed to be
-	// valid (not the zero value) because it's parsed and validated before being passed to this reconciler.
-	currentLogLevel := getOperatorConfigurationLogLevel(operatorConfig, r.DefaultLogLevel)
+	currentLogLevel, err := getLogLevel(ctx, r, r.Namespace, r.FRROperatorConfigurationName, r.DefaultLogLevel)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Dynamically set log level for the controller and log what the current log level is.
 	r.Logger.SetLogLevel(currentLogLevel)
@@ -320,10 +319,16 @@ func peersStatusPerVRF(statuses []frrk8sv1beta1.BGPSessionState) (map[string]pee
 	return existing, duplicates
 }
 
-// getOperatorConfigurationLogLevel extracts the log level from an FRROperatorConfiguration resource.
+// getLogLevel extracts the log level from an FRROperatorConfiguration resource.
 // It attempts to parse the LogLevel field from the configuration spec. If the field is empty or
 // parsing fails, it falls back to the provided defaultLogLevel.
-func getOperatorConfigurationLogLevel(config frrk8sv1beta1.FRROperatorConfiguration, defaultLogLevel logging.Level) logging.Level {
+func (r *BGPSessionStateReconciler) getLogLevel(ctx context.Context) (logging.Level, error) {
+	config := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: r.Namespace, Name: r.FRROperatorConfigurationName}, &config)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return logging.LevelFallback, err
+	}
+
 	l := ""
 	if config.Spec.LogLevel != "" {
 		l = config.Spec.LogLevel
@@ -331,7 +336,30 @@ func getOperatorConfigurationLogLevel(config frrk8sv1beta1.FRROperatorConfigurat
 
 	level, err := logging.NewLevel(l)
 	if err != nil {
-		return defaultLogLevel
+		return r.DefaultLogLevel, nil
 	}
-	return level
+	return level, nil
+}
+
+// getLogLevel extracts the log level from an FRROperatorConfiguration resource.
+// It attempts to parse the LogLevel field from the configuration spec. If the field is empty or
+// parsing fails, it falls back to the provided defaultLogLevel.
+func getLogLevel(ctx context.Context, r client.Reader, namespace, frrOperatorConfigurationName string,
+	defaultLogLevel logging.Level) (logging.Level, error) {
+	config := frrk8sv1beta1.FRROperatorConfiguration{}
+	err := r.Get(ctx, types.NamespacedName{Namespace: namespace, Name: frrOperatorConfigurationName}, &config)
+	if err != nil && !apierrors.IsNotFound(err) {
+		return logging.LevelFallback, err
+	}
+
+	l := ""
+	if config.Spec.LogLevel != "" {
+		l = config.Spec.LogLevel
+	}
+
+	level, err := logging.NewLevel(l)
+	if err != nil {
+		return defaultLogLevel, nil
+	}
+	return level, nil
 }

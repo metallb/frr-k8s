@@ -48,11 +48,10 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	// Parse the current log level once here. Either, the FrrOperatorConfiguration log level is invalid (the empty
-	// string is also considered invalid): in that case, we use the r.DefaultLogLevel. Otherwise, the currentLogLevel is
-	// set according to FRROperatorConfiguration. The DefaultLogLevel is passed in from main.go and is guaranteed to be
-	// valid (not the zero value) because it's parsed and validated before being passed to this reconciler.
-	currentLogLevel := getOperatorConfigurationLogLevel(operatorConfig, r.DefaultLogLevel)
+	currentLogLevel, err := getLogLevel(ctx, r, r.Namespace, r.FRROperatorConfigurationName, r.DefaultLogLevel)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
 	// Dynamically set log level for the controller and log what the current log level is.
 	r.Logger.SetLogLevel(currentLogLevel)

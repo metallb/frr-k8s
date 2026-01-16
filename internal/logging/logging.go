@@ -38,7 +38,7 @@ const (
 )
 
 var (
-	levelFallback  = LevelInfo
+	LevelFallback  = LevelInfo
 	frrFallback    = FRRInformational
 	optionFallback = level.AllowInfo()
 )
@@ -62,7 +62,7 @@ func NewLevel(l string) (Level, error) {
 		return LevelNone, nil
 	}
 
-	return levelFallback, fmt.Errorf("invalid log level %q", l)
+	return LevelFallback, fmt.Errorf("invalid log level %q", l)
 }
 
 // IsAllOrDebug returns true if the log level is All or Debug.
