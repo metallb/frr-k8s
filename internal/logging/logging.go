@@ -13,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-kit/log"
@@ -168,36 +169,45 @@ func Init(w io.Writer, lvl Level) (*DynamicLvlLogger, error) {
 }
 
 // DynamicLvlLogger is a logger with a log level that can be set at runtime.
-// We need this new struct because `level.NewFilter“ can restrict log levels, but it cannot make them less strict.
+// We need this new struct because `level.NewFilter" can restrict log levels, but it cannot make them less strict.
 // So if we set (pseudo code), in that order:
 // 1. LVL = level.NewFilter(LVL, "debug")
 // 2. LVL = level.NewFilter(LVL, "error")
 // 3. LVL = level.NewFilter(LVL, "info")
 // Then the log level would still be 'error', because that's the most restrictive.
-// This new struct stores a logger (without the filter applied), and the desired log level. Then, right before logging,
-// it applies the filter once to get the desired log level.
+// This new struct stores a logger (without the filter applied), and the desired log level.
+// The filteredLogger field stores the logger with the filter applied, and is only recreated when
+// the log level changes via SetLogLevel.
+// The filteredLogger is stored as an atomic pointer to ensure thread-safe access when multiple
+// controllers call SetLogLevel concurrently.
 type DynamicLvlLogger struct {
-	logger log.Logger
-	lvl    level.Option
+	logger         log.Logger
+	filteredLogger atomic.Pointer[log.Logger]
 }
 
 // NewDynamicLvlLogger creates a new DynamicLvlLogger that wraps the provided logger with
 // a dynamically adjustable log level filter. The initial log level is set according to the
 // provided level parameter.
-func NewDynamicLvlLogger(logger log.Logger, level Level) *DynamicLvlLogger {
-	return &DynamicLvlLogger{logger, level.ToOption()}
+func NewDynamicLvlLogger(logger log.Logger, lvl Level) *DynamicLvlLogger {
+	filtered := level.NewFilter(logger, lvl.ToOption())
+	dl := &DynamicLvlLogger{
+		logger: logger,
+	}
+	dl.filteredLogger.Store(&filtered)
+	return dl
 }
 
 // Log prints log output.
 func (dl *DynamicLvlLogger) Log(keyvals ...interface{}) error {
-	lvlLogger := level.NewFilter(dl.logger, dl.lvl)
-	return lvlLogger.Log(keyvals...)
+	return (*dl.filteredLogger.Load()).Log(keyvals...)
 }
 
 // SetLogLevel dynamically updates the log level of the DynamicLvlLogger at runtime.
 // This allows changing the verbosity of logging without restarting the application.
-func (dl *DynamicLvlLogger) SetLogLevel(level Level) {
-	dl.lvl = level.ToOption()
+// Uses atomic operations to ensure thread-safety when called concurrently by multiple controllers.
+func (dl *DynamicLvlLogger) SetLogLevel(lvl Level) {
+	filtered := level.NewFilter(dl.logger, lvl.ToOption())
+	dl.filteredLogger.Store(&filtered)
 }
 
 func collectGlogs(f *os.File, logger log.Logger) {
