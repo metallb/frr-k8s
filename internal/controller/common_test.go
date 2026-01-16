@@ -74,7 +74,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).ToNot(HaveOccurred())
 
 	defaultLogLevel := logging.LevelDebug
-	logger, err := logging.Init(&logBuffer, defaultLogLevel)
+	logger, err := logging.NewLogger(&logBuffer, defaultLogLevel)
 	Expect(err).ToNot(HaveOccurred())
 
 	err = (&FRRConfigurationReconciler{

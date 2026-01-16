@@ -22,14 +22,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
-// Init returns a logger configured with common settings like
+// NewLogger returns a logger configured with common settings like
 // timestamping and source code locations. Both the stdlib logger and
 // glog are reconfigured to push logs into this logger.
 //
-// Init must be called as early as possible in main(), before any
+// NewLogger must be called as early as possible in main(), before any
 // application-specific flag parsing or logging occurs, because it
 // mutates the contents of the flag package as well as os.Stderr.
-func Init(w io.Writer, lvl Level) (*DynamicLvlLogger, error) {
+func NewLogger(w io.Writer, lvl Level) (*DynamicLvlLogger, error) {
 	l := log.NewJSONLogger(log.NewSyncWriter(w))
 
 	r, w, err := os.Pipe()

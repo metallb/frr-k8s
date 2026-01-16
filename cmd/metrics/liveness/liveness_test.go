@@ -36,7 +36,7 @@ func TestLiveness(t *testing.T) {
 		},
 	}
 
-	logger, err := logging.Init(os.Stdout, logging.LevelError)
+	logger, err := logging.NewLogger(os.Stdout, logging.LevelError)
 	if err != nil {
 		t.Fatalf("failed to create logger %v", err)
 	}

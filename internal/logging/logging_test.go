@@ -37,7 +37,7 @@ func TestSetLogLevel(t *testing.T) {
 		t.Run(fmt.Sprintf("from %s to %s", tc.from, tc.to), func(t *testing.T) {
 			var buf bytes.Buffer
 			fromLevel, _ := NewLevel(tc.from)
-			logger, err := Init(&buf, fromLevel)
+			logger, err := NewLogger(&buf, fromLevel)
 			if err != nil {
 				t.Error(err)
 			}

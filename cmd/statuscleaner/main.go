@@ -101,7 +101,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	logger, err := logging.Init(os.Stdout, defaultLogLevel)
+	logger, err := logging.NewLogger(os.Stdout, defaultLogLevel)
 	if err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
