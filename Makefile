@@ -75,7 +75,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build k8s-frr binary.
-	go build -o bin/frr-k8s cmd/main.go
+	go build -v -o bin/frr-k8s ./cmd/frr-k8s-controller
+	go build -v -o bin/frr-metrics ./cmd/metrics
+	go build -v -o bin/frr-status ./cmd/status
+	go build -v -o bin/statuscleaner ./cmd/statuscleaner
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
