@@ -160,7 +160,7 @@ jobs:
           sudo apt-get install linux-modules-extra-$(uname -r)
 
       - name: Download frr8ks images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: image
 
@@ -217,7 +217,7 @@ jobs:
           sudo apt-get install linux-modules-extra-$(uname -r) python3-pip arping ndisc6
 
       - name: Download frr-k8s images
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: image
 
