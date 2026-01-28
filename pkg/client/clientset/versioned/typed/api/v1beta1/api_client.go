@@ -15,6 +15,7 @@ import (
 type ApiV1beta1Interface interface {
 	RESTClient() rest.Interface
 	FRRConfigurationsGetter
+	FRRK8sConfigurationsGetter
 }
 
 // ApiV1beta1Client is used to interact with features provided by the api group.
@@ -24,6 +25,10 @@ type ApiV1beta1Client struct {
 
 func (c *ApiV1beta1Client) FRRConfigurations(namespace string) FRRConfigurationInterface {
 	return newFRRConfigurations(c, namespace)
+}
+
+func (c *ApiV1beta1Client) FRRK8sConfigurations(namespace string) FRRK8sConfigurationInterface {
+	return newFRRK8sConfigurations(c, namespace)
 }
 
 // NewForConfig creates a new ApiV1beta1Client for the given config.

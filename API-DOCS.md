@@ -11,6 +11,7 @@ Package v1alpha1 contains API Schema definitions for the frrk8s v1alpha1 API gro
 ### Resource Types
 - [BGPSessionState](#bgpsessionstate)
 - [FRRConfiguration](#frrconfiguration)
+- [FRRK8sConfiguration](#frrk8sconfiguration)
 - [FRRNodeState](#frrnodestate)
 
 
@@ -235,6 +236,55 @@ FRRConfigurationStatus defines the observed state of FRRConfiguration.
 
 _Appears in:_
 - [FRRConfiguration](#frrconfiguration)
+
+
+
+#### FRRK8sConfiguration
+
+
+
+FRRK8sConfiguration holds the FRR Operator configuration with global
+settings for the K8s and FRR.
+
+
+
+
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `apiVersion` _string_ | `frrk8s.metallb.io/v1beta1` | | |
+| `kind` _string_ | `FRRK8sConfiguration` | | |
+| `metadata` _[ObjectMeta](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#objectmeta-v1-meta)_ | Refer to Kubernetes API documentation for fields of `metadata`. |  |  |
+| `spec` _[FRRK8sConfigurationSpec](#frrk8sconfigurationspec)_ |  |  |  |
+| `status` _[FRRK8sConfigurationStatus](#frrk8sconfigurationstatus)_ |  |  |  |
+
+
+#### FRRK8sConfigurationSpec
+
+
+
+FRRK8sConfigurationSpec defines the desired state of FRRK8sConfiguration.
+
+
+
+_Appears in:_
+- [FRRK8sConfiguration](#frrk8sconfiguration)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `logLevel` _string_ | LogLevel sets the logging verbosity for the FRR-K8s components at runtime.<br />When configured, this value overrides the defaults established by the --log-level CLI flag.<br />Valid values are: all, debug, info, warn, error, none. |  | Enum: [all debug info warn error none] <br /> |
+
+
+#### FRRK8sConfigurationStatus
+
+
+
+FRRK8sConfigurationStatus defines the observed state of FRRK8sConfiguration.
+
+
+
+_Appears in:_
+- [FRRK8sConfiguration](#frrk8sconfiguration)
 
 
 

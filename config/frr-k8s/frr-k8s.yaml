@@ -49,7 +49,7 @@ spec:
         - "--namespace=$(NAMESPACE)"
         image: controller:latest
         imagePullPolicy: IfNotPresent
-        name: frr-k8s
+        name: controller
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
@@ -155,6 +155,7 @@ spec:
           - "--node-name=$(NODE_NAME)"
           - "--namespace=$(NAMESPACE)"
           - "--pod-name=$(POD_NAME)"
+          - "--log-level=info"
         volumeMounts:
           - name: frr-sockets
             mountPath: /var/run/frr
@@ -256,7 +257,7 @@ metadata:
     control-plane: statuscleaner
     app.kubernetes.io/name: frr-k8s
     app.kubernetes.io/instance: frr-k8s
-    app.kubernetes.io/component: frr-k8s
+    app.kubernetes.io/component: statuscleaner
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize
@@ -271,6 +272,7 @@ spec:
       labels:
         control-plane: statuscleaner
         app: frr-k8s-webhook-server
+        app.kubernetes.io/component: statuscleaner
     spec:
       containers:
       - command:
@@ -285,7 +287,7 @@ spec:
               fieldPath: metadata.namespace
         image: controller:latest
         imagePullPolicy: IfNotPresent
-        name: frr-k8s-webhook-server
+        name: frr-k8s-statuscleaner
         securityContext:
           allowPrivilegeEscalation: false
           capabilities:
