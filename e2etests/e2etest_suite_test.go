@@ -24,10 +24,8 @@ var (
 	skipDockerCmd       bool
 	reportPath          string
 	prometheusNamespace string
-	localNics           string
 	externalContainers  string
 	runOnHost           bool
-	bgpNativeMode       bool
 	frrImage            string
 )
 
