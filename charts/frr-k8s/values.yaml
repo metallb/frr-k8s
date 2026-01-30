@@ -89,7 +89,7 @@ prometheus:
 # controller contains configuration specific to the FRRK8s controller
 # daemonset.
 frrk8s:
-  # -- Controller log level. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
+  # -- Controller log level that is passed as a CLI flag. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
   logLevel: info
   tolerateMaster: true
   image:

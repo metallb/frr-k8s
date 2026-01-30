@@ -40,7 +40,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/controller"
@@ -93,11 +92,19 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	// Parse the default log level once, and from here on forward use the parsed *logging.Level everywhere for
+	// the default log level.
+	defaultLogLevel, err := logging.ParseLevel(params.logLevel)
 	if err != nil {
+		setupLog.Error(err, "failed to parse log-level", "log-level", params.logLevel)
+		os.Exit(1)
+	}
+
+	if err := logging.Init(); err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
 	}
+	logging.GetLogger().SetLogLevel(defaultLogLevel)
 
 	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
@@ -108,9 +115,9 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}:                  namespaceSelector,
-				&corev1.Pod{}:                     namespaceSelector,
-				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+				&corev1.Pod{}:                        namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}:        {},
+				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
 			},
 		},
 		WebhookServer: webhook.NewServer(
@@ -137,7 +144,7 @@ func main() {
 	startListeners := make(chan struct{})
 	if !params.disableCertRotation {
 		setupLog.Info("Starting certs generator")
-		err = setupCertRotation(startListeners, mgr, logger, params.namespace, params.certDir, params.certServiceName, params.restartOnRotatorSecretRefresh)
+		err = setupCertRotation(startListeners, mgr, params.namespace, params.certDir, params.certServiceName, params.restartOnRotatorSecretRefresh)
 		if err != nil {
 			setupLog.Error(err, "unable to set up cert rotator")
 			os.Exit(1)
@@ -149,8 +156,8 @@ func main() {
 	go func() {
 		<-startListeners
 
-		setupWebhook(mgr, logger)
-		startNodeStateCleaner(mgr, logger, params.namespace, params.frrk8sSelector)
+		setupWebhook(mgr)
+		startNodeStateCleaner(mgr, params.namespace, params.frrk8sSelector, defaultLogLevel)
 	}()
 
 	setupLog.Info("starting frr-k8s webhook", "version", version.String(), "params", fmt.Sprintf("%+v", params))
@@ -160,7 +167,7 @@ func main() {
 	}
 }
 
-func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace, frrk8sSelector string) {
+func startNodeStateCleaner(mgr manager.Manager, namespace, frrk8sSelector string, defaultLogLevel logging.Level) {
 	setupLog.Info("Starting node state cleaner controller")
 
 	selector, err := labels.Parse(frrk8sSelector)
@@ -172,12 +179,21 @@ func startNodeStateCleaner(mgr manager.Manager, logger log.Logger, namespace, fr
 	nodeStateCleaner := &controller.NodeStateCleaner{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
-		Logger:         logger,
 		Namespace:      namespace,
 		FRRK8sSelector: selector,
 	}
 	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")
+		os.Exit(1)
+	}
+
+	if err = (&controller.FRRK8sConfigurationReconciler{
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		DefaultLogLevel: defaultLogLevel,
+		Namespace:       namespace,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRK8sConfiguration")
 		os.Exit(1)
 	}
 }
@@ -192,8 +208,9 @@ var (
 	webhookSecretName = "frr-k8s-webhook-server-cert" //#nosec G101
 )
 
-func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger log.Logger,
+func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager,
 	namespace, certDir, certServiceName string, restartOnSecretRefresh bool) error {
+	logger := logging.GetLogger()
 	webhooks := []rotator.WebhookInfo{
 		{
 			Name: webhookName,
@@ -223,7 +240,8 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager, logger
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager, logger log.Logger) {
+func setupWebhook(mgr manager.Manager) {
+	logger := logging.GetLogger()
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
 	webhooks.Logger = logger

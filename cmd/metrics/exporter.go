@@ -28,7 +28,8 @@ var (
 	metricsPath        = flag.String("metrics-path", "/metrics", "Path under which to expose metrics.")
 )
 
-func metricsHandler(logger log.Logger) http.Handler {
+func metricsHandler() http.Handler {
+	logger := logging.GetLogger()
 	BGPCollector := collector.NewBGP(logger)
 	BFDCollector := collector.NewBFD(logger)
 
@@ -53,16 +54,17 @@ func metricsHandler(logger log.Logger) http.Handler {
 func main() {
 	flag.Parse()
 
-	logger, err := logging.Init("error")
-	if err != nil {
+	if err := logging.Init(); err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
 		os.Exit(1)
 	}
+	logger := logging.GetLogger()
+	logger.SetLogLevel(logging.LevelError)
 
 	level.Info(logger).Log("version", version.Version(), "commit", version.CommitHash(), "branch", version.Branch(), "goversion", version.GoString(), "msg", "FRR metrics exporter starting "+version.String())
 
 	mux := http.NewServeMux()
-	mux.Handle(*metricsPath, metricsHandler(logger))
+	mux.Handle(*metricsPath, metricsHandler())
 	mux.Handle("/livez", liveness.Handler(vtysh.Run, logger))
 	level.Info(logger).Log("msg", "Starting exporter", "metricsPath", metricsPath, "port", metricsPort)
 

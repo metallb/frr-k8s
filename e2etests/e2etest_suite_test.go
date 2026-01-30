@@ -40,6 +40,7 @@ func handleFlags() {
 	flag.StringVar(&executor.Kubectl, "kubectl", "kubectl", "the path for the kubectl binary")
 	flag.StringVar(&frrImage, "frr-image", "quay.io/frrouting/frr:10.4.1", "the image to use for the external frr containers")
 	flag.StringVar(&k8s.FRRK8sNamespace, "frr-k8s-namespace", "frr-k8s-system", "the namespace frr-k8s is running in")
+	flag.StringVar(&k8s.FRRK8sDefaultLogLevel, "default-log-level", "debug", "Default log level to test against when no configuration is present")
 
 	flag.Parse()
 

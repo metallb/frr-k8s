@@ -4,6 +4,7 @@ package controller
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -12,8 +13,8 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 
-	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -181,9 +182,12 @@ func TestNodeStateCleaner_Reconcile(t *testing.T) {
 				}
 			}
 
+			if err := logging.InitWithWriter(os.Stdout); err != nil {
+				t.Fatalf("building logger failed: %v", err)
+			}
+
 			reconciler := &NodeStateCleaner{
 				Client:    client,
-				Logger:    log.NewNopLogger(),
 				Namespace: "test-namespace",
 				FRRK8sSelector: labels.SelectorFromSet(map[string]string{
 					"app.kubernetes.io/component": "frr-k8s",

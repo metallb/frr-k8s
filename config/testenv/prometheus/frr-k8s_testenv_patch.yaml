@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-      - name: frr-k8s
+      - name: controller
         args:
         - "--metrics-bind-address=127.0.0.1:7572"
         - "--node-name=$(NODE_NAME)"
@@ -20,4 +20,5 @@ spec:
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--pod-name=$(POD_NAME)"
-        - "--poll-interval=5s" 
+        - "--poll-interval=5s"
+        - "--log-level=debug"

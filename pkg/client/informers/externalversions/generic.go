@@ -41,6 +41,8 @@ func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource
 	// Group=api, Version=v1beta1
 	case v1beta1.SchemeGroupVersion.WithResource("frrconfigurations"):
 		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1beta1().FRRConfigurations().Informer()}, nil
+	case v1beta1.SchemeGroupVersion.WithResource("frrk8sconfigurations"):
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Api().V1beta1().FRRK8sConfigurations().Informer()}, nil
 
 	}
 
