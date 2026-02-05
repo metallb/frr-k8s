@@ -187,6 +187,45 @@ _Underlying type:_ _string_
 _Appears in:_
 - [Neighbor](#neighbor)
 
+| Field | Description |
+| --- | --- |
+| `internal` |  |
+| `external` |  |
+
+
+#### EVPNConfig
+
+
+
+EVPNConfig contains configuration related to EVPN.
+
+
+
+_Appears in:_
+- [Router](#router)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `advertiseVNIs` _[VNIAdvertisement](#vniadvertisement)_ | AdvertiseVNIs controls how VNIs are advertised to EVPN neighbors.<br />- "Disabled": No VNI advertisements<br />- "All": Avertise all VNIs<br />Note: Can only be provided for router instances with EVPN neighbors. |  | Enum: [Disabled All] <br /> |
+| `advertiseSVI` _boolean_ | AdvertiseSVI enables advertising the SVI IP/MAC as a type-2 route. |  |  |
+| `l2vnis` _[L2VNI](#l2vni) array_ | L2VNIs contains configuration for Layer 2 VNIs.<br />Note: Can only be provided for router instances with EVPN neighbors. |  |  |
+| `l3vni` _[L3VNI](#l3vni)_ | L3VNI contains configuration for the Layer 3 VNI.<br />Note: Can only be provided for router instances with no neighbors.<br />This is a temporary limitation until proper EVPN prefix filtering is implemented. |  |  |
+
+
+#### ExportRouteTarget
+
+_Underlying type:_ _string_
+
+ExportRouteTarget defines a BGP Extended Community for route filtering on export.
+Does NOT support wildcard matching (wildcards are only valid for import).
+
+
+
+_Appears in:_
+- [L2VNI](#l2vni)
+- [L3VNI](#l3vni)
+- [VNI](#vni)
+
 
 
 #### FRRConfiguration
@@ -354,6 +393,61 @@ _Appears in:_
 | `vrf` _string_ | Vrf is the vrf we want to import from |  |  |
 
 
+#### ImportRouteTarget
+
+_Underlying type:_ _string_
+
+ImportRouteTarget defines a BGP Extended Community for route filtering on import.
+Supports wildcard matching with "*" as the global administrator (e.g., "*:100").
+
+
+
+_Appears in:_
+- [L2VNI](#l2vni)
+- [L3VNI](#l3vni)
+- [VNI](#vni)
+
+
+
+#### L2VNI
+
+
+
+L2VNI represents a Layer 2 VNI configuration.
+
+
+
+_Appears in:_
+- [EVPNConfig](#evpnconfig)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `vni` _integer_ | VNI is the VXLAN Network Identifier (1-16777215). |  | Maximum: 1.6777215e+07 <br />Minimum: 1 <br />Required: \{\} <br /> |
+| `rd` _[RouteDistinguisher](#routedistinguisher)_ | RD is the route distinguisher for this VNI.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100") |  |  |
+| `importRTs` _[ImportRouteTarget](#importroutetarget) array_ | ImportRTs is the list of route targets to import.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN\|*:MN\|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100") |  | MaxItems: 100 <br /> |
+| `exportRTs` _[ExportRouteTarget](#exportroutetarget) array_ | ExportRTs is the list of route targets to export.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100", "192.0.2.1:100") |  | MaxItems: 100 <br /> |
+
+
+#### L3VNI
+
+
+
+L3VNI represents a Layer 3 VNI configuration.
+
+
+
+_Appears in:_
+- [EVPNConfig](#evpnconfig)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `vni` _integer_ | VNI is the VXLAN Network Identifier (1-16777215). |  | Maximum: 1.6777215e+07 <br />Minimum: 1 <br />Required: \{\} <br /> |
+| `rd` _[RouteDistinguisher](#routedistinguisher)_ | RD is the route distinguisher for this VNI.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100") |  |  |
+| `importRTs` _[ImportRouteTarget](#importroutetarget) array_ | ImportRTs is the list of route targets to import.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN\|*:MN\|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100") |  | MaxItems: 100 <br /> |
+| `exportRTs` _[ExportRouteTarget](#exportroutetarget) array_ | ExportRTs is the list of route targets to export.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100", "192.0.2.1:100") |  | MaxItems: 100 <br /> |
+| `advertisePrefixes` _string array_ | AdvertisePrefixes controls which prefixes to advertise as EVPN type-5 routes.<br />- "unicast": advertise the unicast prefixes of the router. |  | Enum: [unicast] <br />MaxItems: 1 <br />MinItems: 1 <br />Required: \{\} <br /> |
+
+
 #### LocalPrefPrefixes
 
 
@@ -398,10 +492,11 @@ _Appears in:_
 | `ebgpMultiHop` _boolean_ | EBGPMultiHop indicates if the BGPPeer is multi-hops away. |  |  |
 | `bfdProfile` _string_ | BFDProfile is the name of the BFD Profile to be used for the BFD session associated<br />to the BGP session. If not set, the BFD session won't be set up. |  |  |
 | `enableGracefulRestart` _boolean_ | EnableGracefulRestart allows BGP peer to continue to forward data packets along<br />known routes while the routing protocol information is being restored. If<br />the session is already established, the configuration will have effect<br />after reconnecting to the peer |  |  |
-| `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor<br />and the associated properties. |  |  |
-| `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  |  |
-| `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br /><br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false |  |
+| `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor<br />and the associated properties. Only applies to IPv4 and IPv6 unicast address families. |  |  |
+| `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor.<br />Only applies to IPv4 and IPv6 unicast address families. |  |  |
+| `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br />Deprecated: DisableMP is deprecated in favor of DualStackAddressFamily. | false |  |
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false |  |
+| `addressFamilies` _string array_ | AddressFamilies specifies which address families to activate this neighbor for.<br />Supported values: "unicast" (IPv4/IPv6 unicast based on neighbor IP), "evpn" (L2VPN EVPN).<br />Defaults to "unicast" when not specified. | ["unicast"] | Enum: [unicast evpn] <br />MaxItems: 2 <br /> |
 
 
 #### PrefixSelector
@@ -428,7 +523,6 @@ _Appears in:_
 
 RawConfig is a snippet of raw frr configuration that gets appended to the
 rendered configuration.
-
 
 WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
 It should not be used in production environments. This feature is provided as-is without any
@@ -461,6 +555,21 @@ _Appears in:_
 | `allowed` _[AllowedInPrefixes](#allowedinprefixes)_ | Allowed is the list of prefixes allowed to be received from<br />this neighbor. |  |  |
 
 
+#### RouteDistinguisher
+
+_Underlying type:_ _string_
+
+RouteDistinguisher defines an 8-byte BGP identifier.
+
+
+
+_Appears in:_
+- [L2VNI](#l2vni)
+- [L3VNI](#l3vni)
+- [VNI](#vni)
+
+
+
 #### Router
 
 
@@ -480,6 +589,7 @@ _Appears in:_
 | `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  |  |
 | `prefixes` _string array_ | Prefixes is the list of prefixes we want to advertise from this router instance. |  |  |
 | `imports` _[Import](#import) array_ | Imports is the list of imported VRFs we want for this router / vrf. |  |  |
+| `evpn` _[EVPNConfig](#evpnconfig)_ | EVPN specific configuration for the router. |  |  |
 
 
 #### SecretReference
@@ -498,5 +608,43 @@ _Appears in:_
 | --- | --- | --- | --- |
 | `name` _string_ | name is unique within a namespace to reference a secret resource. |  |  |
 | `namespace` _string_ | namespace defines the space within which the secret name must be unique. |  |  |
+
+
+#### VNI
+
+
+
+VNI contains common fields for all VNI types.
+
+
+
+_Appears in:_
+- [L2VNI](#l2vni)
+- [L3VNI](#l3vni)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `vni` _integer_ | VNI is the VXLAN Network Identifier (1-16777215). |  | Maximum: 1.6777215e+07 <br />Minimum: 1 <br />Required: \{\} <br /> |
+| `rd` _[RouteDistinguisher](#routedistinguisher)_ | RD is the route distinguisher for this VNI.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100") |  |  |
+| `importRTs` _[ImportRouteTarget](#importroutetarget) array_ | ImportRTs is the list of route targets to import.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN\|*:MN\|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100") |  | MaxItems: 100 <br /> |
+| `exportRTs` _[ExportRouteTarget](#exportroutetarget) array_ | ExportRTs is the list of route targets to export.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100", "192.0.2.1:100") |  | MaxItems: 100 <br /> |
+
+
+#### VNIAdvertisement
+
+_Underlying type:_ _string_
+
+VNIAdvertisement defines how VNIs are advertised in EVPN.
+
+_Validation:_
+- Enum: [Disabled All]
+
+_Appears in:_
+- [EVPNConfig](#evpnconfig)
+
+| Field | Description |
+| --- | --- |
+| `Disabled` | VNIAdvertisementDisabled disables VNI advertisement.<br /> |
+| `All` | VNIAdvertisementAll enables advertisement of all VNIs.<br /> |
 
 
