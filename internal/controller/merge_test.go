@@ -1096,11 +1096,155 @@ func TestMergeNeighbors(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "BFDProfile, one empty, the other specifies a value",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+					},
+					Incoming: frr.AllowedIn{
+						All:        false,
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+		},
+		{
+			name: "BFDProfile, one specifies the value, the other is empty",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+					},
+					Incoming: frr.AllowedIn{
+						All:        false,
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+		},
+		{
+			name: "BFDProfile, both specify the same value",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+					},
+					Incoming: frr.AllowedIn{
+						All:        false,
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+		},
+		{
+			name: "BFDProfile, both specify different values",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value1",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:   ipfamily.IPv4,
+					Name:       "65040@192.0.1.20",
+					ASN:        "65040",
+					Addr:       "192.0.1.20",
+					BFDProfile: "value2",
+				},
+			},
+			err: fmt.Errorf("got multiple bfd profiles specified for %s", "192.0.2.0"),
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			merged, err := mergeNeighbors(test.curr, test.toMerge)
+			merged, err := mergeNeighborsLists(test.curr, test.toMerge)
 			if test.err != nil && err == nil {
 				t.Fatalf("expected error, got nil")
 			}
