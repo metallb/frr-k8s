@@ -33,7 +33,7 @@ const (
 	pollingInterval = 1 * time.Second
 )
 
-var _ = ginkgo.Describe("Logging", func() {
+var _ = ginkgo.Describe("Logging", ginkgo.Serial, func() {
 	var cs clientset.Interface
 	var updater *config.Updater
 	var reporter *k8sreporter.KubernetesReporter
@@ -91,10 +91,9 @@ var _ = ginkgo.Describe("Logging", func() {
 				}
 				err := updater.UpdateFRRK8sConfiguration(operatorConfig)
 				Expect(err).NotTo(HaveOccurred())
-				sleepForMetav1Granularity()
-				beforeUpdateTime := metav1.Now()
+				beforeLogs := capturePodLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8SStatusCleanerContainerName)
 				createDummyNodeState(updater)
-				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8sDefaultLogLevel, beforeUpdateTime)
+				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8sDefaultLogLevel, beforeLogs)
 
 				ginkgo.By("Updating the log level to info")
 				operatorConfig = frrk8sv1beta1.FRRK8sConfiguration{
@@ -108,18 +107,16 @@ var _ = ginkgo.Describe("Logging", func() {
 				}
 				err = updater.UpdateFRRK8sConfiguration(operatorConfig)
 				Expect(err).NotTo(HaveOccurred())
-				sleepForMetav1Granularity()
-				beforeUpdateTime = metav1.Now()
+				beforeLogs = capturePodLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8SStatusCleanerContainerName)
 				createDummyNodeState(updater)
-				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, "info", beforeUpdateTime)
+				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, "info", beforeLogs)
 
 				ginkgo.By("Deleting the FRRK8sConfiguration")
 				err = updater.CleanFRRK8sConfiguration()
 				Expect(err).NotTo(HaveOccurred())
-				sleepForMetav1Granularity()
-				beforeUpdateTime = metav1.Now()
+				beforeLogs = capturePodLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8SStatusCleanerContainerName)
 				createDummyNodeState(updater)
-				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8sDefaultLogLevel, beforeUpdateTime)
+				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8sDefaultLogLevel, beforeLogs)
 
 				ginkgo.By("Creating an FRRK8sConfiguration with log level all")
 				operatorConfig = frrk8sv1beta1.FRRK8sConfiguration{
@@ -133,16 +130,15 @@ var _ = ginkgo.Describe("Logging", func() {
 				}
 				err = updater.UpdateFRRK8sConfiguration(operatorConfig)
 				Expect(err).NotTo(HaveOccurred())
-				sleepForMetav1Granularity()
-				beforeUpdateTime = metav1.Now()
+				beforeLogs = capturePodLogs(cs, frrk8sStatusCleanerPods, k8s.FRRK8SStatusCleanerContainerName)
 				createDummyNodeState(updater)
-				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, "debug", beforeUpdateTime)
+				checkStatusCleanerLogs(cs, frrk8sStatusCleanerPods, "debug", beforeLogs)
 			})
 		})
 	})
 
 	ginkgo.Context("for frr-k8s", func() {
-		ginkgo.When("no FRRK8sConfiguration is present", func() {
+		ginkgo.When("FRRConfiguration is added with no FRRK8sConfiguration present", func() {
 			ginkgo.It("logs with default log level", func() {
 				config := frrk8sv1beta1.FRRConfiguration{
 					ObjectMeta: metav1.ObjectMeta{
@@ -152,13 +148,13 @@ var _ = ginkgo.Describe("Logging", func() {
 					Spec: frrk8sv1beta1.FRRConfigurationSpec{},
 				}
 
-				sleepForMetav1Granularity()
-				beforeUpdateTime := metav1.Now()
+				beforeLogsFRR := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SContainerName)
+				beforeLogsBGP := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SStatusContainerName)
 				ginkgo.By("Creating FRRConfiguration")
 				err := updater.Update(nil, config)
 				Expect(err).NotTo(HaveOccurred())
-				checkFRRK8sLogs(cs, frrk8sPods, beforeUpdateTime, k8s.FRRK8sDefaultLogLevel)
-				checkBGPStateLogs(cs, frrk8sPods, beforeUpdateTime, k8s.FRRK8sDefaultLogLevel)
+				checkFRRK8sLogs(cs, frrk8sPods, beforeLogsFRR, k8s.FRRK8sDefaultLogLevel)
+				checkBGPStateLogs(cs, frrk8sPods, beforeLogsBGP, k8s.FRRK8sDefaultLogLevel)
 			})
 		})
 
@@ -188,20 +184,20 @@ var _ = ginkgo.Describe("Logging", func() {
 			err := updater.UpdateFRRK8sConfiguration(operatorConfig)
 			Expect(err).NotTo(HaveOccurred())
 
-			sleepForMetav1Granularity()
-			beforeUpdateTime := metav1.Now()
+			beforeLogsFRR := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SContainerName)
+			beforeLogsBGP := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SStatusContainerName)
 			ginkgo.By("Creating FRRConfiguration")
 			err = updater.Update(nil, config)
 			Expect(err).NotTo(HaveOccurred())
-			checkFRRK8sLogs(cs, frrk8sPods, beforeUpdateTime, wantLogLevel)
-			checkBGPStateLogs(cs, frrk8sPods, beforeUpdateTime, wantLogLevel)
+			checkFRRK8sLogs(cs, frrk8sPods, beforeLogsFRR, wantLogLevel)
+			checkBGPStateLogs(cs, frrk8sPods, beforeLogsBGP, wantLogLevel)
 		},
 			ginkgo.Entry("logs with default level when logLevel is unconfigured", ""),
 			ginkgo.Entry("logs with debug level when logLevel is set to debug", "debug"),
 			ginkgo.Entry("logs with info level when logLevel is set to info", "info"),
 		)
 
-		ginkgo.When("FRRK8sConfiguration is removed", func() {
+		ginkgo.When("FRRConfiguration is added after FRRK8sConfiguration was removed", func() {
 			ginkgo.It("logs with default log level", func() {
 				operatorConfig := frrk8sv1beta1.FRRK8sConfiguration{
 					ObjectMeta: metav1.ObjectMeta{
@@ -225,24 +221,24 @@ var _ = ginkgo.Describe("Logging", func() {
 				err := updater.UpdateFRRK8sConfiguration(operatorConfig)
 				Expect(err).NotTo(HaveOccurred())
 
-				sleepForMetav1Granularity()
-				beforeUpdateTime := metav1.Now()
+				beforeLogsFRR := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SContainerName)
+				beforeLogsBGP := capturePodLogs(cs, frrk8sPods, k8s.FRRK8SStatusContainerName)
 				ginkgo.By("Creating FRRConfiguration")
 				err = updater.Update(nil, config)
 				Expect(err).NotTo(HaveOccurred())
-				checkFRRK8sLogs(cs, frrk8sPods, beforeUpdateTime, "info")
-				checkBGPStateLogs(cs, frrk8sPods, beforeUpdateTime, "info")
+				checkFRRK8sLogs(cs, frrk8sPods, beforeLogsFRR, "info")
+				checkBGPStateLogs(cs, frrk8sPods, beforeLogsBGP, "info")
 
 				ginkgo.By("Removing all resources. We should be back to default log level")
 				err = updater.Clean()
 				Expect(err).NotTo(HaveOccurred())
 
-				sleepForMetav1Granularity()
-				beforeUpdateTime = metav1.Now()
+				beforeLogsFRR = capturePodLogs(cs, frrk8sPods, k8s.FRRK8SContainerName)
+				beforeLogsBGP = capturePodLogs(cs, frrk8sPods, k8s.FRRK8SStatusContainerName)
 				err = updater.Update(nil, config)
 				Expect(err).NotTo(HaveOccurred())
-				checkFRRK8sLogs(cs, frrk8sPods, beforeUpdateTime, k8s.FRRK8sDefaultLogLevel)
-				checkBGPStateLogs(cs, frrk8sPods, beforeUpdateTime, k8s.FRRK8sDefaultLogLevel)
+				checkFRRK8sLogs(cs, frrk8sPods, beforeLogsFRR, k8s.FRRK8sDefaultLogLevel)
+				checkBGPStateLogs(cs, frrk8sPods, beforeLogsBGP, k8s.FRRK8sDefaultLogLevel)
 			})
 		})
 	})
@@ -260,7 +256,7 @@ var _ = ginkgo.Describe("Logging", func() {
 				err := updater.Update(nil, config)
 				Expect(err).NotTo(HaveOccurred())
 
-				checkFRRConfigLogLevel(cs, k8s.FRRK8sDefaultLogLevel, frrk8sPods)
+				checkFRRConfigLogLevel(k8s.FRRK8sDefaultLogLevel, frrk8sPods)
 			})
 		})
 
@@ -282,7 +278,7 @@ var _ = ginkgo.Describe("Logging", func() {
 			err := updater.UpdateFRRK8sConfiguration(config)
 			Expect(err).NotTo(HaveOccurred())
 
-			checkFRRConfigLogLevel(cs, wantLogLevel, frrk8sPods)
+			checkFRRConfigLogLevel(wantLogLevel, frrk8sPods)
 		},
 			ginkgo.Entry("logs with default level when logLevel is unconfigured", ""),
 			ginkgo.Entry("logs with debug level when logLevel is set to debug", "debug"),
@@ -291,11 +287,36 @@ var _ = ginkgo.Describe("Logging", func() {
 	})
 })
 
-// sleepForMetav1Granularity waits to avoid log timestamp pollution due to metav1.Now() granularity.
-// We need to wait 1 second to avoid pollution of logs, as the granularity of metav1.Now() is 1 full second,
-// see https://github.com/kubernetes/kubernetes/issues/124200.
-func sleepForMetav1Granularity() {
-	time.Sleep(1 * time.Second)
+// getLogDiff returns the difference between beforeLogs and afterLogs.
+// It returns the portion of afterLogs that comes after the end of beforeLogs.
+func getLogDiff(beforeLogs, afterLogs string) string {
+	if len(beforeLogs) >= len(afterLogs) {
+		return ""
+	}
+	// If beforeLogs is a prefix of afterLogs, return the new content.
+	if len(beforeLogs) > 0 && afterLogs[:len(beforeLogs)] == beforeLogs {
+		return afterLogs[len(beforeLogs):]
+	}
+	// Otherwise return all of afterLogs (safer fallback).
+	return afterLogs
+}
+
+// capturePodLogs captures logs from all specified pods and containers.
+// Returns a map with key format: "namespace/podname/containername".
+//
+// This is used to work around metav1.Now() timestamp granularity issues when filtering logs.
+// Instead of relying on timestamps (which have 1-second granularity per
+// https://github.com/kubernetes/kubernetes/issues/124200), we capture the full logs before
+// an action, then capture them again after, and diff the two to find only new log entries.
+func capturePodLogs(cs clientset.Interface, pods []*corev1.Pod, containerName string) map[string]string {
+	logs := make(map[string]string)
+	for _, pod := range pods {
+		containerKey := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, containerName)
+		podLogs, err := e2ek8s.PodLogs(cs, pod, corev1.PodLogOptions{Container: containerName})
+		Expect(err).NotTo(HaveOccurred())
+		logs[containerKey] = podLogs
+	}
+	return logs
 }
 
 // logLevelToFRR converts the provided level to a valid FRR log level. Returns "" for unknown levels.
@@ -319,7 +340,7 @@ func logLevelToFRR(level string) string {
 }
 
 // checkFRRK8sLogs verifies FRRConfigurationReconciler logs match the expected log level.
-func checkFRRK8sLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeUpdateTime metav1.Time, logLevel string) {
+func checkFRRK8sLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeLogs map[string]string, logLevel string) {
 	ginkgo.By("Checking FRR K8s Logs")
 	var expected types.GomegaMatcher
 	switch logLevel {
@@ -337,18 +358,18 @@ func checkFRRK8sLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeUpd
 		ginkgo.Fail(fmt.Sprintf("Invalid log level provided to checkFRRK8sLogs, %q not supported", logLevel))
 	}
 	for _, pod := range frrk8sPods {
+		containerKey := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SContainerName)
 		Eventually(func() string {
-			logs, err := e2ek8s.PodLogsSinceTime(cs, pod, k8s.FRRK8SContainerName, &beforeUpdateTime)
+			afterLogs, err := e2ek8s.PodLogs(cs, pod, corev1.PodLogOptions{Container: k8s.FRRK8SContainerName})
 			Expect(err).NotTo(HaveOccurred())
 
-			return logs
-		}, pollingTimeout, pollingInterval).Should(expected,
-			fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SContainerName))
+			return getLogDiff(beforeLogs[containerKey], afterLogs)
+		}, pollingTimeout, pollingInterval).Should(expected, containerKey)
 	}
 }
 
 // checkBGPStateLogs verifies BGPSessionState controller logs match the expected log level.
-func checkBGPStateLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeUpdateTime metav1.Time, logLevel string) {
+func checkBGPStateLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeLogs map[string]string, logLevel string) {
 	ginkgo.By("Checking BGP State Logs")
 	var assertion func(actual any, intervals ...any) types.AsyncAssertion
 	var expected types.GomegaMatcher
@@ -363,18 +384,18 @@ func checkBGPStateLogs(cs clientset.Interface, frrk8sPods []*corev1.Pod, beforeU
 		ginkgo.Fail(fmt.Sprintf("Invalid log level provided to checkBGPStateLogs, %q not supported", logLevel))
 	}
 	for _, pod := range frrk8sPods {
+		containerKey := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SStatusContainerName)
 		assertion(func() string {
-			logs, err := e2ek8s.PodLogsSinceTime(cs, pod, k8s.FRRK8SStatusContainerName, &beforeUpdateTime)
+			afterLogs, err := e2ek8s.PodLogs(cs, pod, corev1.PodLogOptions{Container: k8s.FRRK8SStatusContainerName})
 			Expect(err).NotTo(HaveOccurred())
-			return logs
-		}, pollingTimeout, pollingInterval).Should(expected,
-			fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SStatusContainerName))
+			return getLogDiff(beforeLogs[containerKey], afterLogs)
+		}, pollingTimeout, pollingInterval).Should(expected, containerKey)
 	}
 }
 
 // checkStatusCleanerLogs verifies NodeStateCleaner logs match the expected log level.
 func checkStatusCleanerLogs(cs clientset.Interface, frrk8sStatusCleanerPods []*corev1.Pod, logLevel string,
-	beforeUpdateTime metav1.Time) {
+	beforeLogs map[string]string) {
 	ginkgo.By("Checking Status Cleaner logs")
 	var assertion func(actual any, intervals ...any) types.AsyncAssertion
 	var expected types.GomegaMatcher
@@ -389,13 +410,13 @@ func checkStatusCleanerLogs(cs clientset.Interface, frrk8sStatusCleanerPods []*c
 		ginkgo.Fail(fmt.Sprintf("Invalid log level provided to checkStatusCleanerLogs, %q not supported", logLevel))
 	}
 	for _, pod := range frrk8sStatusCleanerPods {
+		containerKey := fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SStatusCleanerContainerName)
 		assertion(func() string {
-			logs, err := e2ek8s.PodLogsSinceTime(cs, pod, k8s.FRRK8SStatusCleanerContainerName, &beforeUpdateTime)
+			afterLogs, err := e2ek8s.PodLogs(cs, pod, corev1.PodLogOptions{Container: k8s.FRRK8SStatusCleanerContainerName})
 			Expect(err).NotTo(HaveOccurred())
 
-			return logs
-		}, pollingTimeout, pollingInterval).Should(expected,
-			fmt.Sprintf("%s/%s/%s", pod.Namespace, pod.Name, k8s.FRRK8SStatusCleanerContainerName))
+			return getLogDiff(beforeLogs[containerKey], afterLogs)
+		}, pollingTimeout, pollingInterval).Should(expected, containerKey)
 	}
 }
 
@@ -419,7 +440,7 @@ func getExpectedLogString(logLevel string) string {
 }
 
 // checkFRRConfigLogLevel verifies the FRR daemon configuration contains the expected log level setting.
-func checkFRRConfigLogLevel(cs clientset.Interface, logLevel string, frrk8sPods []*corev1.Pod) {
+func checkFRRConfigLogLevel(logLevel string, frrk8sPods []*corev1.Pod) {
 	expectedLogString := getExpectedLogString(logLevel)
 	ginkgo.By(fmt.Sprintf("Comparing to log level %q, expecting to find string %q", logLevel, expectedLogString))
 	for _, pod := range frrk8sPods {
