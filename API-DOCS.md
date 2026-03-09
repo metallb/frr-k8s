@@ -30,8 +30,8 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `allowed` _[AllowedOutPrefixes](#allowedoutprefixes)_ | Allowed is is the list of prefixes allowed to be propagated to<br />this neighbor. They must match the prefixes defined in the router. |  |  |
-| `withLocalPref` _[LocalPrefPrefixes](#localprefprefixes) array_ | PrefixesWithLocalPref is a list of prefixes that are associated to a local<br />preference when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  |  |
-| `withCommunity` _[CommunityPrefixes](#communityprefixes) array_ | PrefixesWithCommunity is a list of prefixes that are associated to a<br />bgp community when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  |  |
+| `withLocalPref` _[LocalPrefPrefixes](#localprefprefixes) array_ | PrefixesWithLocalPref is a list of prefixes that are associated to a local<br />preference when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  | Optional: \{\} <br /> |
+| `withCommunity` _[CommunityPrefixes](#communityprefixes) array_ | PrefixesWithCommunity is a list of prefixes that are associated to a<br />bgp community when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  | Optional: \{\} <br /> |
 
 
 #### AllowedInPrefixes
@@ -81,13 +81,13 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `name` _string_ | The name of the BFD Profile to be referenced in other parts<br />of the configuration. |  |  |
-| `receiveInterval` _integer_ | The minimum interval that this system is capable of<br />receiving control packets in milliseconds.<br />Defaults to 300ms. |  | Maximum: 60000 <br />Minimum: 10 <br /> |
-| `transmitInterval` _integer_ | The minimum transmission interval (less jitter)<br />that this system wants to use to send BFD control packets in<br />milliseconds. Defaults to 300ms |  | Maximum: 60000 <br />Minimum: 10 <br /> |
-| `detectMultiplier` _integer_ | Configures the detection multiplier to determine<br />packet loss. The remote transmission interval will be multiplied<br />by this value to determine the connection loss detection timer. |  | Maximum: 255 <br />Minimum: 2 <br /> |
-| `echoInterval` _integer_ | Configures the minimal echo receive transmission<br />interval that this system is capable of handling in milliseconds.<br />Defaults to 50ms |  | Maximum: 60000 <br />Minimum: 10 <br /> |
-| `echoMode` _boolean_ | Enables or disables the echo transmission mode.<br />This mode is disabled by default, and not supported on multi<br />hops setups. |  |  |
-| `passiveMode` _boolean_ | Mark session as passive: a passive session will not<br />attempt to start the connection and will wait for control packets<br />from peer before it begins replying. |  |  |
-| `minimumTtl` _integer_ | For multi hop sessions only: configure the minimum<br />expected TTL for an incoming BFD control packet. |  | Maximum: 254 <br />Minimum: 1 <br /> |
+| `receiveInterval` _integer_ | The minimum interval that this system is capable of<br />receiving control packets in milliseconds.<br />Defaults to 300ms. |  | Maximum: 60000 <br />Minimum: 10 <br />Optional: \{\} <br /> |
+| `transmitInterval` _integer_ | The minimum transmission interval (less jitter)<br />that this system wants to use to send BFD control packets in<br />milliseconds. Defaults to 300ms |  | Maximum: 60000 <br />Minimum: 10 <br />Optional: \{\} <br /> |
+| `detectMultiplier` _integer_ | Configures the detection multiplier to determine<br />packet loss. The remote transmission interval will be multiplied<br />by this value to determine the connection loss detection timer. |  | Maximum: 255 <br />Minimum: 2 <br />Optional: \{\} <br /> |
+| `echoInterval` _integer_ | Configures the minimal echo receive transmission<br />interval that this system is capable of handling in milliseconds.<br />Defaults to 50ms |  | Maximum: 60000 <br />Minimum: 10 <br />Optional: \{\} <br /> |
+| `echoMode` _boolean_ | Enables or disables the echo transmission mode.<br />This mode is disabled by default, and not supported on multi<br />hops setups. |  | Optional: \{\} <br /> |
+| `passiveMode` _boolean_ | Mark session as passive: a passive session will not<br />attempt to start the connection and will wait for control packets<br />from peer before it begins replying. |  | Optional: \{\} <br /> |
+| `minimumTtl` _integer_ | For multi hop sessions only: configure the minimum<br />expected TTL for an incoming BFD control packet. |  | Maximum: 254 <br />Minimum: 1 <br />Optional: \{\} <br /> |
 
 
 #### BGPConfig
@@ -103,8 +103,8 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `routers` _[Router](#router) array_ | Routers is the list of routers we want FRR to configure (one per VRF). |  |  |
-| `bfdProfiles` _[BFDProfile](#bfdprofile) array_ | BFDProfiles is the list of bfd profiles to be used when configuring the neighbors. |  |  |
+| `routers` _[Router](#router) array_ | Routers is the list of routers we want FRR to configure (one per VRF). |  | Optional: \{\} <br /> |
+| `bfdProfiles` _[BFDProfile](#bfdprofile) array_ | BFDProfiles is the list of bfd profiles to be used when configuring the neighbors. |  | Optional: \{\} <br /> |
 
 
 #### BGPSessionState
@@ -187,6 +187,10 @@ _Underlying type:_ _string_
 _Appears in:_
 - [Neighbor](#neighbor)
 
+| Field | Description |
+| --- | --- |
+| `internal` |  |
+| `external` |  |
 
 
 #### FRRConfiguration
@@ -221,9 +225,9 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `bgp` _[BGPConfig](#bgpconfig)_ | BGP is the configuration related to the BGP protocol. |  |  |
-| `raw` _[RawConfig](#rawconfig)_ | Raw is a snippet of raw frr configuration that gets appended to the<br />one rendered translating the type safe API. |  |  |
-| `nodeSelector` _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#labelselector-v1-meta)_ | NodeSelector limits the nodes that will attempt to apply this config.<br />When specified, the configuration will be considered only on nodes<br />whose labels match the specified selectors.<br />When it is not specified all nodes will attempt to apply this config. |  |  |
+| `bgp` _[BGPConfig](#bgpconfig)_ | BGP is the configuration related to the BGP protocol. |  | Optional: \{\} <br /> |
+| `raw` _[RawConfig](#rawconfig)_ | Raw is a snippet of raw frr configuration that gets appended to the<br />one rendered translating the type safe API. |  | Optional: \{\} <br /> |
+| `nodeSelector` _[LabelSelector](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#labelselector-v1-meta)_ | NodeSelector limits the nodes that will attempt to apply this config.<br />When specified, the configuration will be considered only on nodes<br />whose labels match the specified selectors.<br />When it is not specified all nodes will attempt to apply this config. |  | Optional: \{\} <br /> |
 
 
 #### FRRConfigurationStatus
@@ -272,7 +276,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `logLevel` _string_ | LogLevel sets the logging verbosity for the FRR-K8s components at runtime.<br />When configured, this value overrides the defaults established by the --log-level CLI flag.<br />Valid values are: all, debug, info, warn, error, none. |  | Enum: [all debug info warn error none] <br /> |
+| `logLevel` _string_ | LogLevel sets the logging verbosity for the FRR-K8s components at runtime.<br />When configured, this value overrides the defaults established by the --log-level CLI flag.<br />Valid values are: all, debug, info, warn, error, none. |  | Enum: [all debug info warn error none] <br />Optional: \{\} <br /> |
 
 
 #### FRRK8sConfigurationStatus
@@ -351,7 +355,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `vrf` _string_ | Vrf is the vrf we want to import from |  |  |
+| `vrf` _string_ | Vrf is the vrf we want to import from |  | Optional: \{\} <br /> |
 
 
 #### LocalPrefPrefixes
@@ -384,24 +388,24 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `asn` _integer_ | ASN is the AS number to use for the local end of the session.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
-| `dynamicASN` _[DynamicASNMode](#dynamicasnmode)_ | DynamicASN detects the AS number to use for the local end of the session<br />without explicitly setting it via the ASN field. Limited to:<br />internal - if the neighbor's ASN is different than the router's the connection is denied.<br />external - if the neighbor's ASN is the same as the router's the connection is denied.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Enum: [internal external] <br /> |
-| `sourceaddress` _string_ | SourceAddress is the IPv4 or IPv6 source address to use for the BGP<br />session to this neighbour, may be specified as either an IP address<br />directly or as an interface name |  |  |
-| `address` _string_ | Address is the IP address to establish the session with. |  |  |
-| `interface` _string_ | Interface is the node interface over which the unnumbered BGP peering will<br />be established. No API validation takes place as that string value<br />represents an interface name on the host and if user provides an invalid<br />value, only the actual BGP session will not be established.<br />Address and Interface are mutually exclusive and one of them must be specified.<br />Note: when enabling unnumbered, the neighbor will be enabled for both<br />IPv4 and IPv6 address families. |  |  |
-| `port` _integer_ | Port is the port to dial when establishing the session.<br />Defaults to 179. |  | Maximum: 16384 <br />Minimum: 0 <br /> |
-| `password` _string_ | Password to be used for establishing the BGP session.<br />Password and PasswordSecret are mutually exclusive. |  |  |
-| `passwordSecret` _[SecretReference](#secretreference)_ | PasswordSecret is name of the authentication secret for the neighbor.<br />the secret must be of type "kubernetes.io/basic-auth", and created in the<br />same namespace as the frr-k8s daemon. The password is stored in the<br />secret as the key "password".<br />Password and PasswordSecret are mutually exclusive. |  |  |
-| `holdTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | HoldTime is the requested BGP hold time, per RFC4271.<br />Defaults to 180s. |  |  |
-| `keepaliveTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | KeepaliveTime is the requested BGP keepalive time, per RFC4271.<br />Defaults to 60s. |  |  |
-| `connectTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | Requested BGP connect time, controls how long BGP waits between connection attempts to a neighbor. |  |  |
-| `ebgpMultiHop` _boolean_ | EBGPMultiHop indicates if the BGPPeer is multi-hops away. |  |  |
-| `bfdProfile` _string_ | BFDProfile is the name of the BFD Profile to be used for the BFD session associated<br />to the BGP session. If not set, the BFD session won't be set up. |  |  |
-| `enableGracefulRestart` _boolean_ | EnableGracefulRestart allows BGP peer to continue to forward data packets along<br />known routes while the routing protocol information is being restored. If<br />the session is already established, the configuration will have effect<br />after reconnecting to the peer |  |  |
-| `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor<br />and the associated properties. |  |  |
-| `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  |  |
-| `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br /><br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false |  |
-| `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false |  |
+| `asn` _integer_ | ASN is the AS number to use for the local end of the session.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br />Optional: \{\} <br /> |
+| `dynamicASN` _[DynamicASNMode](#dynamicasnmode)_ | DynamicASN detects the AS number to use for the local end of the session<br />without explicitly setting it via the ASN field. Limited to:<br />internal - if the neighbor's ASN is different than the router's the connection is denied.<br />external - if the neighbor's ASN is the same as the router's the connection is denied.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Enum: [internal external] <br />Optional: \{\} <br /> |
+| `sourceaddress` _string_ | SourceAddress is the IPv4 or IPv6 source address to use for the BGP<br />session to this neighbour, may be specified as either an IP address<br />directly or as an interface name |  | Optional: \{\} <br /> |
+| `address` _string_ | Address is the IP address to establish the session with. |  | Optional: \{\} <br /> |
+| `interface` _string_ | Interface is the node interface over which the unnumbered BGP peering will<br />be established. No API validation takes place as that string value<br />represents an interface name on the host and if user provides an invalid<br />value, only the actual BGP session will not be established.<br />Address and Interface are mutually exclusive and one of them must be specified.<br />Note: when enabling unnumbered, the neighbor will be enabled for both<br />IPv4 and IPv6 address families. |  | Optional: \{\} <br /> |
+| `port` _integer_ | Port is the port to dial when establishing the session.<br />Defaults to 179. |  | Maximum: 16384 <br />Minimum: 0 <br />Optional: \{\} <br /> |
+| `password` _string_ | Password to be used for establishing the BGP session.<br />Password and PasswordSecret are mutually exclusive. |  | Optional: \{\} <br /> |
+| `passwordSecret` _[SecretReference](#secretreference)_ | PasswordSecret is name of the authentication secret for the neighbor.<br />the secret must be of type "kubernetes.io/basic-auth", and created in the<br />same namespace as the frr-k8s daemon. The password is stored in the<br />secret as the key "password".<br />Password and PasswordSecret are mutually exclusive. |  | Optional: \{\} <br /> |
+| `holdTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | HoldTime is the requested BGP hold time, per RFC4271.<br />Defaults to 180s. |  | Optional: \{\} <br /> |
+| `keepaliveTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | KeepaliveTime is the requested BGP keepalive time, per RFC4271.<br />Defaults to 60s. |  | Optional: \{\} <br /> |
+| `connectTime` _[Duration](https://kubernetes.io/docs/reference/generated/kubernetes-api/v/#duration-v1-meta)_ | Requested BGP connect time, controls how long BGP waits between connection attempts to a neighbor. |  | Optional: \{\} <br /> |
+| `ebgpMultiHop` _boolean_ | EBGPMultiHop indicates if the BGPPeer is multi-hops away. |  | Optional: \{\} <br /> |
+| `bfdProfile` _string_ | BFDProfile is the name of the BFD Profile to be used for the BFD session associated<br />to the BGP session. If not set, the BFD session won't be set up. |  | Optional: \{\} <br /> |
+| `enableGracefulRestart` _boolean_ | EnableGracefulRestart allows BGP peer to continue to forward data packets along<br />known routes while the routing protocol information is being restored. If<br />the session is already established, the configuration will have effect<br />after reconnecting to the peer |  | Optional: \{\} <br /> |
+| `toAdvertise` _[Advertise](#advertise)_ | ToAdvertise represents the list of prefixes to advertise to the given neighbor<br />and the associated properties. |  | Optional: \{\} <br /> |
+| `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  | Optional: \{\} <br /> |
+| `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false | Optional: \{\} <br /> |
+| `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false | Optional: \{\} <br /> |
 
 
 #### PrefixSelector
@@ -428,7 +432,6 @@ _Appears in:_
 
 RawConfig is a snippet of raw frr configuration that gets appended to the
 rendered configuration.
-
 
 WARNING: The RawConfig feature is UNSUPPORTED and intended ONLY FOR EXPERIMENTATION.
 It should not be used in production environments. This feature is provided as-is without any
@@ -458,7 +461,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `allowed` _[AllowedInPrefixes](#allowedinprefixes)_ | Allowed is the list of prefixes allowed to be received from<br />this neighbor. |  |  |
+| `allowed` _[AllowedInPrefixes](#allowedinprefixes)_ | Allowed is the list of prefixes allowed to be received from<br />this neighbor. |  | Optional: \{\} <br /> |
 
 
 #### Router
@@ -475,11 +478,11 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `asn` _integer_ | ASN is the AS number to use for the local end of the session. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
-| `id` _string_ | ID is the BGP router ID |  |  |
-| `vrf` _string_ | VRF is the host vrf used to establish sessions from this router. |  |  |
-| `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  |  |
-| `prefixes` _string array_ | Prefixes is the list of prefixes we want to advertise from this router instance. |  |  |
-| `imports` _[Import](#import) array_ | Imports is the list of imported VRFs we want for this router / vrf. |  |  |
+| `id` _string_ | ID is the BGP router ID |  | Optional: \{\} <br /> |
+| `vrf` _string_ | VRF is the host vrf used to establish sessions from this router. |  | Optional: \{\} <br /> |
+| `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  | Optional: \{\} <br /> |
+| `prefixes` _string array_ | Prefixes is the list of prefixes we want to advertise from this router instance. |  | Optional: \{\} <br /> |
+| `imports` _[Import](#import) array_ | Imports is the list of imported VRFs we want for this router / vrf. |  | Optional: \{\} <br /> |
 
 
 #### SecretReference
@@ -496,7 +499,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `name` _string_ | name is unique within a namespace to reference a secret resource. |  |  |
-| `namespace` _string_ | namespace defines the space within which the secret name must be unique. |  |  |
+| `name` _string_ | name is unique within a namespace to reference a secret resource. |  | Optional: \{\} <br /> |
+| `namespace` _string_ | namespace defines the space within which the secret name must be unique. |  | Optional: \{\} <br /> |
 
 

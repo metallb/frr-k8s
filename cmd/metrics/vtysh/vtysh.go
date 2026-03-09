@@ -11,7 +11,7 @@ import (
 type Cli func(args string) (string, error)
 
 func Run(args string) (string, error) {
-	out, err := exec.Command("/usr/bin/vtysh", "-c", args).CombinedOutput()
+	out, err := exec.Command("/usr/bin/vtysh", "-c", args).CombinedOutput() //#nosec G204 -- args are hardcoded vtysh commands from within this package
 	return string(out), err
 }
 

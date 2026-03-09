@@ -32,59 +32,7 @@ rules:
   - frrk8s.metallb.io
   resources:
   - bgpsessionstates
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
-  - bgpsessionstates/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
   - frrconfigurations
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
-  - frrconfigurations/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
-  - frrconfigurations/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
-  - frrk8sconfigurations
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - frrk8s.metallb.io
-  resources:
   - frrnodestates
   verbs:
   - create
@@ -97,8 +45,24 @@ rules:
 - apiGroups:
   - frrk8s.metallb.io
   resources:
+  - bgpsessionstates/status
+  - frrconfigurations/status
   - frrnodestates/status
   verbs:
   - get
   - patch
   - update
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frrconfigurations/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - frrk8s.metallb.io
+  resources:
+  - frrk8sconfigurations
+  verbs:
+  - get
+  - list
+  - watch
