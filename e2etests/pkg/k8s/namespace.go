@@ -4,7 +4,7 @@ package k8s
 
 var (
 	FRRK8sNamespace       = "frr-k8s-system"
-	FRRK8sDefaultLogLevel = "default"
+	FRRK8sDefaultLogLevel = "debug"
 )
 
 const (
