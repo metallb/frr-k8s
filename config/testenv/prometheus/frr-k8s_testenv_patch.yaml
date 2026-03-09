@@ -9,7 +9,7 @@ spec:
       containers:
       - name: controller
         args:
-        - "--metrics-bind-address=127.0.0.1:7572"
+        - "--metrics-bind-address=0.0.0.0:9140"
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--log-level=debug"

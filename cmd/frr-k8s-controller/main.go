@@ -18,6 +18,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
@@ -37,14 +38,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/tlsconfig"
 	"github.com/metallb/frr-k8s/internal/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -62,25 +66,35 @@ func init() {
 }
 
 type params struct {
-	metricsAddr      string
-	logLevel         string
-	nodeName         string
-	namespace        string
-	podName          string
-	pprofAddr        string
-	alwaysBlockCIDRs string
+	metricsAddr         string
+	metricsCertDir      string
+	healthProbeAddr     string
+	logLevel            string
+	nodeName            string
+	namespace           string
+	podName             string
+	pprofAddr           string
+	alwaysBlockCIDRs    string
+	tlsCipherSuites     string
+	tlsCurvePreferences string
+	tlsMinVersion       string
 }
 
 func main() {
 	params := params{}
 
-	flag.StringVar(&params.metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
+	flag.StringVar(&params.metricsAddr, "metrics-bind-address", "0.0.0.0:9140", "The address the metric endpoint binds to.")
+	flag.StringVar(&params.metricsCertDir, "metrics-cert-dir", "", "Directory containing tls.crt and tls.key for the metrics server. If empty, auto-generates self-signed certs.")
+	flag.StringVar(&params.healthProbeAddr, "health-probe-bind-address", "127.0.0.1:7572", "The address the health probe endpoint binds to.")
 	flag.StringVar(&params.logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
 	flag.StringVar(&params.nodeName, "node-name", "", "The node this daemon is running on.")
 	flag.StringVar(&params.namespace, "namespace", "", "The namespace this daemon is deployed in")
 	flag.StringVar(&params.podName, "pod-name", "", "The name of the pod this process is running in")
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&params.alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
+	flag.StringVar(&params.tlsCipherSuites, "tls-cipher-suites", "", "Comma-separated list of TLS cipher suites. If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsCurvePreferences, "tls-curve-preferences", "", "Comma-separated list of TLS curve preferences. If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsMinVersion, "tls-min-version", "", "Minimum TLS version (VersionTLS12 or VersionTLS13). If empty, defaults to VersionTLS13.")
 
 	opts := zap.Options{
 		Development: true,
@@ -102,13 +116,19 @@ func main() {
 	}
 	logging.GetLogger().SetLogLevel(defaultLogLevel)
 
+	tlsOpt, err := tlsconfig.TLSOptFor(params.tlsCipherSuites, params.tlsCurvePreferences, params.tlsMinVersion)
+	if err != nil {
+		setupLog.Error(err, "failed to parse TLS flags")
+		os.Exit(1)
+	}
+
 	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
 	}
 
 	options := ctrl.Options{
 		Scheme:                 scheme,
-		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
+		HealthProbeBindAddress: params.healthProbeAddr,
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}:                     namespaceSelector,
@@ -118,7 +138,11 @@ func main() {
 			},
 		},
 		Metrics: metricsserver.Options{
-			BindAddress: params.metricsAddr,
+			BindAddress:    params.metricsAddr,
+			SecureServing:  true,
+			CertDir:        params.metricsCertDir,
+			TLSOpts:        []func(*tls.Config){tlsOpt},
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		},
 		PprofBindAddress: params.pprofAddr,
 	}
@@ -126,6 +150,15 @@ func main() {
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), options)
 	if err != nil {
 		setupLog.Error(err, "unable to start manager")
+		os.Exit(1)
+	}
+
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
 		os.Exit(1)
 	}
 

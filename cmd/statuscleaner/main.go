@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"os"
@@ -44,6 +45,7 @@ import (
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/tlsconfig"
 	"github.com/metallb/frr-k8s/internal/version"
 	"github.com/metallb/frr-k8s/internal/webhooks"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
@@ -72,6 +74,9 @@ type params struct {
 	pprofAddr                     string
 	webhookPort                   int
 	frrk8sSelector                string
+	tlsCipherSuites               string
+	tlsCurvePreferences           string
+	tlsMinVersion                 string
 }
 
 func main() {
@@ -86,6 +91,9 @@ func main() {
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.IntVar(&params.webhookPort, "webhook-port", 19443, "the port we listen the webhook calls on")
 	flag.StringVar(&params.frrk8sSelector, "frrk8s-selector", "app.kubernetes.io/component=frr-k8s", "Label selector for FRR-K8s pods in the form key=value")
+	flag.StringVar(&params.tlsCipherSuites, "tls-cipher-suites", "", "Comma-separated list of TLS cipher suites. If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsCurvePreferences, "tls-curve-preferences", "", "Comma-separated list of TLS curve preferences. If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsMinVersion, "tls-min-version", "", "Minimum TLS version (VersionTLS12 or VersionTLS13). If empty, defaults to VersionTLS13.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -106,6 +114,12 @@ func main() {
 	}
 	logging.GetLogger().SetLogLevel(defaultLogLevel)
 
+	tlsOpt, err := tlsconfig.TLSOptFor(params.tlsCipherSuites, params.tlsCurvePreferences, params.tlsMinVersion)
+	if err != nil {
+		setupLog.Error(err, "failed to parse TLS flags")
+		os.Exit(1)
+	}
+
 	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
 	}
@@ -122,7 +136,8 @@ func main() {
 		},
 		WebhookServer: webhook.NewServer(
 			webhook.Options{
-				Port: params.webhookPort,
+				Port:    params.webhookPort,
+				TLSOpts: []func(*tls.Config){tlsOpt},
 			},
 		),
 		Metrics: metricsserver.Options{

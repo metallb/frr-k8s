@@ -5,6 +5,15 @@
 nameOverride: ""
 fullnameOverride: ""
 
+tls:
+  cipherSuites: ""
+  curvePreferences: ""
+  minVersion: ""
+  # the name of the secret to be mounted in the pods to provide TLS
+  # certificates for metrics endpoints. If not present, a self-signed
+  # certificate is auto-generated.
+  metricsTLSSecret: ""
+
 rbac:
   # create specifies whether to install and use RBAC rules.
   create: true
@@ -20,20 +29,8 @@ prometheus:
   # can be left at false.
   scrapeAnnotations: false
 
-  # bind addr frr-k8s will use for metrics
-  metricsBindAddress: 127.0.0.1
-
-  # port frr-k8s will listen on for metrics
-  metricsPort: 7572
-
-  # if set, enables rbac proxy on frr-k8s to expose
-  # the metrics via tls.
+  # port the controller serves secure metrics on
   secureMetricsPort: 9140
-
-  # the name of the secret to be mounted in the frr-k8s pod
-  # to expose the metrics securely. If not present, a self signed
-  # certificate to be used.
-  metricsTLSSecret: ""
 
   # prometheus doens't have the permission to scrape all namespaces so we give it permission to scrape metallb's one
   rbacPrometheus: false
@@ -45,12 +42,6 @@ prometheus:
   # the namespace where prometheus is deployed
   # required when " .Values.prometheus.rbacPrometheus == true " and " prometheus.serviceMonitor.enabled=true "
   namespace: ""
-
-  # the image to be used for the kuberbacproxy container
-  rbacProxy:
-    repository: gcr.io/kubebuilder/kube-rbac-proxy
-    tag: v0.12.0
-    pullPolicy:
 
   # Prometheus Operator ServiceMonitors.
   serviceMonitor:
