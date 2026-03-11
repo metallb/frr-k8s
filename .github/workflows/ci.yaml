@@ -196,6 +196,108 @@ jobs:
         with:
           artifact-name: kind-logs-${{ matrix.ip-family }}-${{ matrix.deployment }}
 
+  e2e-certmanager:
+    runs-on: ubuntu-22.04
+    needs:
+      - unit-tests
+      - build-test-images
+      - commitlint
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          cache: true
+
+      - name: Install kernel modules
+        run: |
+          sudo apt-get update
+          sudo apt-get install linux-modules-extra-$(uname -r)
+
+      - name: Download frr8ks images
+        uses: actions/download-artifact@v4
+        with:
+          path: image
+
+      - name: Load image
+        working-directory: image
+        run: |
+          docker load -i image-tar-frrk8s/frrk8s.tar
+
+      - name: Create kind cluster and deploy prometheus
+        run: |
+          LOGLEVEL=debug IP_FAMILY="ipv4" make deploy-cluster deploy-prometheus
+
+      - name: Install cert-manager
+        run: |
+          export KUBECONFIG=${GITHUB_WORKSPACE}/bin/kubeconfig
+          kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.17.2/cert-manager.yaml
+          kubectl -n cert-manager wait --for=condition=Available deployment --all --timeout=300s
+
+      - name: Create TLS certificate
+        run: |
+          export KUBECONFIG=${GITHUB_WORKSPACE}/bin/kubeconfig
+          kubectl create ns frr-k8s-system || true
+          cat <<EOF | kubectl apply -f -
+          apiVersion: cert-manager.io/v1
+          kind: ClusterIssuer
+          metadata:
+            name: selfsigned-issuer
+          spec:
+            selfSigned: {}
+          ---
+          apiVersion: cert-manager.io/v1
+          kind: Certificate
+          metadata:
+            name: frr-k8s-metrics-cert
+            namespace: frr-k8s-system
+          spec:
+            secretName: frr-k8s-metrics-cert
+            issuerRef:
+              name: selfsigned-issuer
+              kind: ClusterIssuer
+            dnsNames:
+            - "*.frr-k8s-system.svc"
+            - "*.frr-k8s-system.svc.cluster.local"
+          EOF
+          kubectl -n frr-k8s-system wait --for=condition=Ready certificate/frr-k8s-metrics-cert --timeout=60s
+
+      - name: Deploy via Helm with cert-manager certs
+        run: |
+          export KUBECONFIG=${GITHUB_WORKSPACE}/bin/kubeconfig
+          make helm
+          helm install frrk8s charts/frr-k8s/ \
+            --set frrk8s.image.tag=main \
+            --set frrk8s.logLevel=debug \
+            --set prometheus.rbacPrometheus=true \
+            --set prometheus.serviceAccount=prometheus-k8s \
+            --set prometheus.namespace=monitoring \
+            --set prometheus.serviceMonitor.enabled=true \
+            --set tls.metricsTLSSecret=frr-k8s-metrics-cert \
+            --set frrk8s.alwaysBlock='192.167.9.0/24\,fc00:f553:ccd:e799::/64' \
+            --set frrk8s.frrStatus.pollInterval='5s' \
+            --namespace frr-k8s-system
+          sleep 2s
+          kubectl -n frr-k8s-system wait --for=condition=Ready --all pods --timeout 300s
+
+      - name: E2E (Metrics)
+        run: |
+          mkdir -p /tmp/kind_logs/
+          GINKGO_ARGS="--focus Metrics --skip 'IPV6|DUALSTACK'" TEST_ARGS="--report-path=/tmp/kind_logs" make e2etests
+
+      - name: Export kind logs
+        if: ${{ failure() }}
+        run:
+          make kind-export-logs
+
+      - name: Collect Logs
+        if: ${{ failure() }}
+        uses: ./.github/workflows/composite/collectlogs
+        with:
+          artifact-name: kind-logs-certmanager
+
   metallb_e2e:
     runs-on: ubuntu-22.04
     needs:
