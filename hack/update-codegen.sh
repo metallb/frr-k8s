@@ -78,7 +78,7 @@ new_report="$(mktemp -t "$(basename "$0").api_violations.XXXXXX")"
 
 
 echo "Generating clientset at ${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}"
-go run k8s.io/code-generator/cmd/client-gen@v0.31.0 \
+go run k8s.io/code-generator/cmd/client-gen@v0.33.0 \
   --clientset-name "${CLIENTSET_NAME}" \
   --input-base "${APIS_PKG}" \
   --input "${INPUT_DIRS_COMMA//${APIS_PKG}/}" \
@@ -87,14 +87,14 @@ go run k8s.io/code-generator/cmd/client-gen@v0.31.0 \
   ${COMMON_FLAGS}
 
 echo "Generating listers at ${OUTPUT_PKG}/listers"
-go run k8s.io/code-generator/cmd/lister-gen@v0.31.0 \
+go run k8s.io/code-generator/cmd/lister-gen@v0.33.0 \
   --output-dir "pkg/client/listers" \
   --output-pkg "${OUTPUT_PKG}/listers" \
   ${COMMON_FLAGS} \
   ${INPUT_DIRS_SPACE}
 
 echo "Generating informers at ${OUTPUT_PKG}/informers"
-go run k8s.io/code-generator/cmd/informer-gen@v0.31.0 \
+go run k8s.io/code-generator/cmd/informer-gen@v0.33.0 \
   --versioned-clientset-package "${OUTPUT_PKG}/${CLIENTSET_PKG_NAME}/${CLIENTSET_NAME}" \
   --listers-package "${OUTPUT_PKG}/listers" \
   --output-dir "pkg/client/informers" \

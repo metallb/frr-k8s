@@ -3,14 +3,13 @@
 package tests
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"path"
 	"strconv"
 	"strings"
 	"time"
-
-	"errors"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frrk8stests/pkg/config"
@@ -412,7 +411,9 @@ func labelsForPeers(peers []*frrcontainer.FRR, ipFamily ipfamily.Family) []peerP
 }
 
 // forPod returns the parsed metrics for the given pod, scraping them
-// from the prometheus pod.
+// from the prometheus pod via an ephemeral debug container with a proper TLS client.
+// BusyBox wget shipped in the prometheus image is incompatible with Go 1.25's
+// stricter TLS 1.2 enforcement, so we use a debug container with curl instead.
 func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error) {
 	ports := make([]int, 0)
 	allMetrics := make([]map[string]*dto.MetricFamily, 0)
@@ -424,10 +425,13 @@ func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error)
 		}
 	}
 
-	podExecutor := executor.ForPod(promPod.Namespace, promPod.Name, "prometheus")
+	promExecutor := executor.ForPod(promPod.Namespace, promPod.Name, "prometheus")
+	token, err := promExecutor.Exec("cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
+	if err != nil {
+		return nil, err
+	}
 
-	// We add a token header to the requests, without it kube-rbac-proxy returns Unauthorized.
-	token, err := podExecutor.Exec("cat", "/var/run/secrets/kubernetes.io/serviceaccount/token")
+	podExecutor, err := executor.ForPodDebug(k8sclient.New(), promPod.Namespace, promPod.Name, "prometheus", "registry.k8s.io/e2e-test-images/agnhost:2.43")
 	if err != nil {
 		return nil, err
 	}
@@ -435,9 +439,9 @@ func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error)
 	for _, p := range ports {
 		metricsPath := path.Join(net.JoinHostPort(target.Status.PodIP, strconv.Itoa(p)), "metrics")
 		metricsURL := fmt.Sprintf("https://%s", metricsPath)
-		metrics, err := podExecutor.Exec("wget",
-			"--no-check-certificate", "-qO-", metricsURL,
-			"--header", fmt.Sprintf("Authorization: Bearer %s", token))
+		metrics, err := podExecutor.Exec("curl",
+			"-s", "-k", metricsURL,
+			"-H", fmt.Sprintf("Authorization: Bearer %s", token))
 		if err != nil {
 			return nil, errors.Join(err, fmt.Errorf("failed to scrape metrics for %s", target.Name))
 		}

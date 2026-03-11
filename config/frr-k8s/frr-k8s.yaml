@@ -58,15 +58,15 @@ spec:
           readOnlyRootFilesystem: true
         livenessProbe:
           httpGet:
-            path: /metrics
-            port: monitoring
+            path: /healthz
+            port: 7572
             host: 127.0.0.1
           initialDelaySeconds: 15
           periodSeconds: 20
         readinessProbe:
           httpGet:
-            path: /metrics
-            port: monitoring
+            path: /readyz
+            port: 7572
             host: 127.0.0.1
           initialDelaySeconds: 5
           periodSeconds: 10

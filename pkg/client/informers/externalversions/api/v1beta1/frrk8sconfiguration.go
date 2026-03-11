@@ -5,13 +5,13 @@
 package v1beta1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	apiv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	frrk8sapiv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	versioned "github.com/metallb/frr-k8s/pkg/client/clientset/versioned"
 	internalinterfaces "github.com/metallb/frr-k8s/pkg/client/informers/externalversions/internalinterfaces"
-	v1beta1 "github.com/metallb/frr-k8s/pkg/client/listers/api/v1beta1"
+	apiv1beta1 "github.com/metallb/frr-k8s/pkg/client/listers/api/v1beta1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -22,7 +22,7 @@ import (
 // FRRK8sConfigurations.
 type FRRK8sConfigurationInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1beta1.FRRK8sConfigurationLister
+	Lister() apiv1beta1.FRRK8sConfigurationLister
 }
 
 type fRRK8sConfigurationInformer struct {
@@ -48,16 +48,28 @@ func NewFilteredFRRK8sConfigurationInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1beta1().FRRK8sConfigurations(namespace).List(context.TODO(), options)
+				return client.ApiV1beta1().FRRK8sConfigurations(namespace).List(context.Background(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ApiV1beta1().FRRK8sConfigurations(namespace).Watch(context.TODO(), options)
+				return client.ApiV1beta1().FRRK8sConfigurations(namespace).Watch(context.Background(), options)
+			},
+			ListWithContextFunc: func(ctx context.Context, options v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ApiV1beta1().FRRK8sConfigurations(namespace).List(ctx, options)
+			},
+			WatchFuncWithContext: func(ctx context.Context, options v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&options)
+				}
+				return client.ApiV1beta1().FRRK8sConfigurations(namespace).Watch(ctx, options)
 			},
 		},
-		&apiv1beta1.FRRK8sConfiguration{},
+		&frrk8sapiv1beta1.FRRK8sConfiguration{},
 		resyncPeriod,
 		indexers,
 	)
@@ -68,9 +80,9 @@ func (f *fRRK8sConfigurationInformer) defaultInformer(client versioned.Interface
 }
 
 func (f *fRRK8sConfigurationInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiv1beta1.FRRK8sConfiguration{}, f.defaultInformer)
+	return f.factory.InformerFor(&frrk8sapiv1beta1.FRRK8sConfiguration{}, f.defaultInformer)
 }
 
-func (f *fRRK8sConfigurationInformer) Lister() v1beta1.FRRK8sConfigurationLister {
-	return v1beta1.NewFRRK8sConfigurationLister(f.Informer().GetIndexer())
+func (f *fRRK8sConfigurationInformer) Lister() apiv1beta1.FRRK8sConfigurationLister {
+	return apiv1beta1.NewFRRK8sConfigurationLister(f.Informer().GetIndexer())
 }

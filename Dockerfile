@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1.2
 
-FROM --platform=$BUILDPLATFORM docker.io/golang:1.24.2 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/golang:1.25.8 AS builder
 ARG GIT_COMMIT=dev
 ARG GIT_BRANCH=dev
 WORKDIR $GOPATH/frr-k8s

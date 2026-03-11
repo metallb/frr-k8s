@@ -5,7 +5,7 @@ metadata:
     control-plane: frr-k8s
     app.kubernetes.io/name: service
     app.kubernetes.io/instance: frr-k8s-metrics-service
-    app.kubernetes.io/component: kube-rbac-proxy
+    app.kubernetes.io/component: frr-k8s
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize
