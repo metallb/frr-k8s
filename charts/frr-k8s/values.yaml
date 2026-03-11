@@ -149,6 +149,8 @@ frrk8s:
     periodSeconds: 5
   ## A comma separated list of cidrs we want always to block for incoming routes
   alwaysBlock: ""
+  # -- (integer) BGP debounce timeout for FRR configuration reloads, in milliseconds. Default (when unset) is 3000 ms.This feature is experimental
+  bgpDebounceTimeout: null
   ## Specifies whether the cert rotator works as part of the webhook.
   disableCertRotation: false
   ## Specifies whether the pod restarts when the rotator refreshes the cert secret.

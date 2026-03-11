@@ -22,7 +22,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -61,14 +63,19 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+const (
+	defaultDebounceTimeout = 3 * time.Second
+)
+
 type params struct {
-	metricsAddr      string
-	logLevel         string
-	nodeName         string
-	namespace        string
-	podName          string
-	pprofAddr        string
-	alwaysBlockCIDRs string
+	metricsAddr          string
+	logLevel             string
+	nodeName             string
+	namespace            string
+	podName              string
+	pprofAddr            string
+	alwaysBlockCIDRs     string
+	bgpDebounceTimeoutMs string
 }
 
 func main() {
@@ -81,6 +88,9 @@ func main() {
 	flag.StringVar(&params.podName, "pod-name", "", "The name of the pod this process is running in")
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&params.alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
+	flag.StringVar(&params.bgpDebounceTimeoutMs, "bgp-debounce-timeout", os.Getenv("FRR_K8S_BGP_DEBOUNCE_TIMEOUT"),
+		"BGP debounce timeout for FRR configuration reloads, in milliseconds. "+
+			"Can also be set via FRR_K8S_BGP_DEBOUNCE_TIMEOUT. Default is 3000 ms. This feature is experimental.")
 
 	opts := zap.Options{
 		Development: true,
@@ -148,7 +158,22 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 	reloadStatus := func() {
 		reloadStatusChan <- controller.NewStateEvent()
 	}
-	frrInstance := frr.NewFRR(ctx, reloadStatus)
+
+	// Parse BGP debounce timeout from flag/env or use default (3 seconds).
+	// The debounce timeout throttles how often FRR configuration reloads are applied, so that
+	// bursts of updates are coalesced into fewer reloads.
+	dbTimeout := defaultDebounceTimeout
+	if params.bgpDebounceTimeoutMs != "" {
+		parsed, err := strconv.Atoi(params.bgpDebounceTimeoutMs)
+		if err != nil || parsed <= 0 {
+			setupLog.Error(fmt.Errorf("invalid value"), "invalid BGP debounce timeout value, must be a positive integer", "provided", params.bgpDebounceTimeoutMs)
+			os.Exit(1)
+		}
+		dbTimeout = time.Duration(parsed) * time.Millisecond
+	}
+	setupLog.V(1).Info("using BGP debounce timeout", "milliseconds", dbTimeout.Milliseconds())
+
+	frrInstance := frr.NewFRR(ctx, reloadStatus, dbTimeout)
 
 	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
 	if err != nil {

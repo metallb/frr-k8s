@@ -26,6 +26,7 @@ Kubernetes: `>= 1.19.0-0`
 | crds.validationFailurePolicy | string | `"Fail"` |  |
 | frrk8s.affinity | object | `{}` |  |
 | frrk8s.alwaysBlock | string | `""` |  |
+| frrk8s.bgpDebounceTimeout | integer | `nil` | BGP debounce timeout for FRR configuration reloads, in milliseconds. Default (when unset) is 3000 ms.This feature is experimental |
 | frrk8s.disableCertRotation | bool | `false` |  |
 | frrk8s.frr.acceptIncomingBGPConnections | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |

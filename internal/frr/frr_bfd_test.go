@@ -14,7 +14,7 @@ import (
 func TestSingleSessionBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {})
+	frr := NewFRR(ctx, func() {}, testDebounceTimeout)
 	defer cancel()
 
 	config := Config{
@@ -58,7 +58,7 @@ func TestSingleSessionBFD(t *testing.T) {
 func TestTwoRoutersTwoNeighborsBFD(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, func() {})
+	frr := NewFRR(ctx, func() {}, testDebounceTimeout)
 	defer cancel()
 
 	config := Config{
