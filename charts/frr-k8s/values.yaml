@@ -6,7 +6,7 @@ nameOverride: ""
 fullnameOverride: ""
 
 rbac:
-  # create specifies whether to install and use RBAC rules.
+  # -- Specifies whether to install and use RBAC rules.
   create: true
 
 prometheus:
@@ -18,32 +18,28 @@ prometheus:
   # (https://github.com/coreos/prometheus-operator) for more powerful
   # monitoring configuration. If you use the Prometheus operator, this
   # can be left at false.
+  # -- Add Prometheus metric auto-collection annotations to pods.
   scrapeAnnotations: false
 
-  # bind addr frr-k8s will use for metrics
+  # -- Bind address frr-k8s will use for metrics.
   metricsBindAddress: 127.0.0.1
 
-  # port frr-k8s will listen on for metrics
+  # -- Port frr-k8s will listen on for metrics.
   metricsPort: 7572
 
-  # if set, enables rbac proxy on frr-k8s to expose
-  # the metrics via tls.
+  # -- If set, enables rbac proxy on frr-k8s to expose the metrics via TLS.
   secureMetricsPort: 9140
 
-  # the name of the secret to be mounted in the frr-k8s pod
-  # to expose the metrics securely. If not present, a self signed
-  # certificate to be used.
+  # -- The name of the secret to be mounted in the frr-k8s pod to expose metrics securely. If not present, a self-signed certificate will be used.
   metricsTLSSecret: ""
 
-  # prometheus doens't have the permission to scrape all namespaces so we give it permission to scrape metallb's one
+  # -- Give Prometheus permission to scrape metallb's namespace.
   rbacPrometheus: false
 
-  # the service account used by prometheus
-  # required when " .Values.prometheus.rbacPrometheus == true " and " prometheus.serviceMonitor.enabled=true "
+  # -- The service account used by Prometheus. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true"
   serviceAccount: ""
 
-  # the namespace where prometheus is deployed
-  # required when " .Values.prometheus.rbacPrometheus == true " and " prometheus.serviceMonitor.enabled=true "
+  # -- The namespace where Prometheus is deployed. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true".
   namespace: ""
 
   # the image to be used for the kuberbacproxy container
@@ -54,30 +50,30 @@ prometheus:
 
   # Prometheus Operator ServiceMonitors.
   serviceMonitor:
-    # enable support for Prometheus Operator
+    # -- Enable support for Prometheus Operator.
     enabled: false
 
     additionalLabels: {}
-    # optional additional annotations for the controller serviceMonitor
+    # -- Optional additional annotations for the controller serviceMonitor.
     annotations: {}
-    # optional tls configuration for the controller serviceMonitor, in case
-    # secure metrics are enabled.
+    ## Optional TLS configuration for the controller serviceMonitor, in case secure metrics are enabled.
     tlsConfig:
+      # -- Disables SSL certificate verification
       insecureSkipVerify: true
 
-    # Job label for scrape target
+    # -- Job label for scrape target.
     jobLabel: "app.kubernetes.io/name"
 
-    # Scrape interval. If not set, the Prometheus default scrape interval is used.
+    # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
     interval:
 
-    # 	metric relabel configs to apply to samples before ingestion.
+    # -- Metric relabel configs to apply to samples before ingestion.
     metricRelabelings: []
     # - action: keep
     #   regex: 'kube_(daemonset|deployment|pod|namespace|node|statefulset).+'
     #   sourceLabels: [__name__]
 
-    # 	relabel configs to apply to samples before ingestion.
+    # -- Relabel configs to apply to samples before ingestion.
     relabelings: []
     # - sourceLabels: [__meta_kubernetes_pod_node_name]
     #   separator: ;
@@ -105,10 +101,9 @@ frrk8s:
     ##
     type: RollingUpdate
   serviceAccount:
-    # Specifies whether a ServiceAccount should be created
+    # -- Specifies whether a ServiceAccount should be created.
     create: true
-    # The name of the ServiceAccount to use. If not set and create is
-    # true, a name is generated using the fullname template
+    # -- The name of the ServiceAccount to use. If not set and create is true, a name is generated using the fullname template.
     name: ""
     annotations: {}
   ## Defines a secret name for the controller to generate a memberlist encryption secret
@@ -147,12 +142,12 @@ frrk8s:
     enabled: true
     failureThreshold: 30
     periodSeconds: 5
-  ## A comma separated list of cidrs we want always to block for incoming routes
+  # -- A comma separated list of cidrs to always block for incoming routes.
   alwaysBlock: ""
-  ## Specifies whether the cert rotator works as part of the webhook.
+  # -- Specifies whether the cert rotator works as part of the webhook.
   disableCertRotation: false
-  ## Specifies whether the pod restarts when the rotator refreshes the cert secret.
-  ## Enabling this proved useful for the webhook's stability when it is redeployed multiple times in succession.
+  ## Note: Enabling this proved useful for the webhook's stability when it is redeployed multiple times in succession.
+  # -- Specifies whether the pod restarts when the rotator refreshes the cert secret. Useful for webhook stability during redeployments.
   restartOnRotatorSecretRefresh: false
   # frr contains configuration specific to the FRR container,
   frr:

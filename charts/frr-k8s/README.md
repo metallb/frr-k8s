@@ -25,8 +25,8 @@ Kubernetes: `>= 1.19.0-0`
 | crds.enabled | bool | `true` |  |
 | crds.validationFailurePolicy | string | `"Fail"` |  |
 | frrk8s.affinity | object | `{}` |  |
-| frrk8s.alwaysBlock | string | `""` |  |
-| frrk8s.disableCertRotation | bool | `false` |  |
+| frrk8s.alwaysBlock | string | `""` | A comma separated list of cidrs to always block for incoming routes. |
+| frrk8s.disableCertRotation | bool | `false` | Specifies whether the cert rotator works as part of the webhook. |
 | frrk8s.frr.acceptIncomingBGPConnections | bool | `false` |  |
 | frrk8s.frr.image.pullPolicy | string | `nil` |  |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` |  |
@@ -60,11 +60,11 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.readinessProbe.timeoutSeconds | int | `1` |  |
 | frrk8s.reloader.resources | object | `{}` |  |
 | frrk8s.resources | object | `{}` |  |
-| frrk8s.restartOnRotatorSecretRefresh | bool | `false` |  |
+| frrk8s.restartOnRotatorSecretRefresh | bool | `false` | Specifies whether the pod restarts when the rotator refreshes the cert secret. Useful for webhook stability during redeployments. |
 | frrk8s.runtimeClassName | string | `""` |  |
 | frrk8s.serviceAccount.annotations | object | `{}` |  |
-| frrk8s.serviceAccount.create | bool | `true` |  |
-| frrk8s.serviceAccount.name | string | `""` |  |
+| frrk8s.serviceAccount.create | bool | `true` | Specifies whether a ServiceAccount should be created. |
+| frrk8s.serviceAccount.name | string | `""` | The name of the ServiceAccount to use. If not set and create is true, a name is generated using the fullname template. |
 | frrk8s.startupProbe.enabled | bool | `true` |  |
 | frrk8s.startupProbe.failureThreshold | int | `30` |  |
 | frrk8s.startupProbe.periodSeconds | int | `5` |  |
@@ -74,26 +74,26 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.webhookPort | int | `19443` |  |
 | fullnameOverride | string | `""` |  |
 | nameOverride | string | `""` |  |
-| prometheus.metricsBindAddress | string | `"127.0.0.1"` |  |
-| prometheus.metricsPort | int | `7572` |  |
-| prometheus.metricsTLSSecret | string | `""` |  |
-| prometheus.namespace | string | `""` |  |
-| prometheus.rbacPrometheus | bool | `false` |  |
+| prometheus.metricsBindAddress | string | `"127.0.0.1"` | Bind address frr-k8s will use for metrics. |
+| prometheus.metricsPort | int | `7572` | Port frr-k8s will listen on for metrics. |
+| prometheus.metricsTLSSecret | string | `""` | The name of the secret to be mounted in the frr-k8s pod to expose metrics securely. If not present, a self-signed certificate will be used. |
+| prometheus.namespace | string | `""` | The namespace where Prometheus is deployed. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true". |
+| prometheus.rbacPrometheus | bool | `false` | Give Prometheus permission to scrape metallb's namespace. |
 | prometheus.rbacProxy.pullPolicy | string | `nil` |  |
 | prometheus.rbacProxy.repository | string | `"gcr.io/kubebuilder/kube-rbac-proxy"` |  |
 | prometheus.rbacProxy.tag | string | `"v0.12.0"` |  |
-| prometheus.scrapeAnnotations | bool | `false` |  |
-| prometheus.secureMetricsPort | int | `9140` |  |
-| prometheus.serviceAccount | string | `""` |  |
+| prometheus.scrapeAnnotations | bool | `false` | Add Prometheus metric auto-collection annotations to pods. |
+| prometheus.secureMetricsPort | int | `9140` | If set, enables rbac proxy on frr-k8s to expose the metrics via TLS. |
+| prometheus.serviceAccount | string | `""` | The service account used by Prometheus. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true" |
 | prometheus.serviceMonitor.additionalLabels | object | `{}` |  |
-| prometheus.serviceMonitor.annotations | object | `{}` |  |
-| prometheus.serviceMonitor.enabled | bool | `false` |  |
-| prometheus.serviceMonitor.interval | string | `nil` |  |
-| prometheus.serviceMonitor.jobLabel | string | `"app.kubernetes.io/name"` |  |
-| prometheus.serviceMonitor.metricRelabelings | list | `[]` |  |
-| prometheus.serviceMonitor.relabelings | list | `[]` |  |
-| prometheus.serviceMonitor.tlsConfig.insecureSkipVerify | bool | `true` |  |
-| rbac.create | bool | `true` |  |
+| prometheus.serviceMonitor.annotations | object | `{}` | Optional additional annotations for the controller serviceMonitor. |
+| prometheus.serviceMonitor.enabled | bool | `false` | Enable support for Prometheus Operator. |
+| prometheus.serviceMonitor.interval | string | `nil` | Scrape interval. If not set, the Prometheus default scrape interval is used. |
+| prometheus.serviceMonitor.jobLabel | string | `"app.kubernetes.io/name"` | Job label for scrape target. |
+| prometheus.serviceMonitor.metricRelabelings | list | `[]` | Metric relabel configs to apply to samples before ingestion. |
+| prometheus.serviceMonitor.relabelings | list | `[]` | Relabel configs to apply to samples before ingestion. |
+| prometheus.serviceMonitor.tlsConfig.insecureSkipVerify | bool | `true` | Disables SSL certificate verification |
+| rbac.create | bool | `true` | Specifies whether to install and use RBAC rules. |
 
 ----------------------------------------------
 Autogenerated from chart metadata using [helm-docs v1.10.0](https://github.com/norwoodj/helm-docs/releases/v1.10.0)
