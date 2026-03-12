@@ -214,6 +214,9 @@ spec:
         {{- if .Values.frrk8s.alwaysBlock }}
         - --always-block={{ .Values.frrk8s.alwaysBlock }}
         {{- end }}
+        {{- if .Values.frrk8s.bgpDebounceTimeout }}
+        - --bgp-debounce-timeout={{ .Values.frrk8s.bgpDebounceTimeout }}
+        {{- end }}
         env:
         - name: FRR_CONFIG_FILE
           value: /etc/frr_reloader/frr.conf
