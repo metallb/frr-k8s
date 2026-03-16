@@ -25,6 +25,15 @@ ipv6 nht resolve-via-default
 {{- end }}
 {{- end }}
 
+{{- range $r := .Routers }}
+{{- if and $r.VRF $r.EVPN $r.EVPN.L3VNI }}
+
+vrf {{$r.VRF}}
+  vni {{$r.EVPN.L3VNI.VNI.VNI}}
+exit-vrf
+{{- end }}
+{{- end }}
+
 {{range $r := .Routers -}}
 router bgp {{$r.MyASN}}{{ if $r.VRF }} vrf {{$r.VRF}}{{end}}
   no bgp ebgp-requires-policy
@@ -70,6 +79,8 @@ router bgp {{$r.MyASN}}{{ if $r.VRF }} vrf {{$r.VRF}}{{end}}
 {{- end}}
   exit-address-family
 {{end }}
+
+{{- template "evpn" $r }}
 {{end }}
 {{- if gt (len .BFDProfiles) 0}}
 bfd

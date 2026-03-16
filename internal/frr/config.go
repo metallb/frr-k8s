@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"errors"
 
 	"github.com/go-kit/log/level"
+	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 	"github.com/metallb/frr-k8s/internal/logging"
@@ -253,6 +255,21 @@ func templateConfig(data interface{}) (string, error) {
 					return "ipv6"
 				}
 				return "ip"
+			},
+			"hasAddressFamilyUnicast": func(addressFamilies []string) bool {
+				if len(addressFamilies) == 0 {
+					return true
+				}
+				return slices.Contains(addressFamilies, string(v1beta1.AddressFamilyUnicast))
+			},
+			"hasAddressFamilyEVPN": func(addressFamilies []string) bool {
+				return slices.Contains(addressFamilies, string(v1beta1.AddressFamilyEVPN))
+			},
+			"hasAdvertiseVNIsAll": func(advertiseVNIs *string) bool {
+				return advertiseVNIs != nil && *advertiseVNIs == string(v1beta1.VNIAdvertisementAll)
+			},
+			"hasAdvertisesEVPNPrefixUnicast": func(prefixType string) bool {
+				return prefixType == string(v1beta1.AdvertisePrefixUnicast)
 			},
 			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family) bool {
 				return (string(neighbourFamily) == ipFamily || neighbourFamily == ipfamily.DualStack)
