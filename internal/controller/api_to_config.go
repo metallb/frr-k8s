@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -119,6 +120,10 @@ func apiToFRR(resources ClusterResources, alwaysBlock []net.IPNet) (*frr.Config,
 		}
 	}
 
+	if err := validateEVPN(routersForVRF); err != nil {
+		return nil, err
+	}
+
 	res.Routers = sortMap(routersForVRF)
 	res.ExtraConfig = joinRawConfigs(rawConfigs)
 	res.BFDProfiles = sortMapPtr(bfdProfilesAllConfigs)
@@ -151,6 +156,9 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	for _, v := range r.Imports {
 		res.ImportVRFs = append(res.ImportVRFs, v.VRF)
 	}
+
+	res.EVPN = evpnToFRR(r.EVPN)
+
 	return res, nil
 }
 
@@ -197,6 +205,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		GracefulRestart: n.EnableGracefulRestart,
 		VRFName:         routerVRF,
 		AlwaysBlock:     alwaysBlock,
+		AddressFamilies: toStringSlice(n.AddressFamilies),
 	}
 
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
@@ -727,4 +736,114 @@ func validateRouterConfig(r *frr.RouterConfig) error {
 	// merging with itself to validate neighbor list
 	_, err := mergeRouterConfigs(r, r)
 	return err
+}
+
+func evpnToFRR(e *v1beta1.EVPNConfig) *frr.EVPNConfig {
+	if e == nil {
+		return nil
+	}
+
+	res := &frr.EVPNConfig{
+		AdvertiseSVI: e.AdvertiseSVI,
+	}
+
+	if e.AdvertiseVNIs != nil {
+		res.AdvertiseVNIs = ptr.To(string(*e.AdvertiseVNIs))
+	}
+
+	for _, l2 := range e.L2VNIs {
+		res.L2VNIs = append(res.L2VNIs, frr.L2VNI{
+			VNI: vniToFRR(l2.VNI),
+		})
+	}
+
+	if e.L3VNI != nil {
+		res.L3VNI = &frr.L3VNI{
+			VNI:               vniToFRR(e.L3VNI.VNI),
+			AdvertisePrefixes: toStringSlice(e.L3VNI.AdvertisePrefixes),
+		}
+	}
+
+	return res
+}
+
+func vniToFRR(v v1beta1.VNI) frr.VNI {
+	return frr.VNI{
+		VNI:       v.VNI,
+		RD:        string(v.RD),
+		ImportRTs: toStringSlice(v.ImportRTs),
+		ExportRTs: toStringSlice(v.ExportRTs),
+	}
+}
+
+func toStringSlice[T ~string](src []T) []string {
+	if src == nil {
+		return nil
+	}
+	res := make([]string, len(src))
+	for i, v := range src {
+		res[i] = string(v)
+	}
+	return res
+}
+
+func validateEVPN(routersForVRF map[string]*frr.RouterConfig) error {
+	for vrf, r := range routersForVRF {
+		if err := validateEVPNConfig(r); err != nil {
+			return fmt.Errorf("invalid EVPN configuration for vrf %q: %w", vrf, err)
+		}
+	}
+	return validateUniqueVNIs(routersForVRF)
+}
+
+func validateEVPNConfig(r *frr.RouterConfig) error {
+	if r.EVPN == nil {
+		return nil
+	}
+
+	hasEVPNNeighbor := false
+	for _, n := range r.Neighbors {
+		if slices.Contains(n.AddressFamilies, string(v1beta1.AddressFamilyEVPN)) {
+			hasEVPNNeighbor = true
+			break
+		}
+	}
+
+	needsEVPNNeighbor := r.EVPN.AdvertiseVNIs != nil || r.EVPN.AdvertiseSVI || len(r.EVPN.L2VNIs) > 0
+	if needsEVPNNeighbor && !hasEVPNNeighbor {
+		return fmt.Errorf("advertiseVNIs, advertiseSVI and l2vnis require at least one neighbor with evpn address family")
+	}
+
+	if r.EVPN.L3VNI != nil && len(r.Neighbors) > 0 {
+		return fmt.Errorf("l3vni can only be configured on routers with no neighbors")
+	}
+
+	return nil
+}
+
+func validateUniqueVNIs(routersForVRF map[string]*frr.RouterConfig) error {
+	type vniLocation struct {
+		vrf     string
+		vniType string // "l2vni" or "l3vni"
+	}
+
+	seen := map[uint32]vniLocation{}
+	for vrf, r := range routersForVRF {
+		if r.EVPN == nil {
+			continue
+		}
+		for _, l2 := range r.EVPN.L2VNIs {
+			if existing, found := seen[l2.VNI.VNI]; found {
+				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l2vni in vrf %q", l2.VNI.VNI, existing.vniType, existing.vrf, vrf)
+			}
+			seen[l2.VNI.VNI] = vniLocation{vrf: vrf, vniType: "l2vni"}
+		}
+		if r.EVPN.L3VNI != nil {
+			if existing, found := seen[r.EVPN.L3VNI.VNI.VNI]; found {
+				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l3vni in vrf %q", r.EVPN.L3VNI.VNI.VNI, existing.vniType, existing.vrf, vrf)
+			}
+			seen[r.EVPN.L3VNI.VNI.VNI] = vniLocation{vrf: vrf, vniType: "l3vni"}
+		}
+	}
+	return nil
 }

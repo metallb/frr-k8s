@@ -3157,6 +3157,317 @@ func TestConversion(t *testing.T) {
 			},
 			err: nil,
 		},
+		{
+			name: "EVPN: router with EVPN neighbor and L2VNIs",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast", "evpn"},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+										AdvertiseSVI:  true,
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: v1beta1.VNI{VNI: 100, RD: "65001:100", ImportRTs: []v1beta1.ImportRouteTarget{"65001:100"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:100"}}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65001,
+						RouterID: "192.0.2.1",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"evpn", "unicast"},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("All"),
+							AdvertiseSVI:  true,
+							L2VNIs: []frr.L2VNI{
+								{VNI: frr.VNI{VNI: 100, RD: "65001:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: router with L3VNI and no neighbors",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN:      65001,
+									ID:       "192.0.2.1",
+									VRF:      "tenant",
+									Prefixes: []string{"10.0.0.0/24"},
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               v1beta1.VNI{VNI: 500, RD: "65001:500", ImportRTs: []v1beta1.ImportRouteTarget{"65001:500"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:500"}},
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65001,
+						RouterID:     "192.0.2.1",
+						VRF:          "tenant",
+						IPV4Prefixes: []string{"10.0.0.0/24"},
+						EVPN: &frr.EVPNConfig{
+							L3VNI: &frr.L3VNI{
+								VNI:               frr.VNI{VNI: 500, RD: "65001:500", ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
+								AdvertisePrefixes: []string{"unicast"},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: advertiseVNIs without EVPN neighbor fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("advertiseVNIs, advertiseSVI and l2vnis require at least one neighbor with evpn address family"),
+		},
+		{
+			name: "EVPN: L3VNI with neighbors fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               v1beta1.VNI{VNI: 500},
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("l3vni can only be configured on routers with no neighbors"),
+		},
+		{
+			name: "EVPN: two configs, one adds EVPN neighbor, other adds L2VNIs - valid after merge",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: v1beta1.VNI{VNI: 100}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN: 65001,
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"evpn"},
+							},
+						},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("All"),
+							L2VNIs: []frr.L2VNI{
+								{VNI: frr.VNI{VNI: 100}},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: duplicate L2VNI across VRFs fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: v1beta1.VNI{VNI: 100}},
+										},
+									},
+								},
+								{
+									ASN: 65001,
+									VRF: "red",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.3",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: v1beta1.VNI{VNI: 100}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("duplicate VNI 100"),
+		},
+		{
+			name: "EVPN: L2VNI and L3VNI with same number across VRFs fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: v1beta1.VNI{VNI: 500}},
+										},
+									},
+								},
+								{
+									ASN: 65001,
+									VRF: "red",
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               v1beta1.VNI{VNI: 500},
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("duplicate VNI 500"),
+		},
 	}
 
 	for _, test := range tests {
