@@ -1,0 +1,57 @@
+{{- define "evpn" -}}
+{{- if .EVPN }}
+  address-family l2vpn evpn
+
+{{- range .Neighbors }}
+{{- if hasAddressFamilyEVPN .AddressFamilies }}
+{{- $peer := .Addr }}
+{{- if ne .Iface "" }}
+  {{- $peer = .Iface }}
+{{- end }}
+    neighbor {{$peer}} activate
+{{- end }}
+{{- end }}
+
+{{- if hasAdvertiseVNIsAll .EVPN.AdvertiseVNIs }}
+    advertise-all-vni
+{{- end }}
+{{- if .EVPN.AdvertiseSVI }}
+    advertise-svi-ip
+{{- end }}
+
+{{- range .EVPN.L2VNIs }}
+{{- if or .RD .ImportRTs .ExportRTs }}
+    vni {{.VNI}}
+{{- if .RD }}
+      rd {{.RD}}
+{{- end }}
+{{- range .ImportRTs }}
+      route-target import {{.}}
+{{- end }}
+{{- range .ExportRTs }}
+      route-target export {{.}}
+{{- end }}
+    exit-vni
+{{- end }}
+{{- end }}
+
+{{- if .EVPN.L3VNI }}
+{{- range .EVPN.L3VNI.AdvertisePrefixes }}
+{{- if hasAdvertisesEVPNPrefixUnicast . }}
+    advertise ipv4 unicast
+    advertise ipv6 unicast
+{{- end }}
+{{- end }}
+{{- if .EVPN.L3VNI.RD }}
+    rd {{.EVPN.L3VNI.RD}}
+{{- end }}
+{{- range .EVPN.L3VNI.ImportRTs }}
+    route-target import {{.}}
+{{- end }}
+{{- range .EVPN.L3VNI.ExportRTs }}
+    route-target export {{.}}
+{{- end }}
+{{- end }}
+  exit-address-family
+{{end -}}
+{{- end -}}

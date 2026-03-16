@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os"
 	"reflect"
+	"slices"
 	"sort"
 	"strconv"
 	"syscall"
@@ -18,6 +19,7 @@ import (
 	"errors"
 
 	"github.com/go-kit/log/level"
+	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
 	"github.com/metallb/frr-k8s/internal/logging"
@@ -257,8 +259,18 @@ func templateConfig(data interface{}) (string, error) {
 				}
 				return "ip"
 			},
-			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family) bool {
-				return (string(neighbourFamily) == ipFamily || neighbourFamily == ipfamily.DualStack)
+			"hasAddressFamilyEVPN": func(addressFamilies []string) bool {
+				return slices.Contains(addressFamilies, string(v1beta1.AddressFamilyEVPN))
+			},
+			"hasAdvertiseVNIsAll": func(advertiseVNIs *string) bool {
+				return advertiseVNIs != nil && *advertiseVNIs == string(v1beta1.VNIAdvertisementAll)
+			},
+			"hasAdvertisesEVPNPrefixUnicast": func(prefixType string) bool {
+				return prefixType == string(v1beta1.AdvertisePrefixUnicast)
+			},
+			"activateNeighborFor": func(family string, neighbourFamily ipfamily.Family, addressFamilies []string) bool {
+				hasUnicast := len(addressFamilies) == 0 || slices.Contains(addressFamilies, string(v1beta1.AddressFamilyUnicast))
+				return hasUnicast && (string(neighbourFamily) == family || neighbourFamily == ipfamily.DualStack)
 			},
 			"allowedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)
