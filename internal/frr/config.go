@@ -52,6 +52,7 @@ type RouterConfig struct {
 	IPV4Prefixes []string
 	IPV6Prefixes []string
 	ImportVRFs   []string
+	EVPN         *EVPNConfig
 }
 
 type BFDProfile struct {
@@ -85,6 +86,7 @@ type NeighborConfig struct {
 	Incoming        AllowedIn
 	Outgoing        AllowedOut
 	AlwaysBlock     []IncomingFilter
+	AddressFamilies []string
 }
 
 func (n *NeighborConfig) ID() string {
@@ -211,6 +213,30 @@ func (i IncomingFilter) Matcher() string {
 		res += fmt.Sprintf(" ge %d", i.GE)
 	}
 	return res
+}
+
+type EVPNConfig struct {
+	AdvertiseVNIs *string // "Disabled" or "All"
+	AdvertiseSVI  bool
+	L2VNIs        []L2VNI
+	L3VNI         *L3VNI
+}
+
+type VNIProperties struct {
+	RD        string
+	ImportRTs []string
+	ExportRTs []string
+}
+
+type L2VNI struct {
+	VNI uint32
+	VNIProperties
+}
+
+type L3VNI struct {
+	VNI uint32
+	VNIProperties
+	AdvertisePrefixes []string
 }
 
 // templateConfig uses the template library to template
