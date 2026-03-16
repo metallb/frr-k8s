@@ -832,4 +832,180 @@ var _ = Describe("Frrk8s controller", func() {
 		})
 	})
 
+	Context("when a FRRConfiguration with EVPN is created", func() {
+		It("should apply EVPN configuration to FRR", func() {
+			frrConfig := &v1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test-evpn",
+					Namespace: "default",
+				},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{
+							{
+								ASN: 65000,
+								Neighbors: []v1beta1.Neighbor{
+									{
+										ASN:             65001,
+										Address:         "192.0.2.10",
+										AddressFamilies: []v1beta1.AddressFamily{"unicast", "evpn"},
+									},
+								},
+								EVPN: &v1beta1.EVPNConfig{
+									AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+									L2VNIs: []v1beta1.L2VNI{
+										{VNI: 1000, VNIProperties: v1beta1.VNIProperties{
+											RD:        "65000:1000",
+											ImportRTs: []v1beta1.ImportRouteTarget{"65000:1000"},
+											ExportRTs: []v1beta1.ExportRouteTarget{"65000:1000"},
+										}},
+									},
+								},
+							},
+							{
+								ASN: 65000,
+								VRF: "red",
+								EVPN: &v1beta1.EVPNConfig{
+									L3VNI: &v1beta1.L3VNI{
+										VNI: 3000, VNIProperties: v1beta1.VNIProperties{
+											RD:        "65000:3000",
+											ImportRTs: []v1beta1.ImportRouteTarget{"65000:3000"},
+											ExportRTs: []v1beta1.ExportRouteTarget{"65000:3000"},
+										},
+										AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() *frr.Config {
+				return fakeFRRConfigHandler.lastConfig
+			}).Should(Equal(
+				&frr.Config{
+					Loglevel: frr.LevelFrom(logLevel),
+					Routers: []*frr.RouterConfig{
+						{
+							MyASN:        65000,
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							ImportVRFs:   []string{},
+							Neighbors: []*frr.NeighborConfig{
+								{
+									IPFamily:        ipfamily.IPv4,
+									Name:            "65001@192.0.2.10",
+									ASN:             "65001",
+									Addr:            "192.0.2.10",
+									AddressFamilies: []string{"evpn", "unicast"},
+									Outgoing: frr.AllowedOut{
+										PrefixesV4:                 []string{},
+										PrefixesV6:                 []string{},
+										LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+										CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+									},
+									Incoming: frr.AllowedIn{
+										PrefixesV4: []frr.IncomingFilter{},
+										PrefixesV6: []frr.IncomingFilter{},
+									},
+									AlwaysBlock: []frr.IncomingFilter{},
+								},
+							},
+							EVPN: &frr.EVPNConfig{
+								AdvertiseVNIs: ptr.To("All"),
+								L2VNIs: []frr.L2VNI{
+									{VNI: 1000, VNIProperties: frr.VNIProperties{
+										RD:        "65000:1000",
+										ImportRTs: []string{"65000:1000"},
+										ExportRTs: []string{"65000:1000"},
+									}},
+								},
+							},
+						},
+						{
+							MyASN:        65000,
+							VRF:          "red",
+							IPV4Prefixes: []string{},
+							IPV6Prefixes: []string{},
+							Neighbors:    []*frr.NeighborConfig{},
+							ImportVRFs:   []string{},
+							EVPN: &frr.EVPNConfig{
+								L3VNI: &frr.L3VNI{
+									VNI: 3000, VNIProperties: frr.VNIProperties{
+										RD:        "65000:3000",
+										ImportRTs: []string{"65000:3000"},
+										ExportRTs: []string{"65000:3000"},
+									},
+									AdvertisePrefixes: []string{"unicast"},
+								},
+							},
+						},
+					},
+					BFDProfiles: []frr.BFDProfile{},
+				},
+			))
+		})
+
+		It("should apply and modify the EVPN configuration", func() {
+			frrConfig := &v1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{
+					Name:      "test-evpn-modify",
+					Namespace: "default",
+				},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{
+							{
+								ASN: 65000,
+								Neighbors: []v1beta1.Neighbor{
+									{
+										ASN:             65001,
+										Address:         "192.0.2.10",
+										AddressFamilies: []v1beta1.AddressFamily{"unicast", "evpn"},
+									},
+								},
+								EVPN: &v1beta1.EVPNConfig{
+									AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+									L2VNIs: []v1beta1.L2VNI{
+										{VNI: 1000},
+									},
+								},
+							},
+						},
+					},
+				},
+			}
+
+			err := k8sClient.Create(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+			Eventually(func() *frr.Config {
+				return fakeFRRConfigHandler.lastConfig
+			}).ShouldNot(BeNil())
+
+			By("adding another L2VNI")
+			frrConfig.Spec.BGP.Routers[0].EVPN.L2VNIs = append(
+				frrConfig.Spec.BGP.Routers[0].EVPN.L2VNIs,
+				v1beta1.L2VNI{VNI: 2000},
+			)
+			err = k8sClient.Update(context.Background(), frrConfig)
+			Expect(err).ToNot(HaveOccurred())
+
+			Eventually(func() *frr.Config {
+				return fakeFRRConfigHandler.lastConfig
+			}).Should(SatisfyAll(
+				Not(BeNil()),
+				WithTransform(func(c *frr.Config) int {
+					if len(c.Routers) == 0 || c.Routers[0].EVPN == nil {
+						return 0
+					}
+					return len(c.Routers[0].EVPN.L2VNIs)
+				}, Equal(2)),
+			))
+		})
+	})
+
 })
