@@ -4,7 +4,9 @@ package controller
 
 import (
 	"bytes"
+	"cmp"
 	"fmt"
+	"maps"
 	"net"
 	"reflect"
 	"sort"
@@ -634,26 +636,18 @@ func bfdProfileToFRR(bfdProfile v1beta1.BFDProfile) *frr.BFDProfile {
 	return res
 }
 
-func sortMapPtr[T any](toSort map[string]*T) []T {
-	keys := make([]string, 0)
-	for k := range toSort {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	res := make([]T, 0)
+func sortMapPtr[K cmp.Ordered, T any](toSort map[K]*T) []T {
+	keys := slices.Sorted(maps.Keys(toSort))
+	res := make([]T, 0, len(keys))
 	for _, k := range keys {
 		res = append(res, *toSort[k])
 	}
 	return res
 }
 
-func sortMap[T any](toSort map[string]T) []T {
-	keys := make([]string, 0)
-	for k := range toSort {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-	res := make([]T, 0)
+func sortMap[K cmp.Ordered, T any](toSort map[K]T) []T {
+	keys := slices.Sorted(maps.Keys(toSort))
+	res := make([]T, 0, len(keys))
 	for _, k := range keys {
 		res = append(res, toSort[k])
 	}
