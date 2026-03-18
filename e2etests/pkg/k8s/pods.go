@@ -105,3 +105,13 @@ func podIsRunningAndReady(pod *v1.Pod) bool {
 
 	return true
 }
+
+// PodForNode returns the pod scheduled on the given node, or an error if none is found.
+func PodForNode(pods []*corev1.Pod, nodeName string) (*corev1.Pod, error) {
+	for _, pod := range pods {
+		if pod.Spec.NodeName == nodeName {
+			return pod, nil
+		}
+	}
+	return nil, fmt.Errorf("no frr-k8s pod found on node %s", nodeName)
+}
