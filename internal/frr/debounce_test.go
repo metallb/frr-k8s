@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"testing"
 	"time"
-
-	"github.com/go-kit/log"
 )
 
 const timer = 10 * time.Millisecond
@@ -23,7 +21,7 @@ func TestDebounce(t *testing.T) {
 
 	reload := make(chan reloadEvent)
 	defer close(reload)
-	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer, log.NewNopLogger())
+	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer)
 	reload <- reloadEvent{config: &Config{Hostname: "1"}}
 	reload <- reloadEvent{config: &Config{Hostname: "2"}}
 	reload <- reloadEvent{config: &Config{Hostname: "3"}}
@@ -66,7 +64,7 @@ func TestDebounceRetry(t *testing.T) {
 
 	reload := make(chan reloadEvent)
 	defer close(reload)
-	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer, log.NewNopLogger())
+	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer)
 
 	reload <- reloadEvent{config: &Config{Hostname: "1"}}
 	reload <- reloadEvent{config: &Config{Hostname: "2"}}
@@ -92,7 +90,7 @@ func TestDebounceReuseOld(t *testing.T) {
 
 	reload := make(chan reloadEvent)
 	defer close(reload)
-	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer, log.NewNopLogger())
+	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer)
 
 	reload <- reloadEvent{config: &Config{Hostname: "1"}}
 	if len(result) != 0 {
@@ -127,7 +125,7 @@ func TestDebounceSameConfig(t *testing.T) {
 
 	reload := make(chan reloadEvent)
 	defer close(reload)
-	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer, log.NewNopLogger())
+	debouncer(context.Background(), dummyUpdate, reload, timer, failureTimer)
 	reload <- reloadEvent{config: &Config{Hostname: "1"}}
 	reload <- reloadEvent{config: &Config{Hostname: "2"}}
 	reload <- reloadEvent{config: &Config{Hostname: "3", Routers: []*RouterConfig{{MyASN: 23}}}}

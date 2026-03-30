@@ -10,3 +10,9 @@ patches:
     name: frr-k8s-daemon
   options:
     allowNameChange: false
+- path: statuscleaner_testenv_patch.yaml
+  target:
+    kind: Deployment
+    name: statuscleaner
+  options:
+    allowNameChange: false

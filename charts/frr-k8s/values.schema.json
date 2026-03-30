@@ -176,6 +176,28 @@
       "description": "Override fully qualified app name",
       "type": "string"
     },
+    "tls": {
+      "description": "TLS configuration for all components",
+      "type": "object",
+      "properties": {
+        "cipherSuites": {
+          "description": "Comma-separated list of TLS cipher suites",
+          "type": "string"
+        },
+        "curvePreferences": {
+          "description": "Comma-separated list of numeric CurveID values",
+          "type": "string"
+        },
+        "minVersion": {
+          "description": "Minimum TLS version (VersionTLS12 or VersionTLS13)",
+          "type": "string"
+        },
+        "metricsTLSSecret": {
+          "description": "Secret name for metrics TLS certificates. If empty, self-signed certs are auto-generated.",
+          "type": "string"
+        }
+      }
+    },
     "rbac": {
       "description": "RBAC configuration",
       "type": "object",
@@ -193,9 +215,6 @@
         "scrapeAnnotations": {
           "type": "boolean"
         },
-        "metricsPort": {
-          "type": "integer"
-        },
         "secureMetricsPort": {
           "type": "integer"
         },
@@ -207,18 +226,6 @@
         },
         "namespace": {
           "type": "string"
-        },
-        "rbacProxy": {
-          "description": "kube-rbac-proxy configuration",
-          "type": "object",
-          "properties": {
-            "repository": {
-              "type": "string"
-            },
-            "tag": {
-              "type": "string"
-            }
-          }
         },
         "serviceMonitor": {
           "description": "Prometheus Operator ServiceMonitors",

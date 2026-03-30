@@ -3,12 +3,13 @@
 package controller
 
 import (
+	"bytes"
 	"context"
 	"path/filepath"
 	"testing"
 
-	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
@@ -29,6 +30,7 @@ var (
 	testEnv   *envtest.Environment
 	ctx       context.Context
 	cancel    context.CancelFunc
+	logBuffer bytes.Buffer
 )
 
 const (
@@ -71,14 +73,19 @@ var _ = BeforeSuite(func() {
 	})
 	Expect(err).ToNot(HaveOccurred())
 
+	defaultLogLevel := logging.LevelDebug
+	err = logging.InitWithWriter(&logBuffer)
+	Expect(err).ToNot(HaveOccurred())
+	logging.GetLogger().SetLogLevel(defaultLogLevel)
+
 	err = (&FRRConfigurationReconciler{
-		Client:       k8sManager.GetClient(),
-		Scheme:       k8sManager.GetScheme(),
-		FRRHandler:   &fakeFRRConfigHandler,
-		Logger:       log.NewNopLogger(),
-		NodeName:     testNodeName,
-		Namespace:    testNamespace,
-		ReloadStatus: fakeReloadStatus,
+		Client:          k8sManager.GetClient(),
+		Scheme:          k8sManager.GetScheme(),
+		FRRHandler:      &fakeFRRConfigHandler,
+		NodeName:        testNodeName,
+		Namespace:       testNamespace,
+		ReloadStatus:    fakeReloadStatus,
+		DefaultLogLevel: defaultLogLevel,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 
@@ -87,10 +94,17 @@ var _ = BeforeSuite(func() {
 		Client:           k8sManager.GetClient(),
 		Scheme:           k8sManager.GetScheme(),
 		FRRStatus:        fakeStatus,
-		Logger:           log.NewNopLogger(),
 		NodeName:         testNodeName,
 		ConversionResult: fakeConversionRes,
 		Update:           updateChan,
+	}).SetupWithManager(k8sManager)
+	Expect(err).ToNot(HaveOccurred())
+
+	err = (&FRRK8sConfigurationReconciler{
+		Client:          k8sManager.GetClient(),
+		Scheme:          k8sManager.GetScheme(),
+		DefaultLogLevel: defaultLogLevel,
+		Namespace:       testNamespace,
 	}).SetupWithManager(k8sManager)
 	Expect(err).ToNot(HaveOccurred())
 

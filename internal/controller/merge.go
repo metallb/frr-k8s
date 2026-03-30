@@ -4,6 +4,7 @@ package controller
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/metallb/frr-k8s/internal/frr"
 	"k8s.io/apimachinery/pkg/util/sets"
@@ -31,7 +32,7 @@ func mergeRouterConfigs(r, toMerge *frr.RouterConfig) (*frr.RouterConfig, error)
 	v6Prefixes := sets.New(append(r.IPV6Prefixes, toMerge.IPV6Prefixes...)...)
 	importVRFs := sets.New(append(r.ImportVRFs, toMerge.ImportVRFs...)...)
 
-	mergedNeighbors, err := mergeNeighbors(r.Neighbors, toMerge.Neighbors)
+	mergedNeighbors, err := mergeNeighborsLists(r.Neighbors, toMerge.Neighbors)
 	if err != nil {
 		return nil, err
 	}
@@ -44,39 +45,51 @@ func mergeRouterConfigs(r, toMerge *frr.RouterConfig) (*frr.RouterConfig, error)
 	return r, nil
 }
 
-// Merges two neighbors slices corresponding to the same router.
-func mergeNeighbors(curr, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig, error) {
-	all := curr
-	all = append(all, toMerge...)
+// mergeNeighborsLists merges two neighbor configuration slices corresponding to the same router.
+// It combines both slices and merges neighbors with the same ID (address+VRF combination).
+// Returns a sorted list of merged neighbor configurations or an error if neighbors are incompatible.
+func mergeNeighborsLists(first, toMerge []*frr.NeighborConfig) ([]*frr.NeighborConfig, error) {
+	all := slices.Concat(first, toMerge)
 	if len(all) == 0 {
 		return []*frr.NeighborConfig{}, nil
 	}
 
 	mergedNeighbors := map[string]*frr.NeighborConfig{}
-
 	for _, n := range all {
-		curr, found := mergedNeighbors[n.ID()]
-		if !found {
-			mergedNeighbors[n.ID()] = n
+		id := n.ID()
+		if _, found := mergedNeighbors[id]; !found {
+			mergedNeighbors[id] = n
 			continue
 		}
-
-		err := neighborsAreCompatible(curr, n)
-		if err != nil {
+		if err := mergeIntoNeighbor(mergedNeighbors[id], n); err != nil {
 			return nil, err
 		}
-		curr.Outgoing, err = mergeAllowedOut(curr.Outgoing, n.Outgoing)
-		if err != nil {
-			return nil, fmt.Errorf("could not merge outgoing for neighbor %s vrf %s, err: %w", n.Addr, n.VRFName, err)
-		}
-
-		curr.Incoming = mergeAllowedIn(curr.Incoming, n.Incoming)
-
-		cleanNeighborDefaults(curr)
-		mergedNeighbors[n.ID()] = curr
 	}
 
 	return sortMap(mergedNeighbors), nil
+}
+
+// mergeIntoNeighbor merges the source neighbor configuration into the destination neighbor.
+// Returns an error if the neighbors have incompatible configurations or if an error occurs while merging.
+func mergeIntoNeighbor(dest, src *frr.NeighborConfig) error {
+	err := neighborsAreCompatible(dest, src)
+	if err != nil {
+		return err
+	}
+
+	if dest.BFDProfile == "" {
+		dest.BFDProfile = src.BFDProfile
+	}
+
+	dest.Outgoing, err = mergeAllowedOut(dest.Outgoing, src.Outgoing)
+	if err != nil {
+		return fmt.Errorf("could not merge outgoing for neighbor %s vrf %s, err: %w", src.Addr, src.VRFName, err)
+	}
+	dest.Incoming = mergeAllowedIn(dest.Incoming, src.Incoming)
+
+	cleanNeighborDefaults(dest)
+
+	return nil
 }
 
 // Merges the allowed out prefixes, assuming they are for the same neighbor.
@@ -243,7 +256,8 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("multiple passwords specified for %s", neighborKey)
 	}
 
-	if n1.BFDProfile != n2.BFDProfile {
+	// Configurations are compatible if at least one of the BFDProfiles is empty, or if they match.
+	if n1.BFDProfile != "" && n2.BFDProfile != "" && n1.BFDProfile != n2.BFDProfile {
 		return fmt.Errorf("multiple bfd profiles specified for %s", neighborKey)
 	}
 

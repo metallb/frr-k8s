@@ -260,7 +260,7 @@ func TestValidateFRRConfiguration(t *testing.T) {
 				},
 			},
 			failValidate: false,
-			warnings:     []string{"disableMP is deprecated and will be removed in a future release"},
+			warnings:     []string{"disableMP is deprecated, is ignored and will be removed in a future release"},
 		},
 	}
 	for _, test := range tests {

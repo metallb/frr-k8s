@@ -1,5 +1,6 @@
-# This patch inject a sidecar container which is a HTTP proxy for the
-# controller manager, it performs RBAC authorization against the Kubernetes API using SubjectAccessReviews.
+# This patch configures secure metrics serving for the controller and frr-metrics containers.
+# The controller uses controller-runtime SecureServing with auto-generated self-signed certs.
+# The frr-metrics exporter always serves HTTPS with auto-generated self-signed certs.
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -25,58 +26,34 @@ spec:
                   values:
                     - linux
       containers:
-      - name: kube-rbac-proxy
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-              - "ALL"
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
+      - name: controller
         args:
-        - "--secure-listen-address=0.0.0.0:9140"
-        - "--upstream=http://127.0.0.1:7572/"
-        - "--logtostderr=true"
-        - "--v=0"
-        ports:
-        - containerPort: 9140
-          protocol: TCP
-          name: metricshttps
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 5m
-            memory: 64Mi
-      - name: kube-rbac-proxy-frr
-        args:
-        - --secure-listen-address=0.0.0.0:9141
-        - --upstream=http://127.0.0.1:7573/
-        - --logtostderr=true
-        - --v=0
-        image: gcr.io/kubebuilder/kube-rbac-proxy:v0.13.1
-        ports:
-        - containerPort: 9141
-          name: frrmetricshttps
-          protocol: TCP
-        resources:
-          limits:
-            cpu: 500m
-            memory: 128Mi
-          requests:
-            cpu: 5m
-            memory: 64Mi
-        securityContext:
-          allowPrivilegeEscalation: false
-          capabilities:
-            drop:
-            - ALL
-      - name: frr-k8s
-        args:
-        - "--metrics-bind-address=127.0.0.1:7572"
+        - "--metrics-bind-address=0.0.0.0:9140"
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--log-level=info"
         ports:
-        - containerPort: 7572
-          name: monitoring
+        - containerPort: 9140
+          name: metricshttps
+      - name: frr
+        livenessProbe:
+          httpGet:
+            path: /livez
+            port: 9141
+            scheme: HTTPS
+          periodSeconds: 5
+          failureThreshold: 3
+        startupProbe:
+          httpGet:
+            path: /livez
+            port: 9141
+            scheme: HTTPS
+          failureThreshold: 30
+          periodSeconds: 5
+      - name: frr-metrics
+        args:
+        - --metrics-port=9141
+        - --metrics-bind-address=0.0.0.0
+        ports:
+        - containerPort: 9141
+          name: frrmetricshttps

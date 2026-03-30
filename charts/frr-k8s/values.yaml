@@ -2,11 +2,23 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+# -- String to override the default chart name.
 nameOverride: ""
+# -- String to override the default fully qualified app name.
 fullnameOverride: ""
 
+tls:
+  # -- Comma-separated list of TLS cipher suites. If empty, uses Go defaults. Only applies to TLS 1.2.
+  cipherSuites: ""
+  # -- Comma-separated list of numeric CurveID values (e.g. 29,4588). See https://pkg.go.dev/crypto/tls#CurveID. If empty, uses Go defaults.
+  curvePreferences: ""
+  # -- Minimum TLS version (VersionTLS12 or VersionTLS13). Defaults to VersionTLS13.
+  minVersion: ""
+  # -- The name of the secret to be mounted in the pods to provide TLS certificates for metrics endpoints. If not present, a self-signed certificate is auto-generated.
+  metricsTLSSecret: ""
+
 rbac:
-  # create specifies whether to install and use RBAC rules.
+  # -- Specifies whether to install and use RBAC rules.
   create: true
 
 prometheus:
@@ -18,66 +30,48 @@ prometheus:
   # (https://github.com/coreos/prometheus-operator) for more powerful
   # monitoring configuration. If you use the Prometheus operator, this
   # can be left at false.
+  # -- Add Prometheus metric auto-collection annotations to pods.
   scrapeAnnotations: false
 
-  # bind addr frr-k8s will use for metrics
-  metricsBindAddress: 127.0.0.1
-
-  # port frr-k8s will listen on for metrics
-  metricsPort: 7572
-
-  # if set, enables rbac proxy on frr-k8s to expose
-  # the metrics via tls.
+  # -- Port frr-k8s will listen on for secure metrics.
   secureMetricsPort: 9140
 
-  # the name of the secret to be mounted in the frr-k8s pod
-  # to expose the metrics securely. If not present, a self signed
-  # certificate to be used.
-  metricsTLSSecret: ""
-
-  # prometheus doens't have the permission to scrape all namespaces so we give it permission to scrape metallb's one
+  # -- Give Prometheus permission to scrape metallb's namespace.
   rbacPrometheus: false
 
-  # the service account used by prometheus
-  # required when " .Values.prometheus.rbacPrometheus == true " and " prometheus.serviceMonitor.enabled=true "
+  # -- The service account used by Prometheus. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true"
   serviceAccount: ""
 
-  # the namespace where prometheus is deployed
-  # required when " .Values.prometheus.rbacPrometheus == true " and " prometheus.serviceMonitor.enabled=true "
+  # -- The namespace where Prometheus is deployed. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true".
   namespace: ""
-
-  # the image to be used for the kuberbacproxy container
-  rbacProxy:
-    repository: gcr.io/kubebuilder/kube-rbac-proxy
-    tag: v0.12.0
-    pullPolicy:
 
   # Prometheus Operator ServiceMonitors.
   serviceMonitor:
-    # enable support for Prometheus Operator
+    # -- Enable support for Prometheus Operator.
     enabled: false
 
+    # -- Additional labels to add to the ServiceMonitor.
     additionalLabels: {}
-    # optional additional annotations for the controller serviceMonitor
+    # -- Optional additional annotations for the controller serviceMonitor.
     annotations: {}
-    # optional tls configuration for the controller serviceMonitor, in case
-    # secure metrics are enabled.
+    ## Optional TLS configuration for the controller serviceMonitor, in case secure metrics are enabled.
     tlsConfig:
+      # -- Disables SSL certificate verification
       insecureSkipVerify: true
 
-    # Job label for scrape target
+    # -- Job label for scrape target.
     jobLabel: "app.kubernetes.io/name"
 
-    # Scrape interval. If not set, the Prometheus default scrape interval is used.
+    # -- Scrape interval. If not set, the Prometheus default scrape interval is used.
     interval:
 
-    # 	metric relabel configs to apply to samples before ingestion.
+    # -- Metric relabel configs to apply to samples before ingestion.
     metricRelabelings: []
     # - action: keep
     #   regex: 'kube_(daemonset|deployment|pod|namespace|node|statefulset).+'
     #   sourceLabels: [__name__]
 
-    # 	relabel configs to apply to samples before ingestion.
+    # -- Relabel configs to apply to samples before ingestion.
     relabelings: []
     # - sourceLabels: [__meta_kubernetes_pod_node_name]
     #   separator: ;
@@ -89,12 +83,16 @@ prometheus:
 # controller contains configuration specific to the FRRK8s controller
 # daemonset.
 frrk8s:
-  # -- Controller log level. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
+  # -- Controller log level that is passed as a CLI flag. Must be one of: `all`, `debug`, `info`, `warn`, `error` or `none`
   logLevel: info
+  # -- Tolerate master nodes for pod scheduling.
   tolerateMaster: true
   image:
+    # -- The frr-k8s image repository.
     repository: quay.io/metallb/frr-k8s
+    # -- The frr-k8s image tag. If not set, defaults to the chart appVersion.
     tag:
+    # -- The frr-k8s image pull policy.
     pullPolicy:
   ## @param controller.updateStrategy.type FRR-K8s controller daemonset strategy type
   ## ref: https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/
@@ -102,76 +100,116 @@ frrk8s:
   updateStrategy:
     ## StrategyType
     ## Can be set to RollingUpdate or OnDelete
-    ##
+    # -- Specify the FRR-K8s daemonset update strategy.
     type: RollingUpdate
   serviceAccount:
-    # Specifies whether a ServiceAccount should be created
+    # -- Specifies whether a ServiceAccount should be created.
     create: true
-    # The name of the ServiceAccount to use. If not set and create is
-    # true, a name is generated using the fullname template
+    # -- The name of the ServiceAccount to use. If not set and create is true, a name is generated using the fullname template.
     name: ""
+    # -- Additional annotations to add to the ServiceAccount.
     annotations: {}
   ## Defines a secret name for the controller to generate a memberlist encryption secret
   ## By default secretName: {{ "metallb.fullname" }}-memberlist
   ##
   # secretName:
+  # -- Resource limits and requests for the frr-k8s controller container.
   resources: {}
     # limits:
       # cpu: 100m
       # memory: 100Mi
+  # -- Node selector for pod assignment.
   nodeSelector: {}
+  # -- Tolerations for pod assignment.
   tolerations: []
+  # -- Priority class name for the pod.
   priorityClassName: ""
+  # -- Affinity for pod assignment.
   affinity: {}
   ## Selects which runtime class will be used by the pod.
+  # -- Runtime class name for the pod.
   runtimeClassName: ""
+  # -- Additional annotations to add to the pod.
   podAnnotations: {}
+  # -- Additional labels to add to the pod.
   labels:
     app: frr-k8s
+  # -- Port for the webhook server.
   webhookPort: 19443
   livenessProbe:
+    # -- Enable liveness probe.
     enabled: true
+    # -- Number of failures before the probe is considered failed.
     failureThreshold: 3
+    # -- Number of seconds after the container has started before liveness probes are initiated.
     initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the probe.
     periodSeconds: 10
+    # -- Minimum consecutive successes for the probe to be considered successful.
     successThreshold: 1
+    # -- Number of seconds after which the probe times out.
     timeoutSeconds: 1
   readinessProbe:
+    # -- Enable readiness probe.
     enabled: true
+    # -- Number of failures before the probe is considered failed.
     failureThreshold: 3
+    # -- Number of seconds after the container has started before readiness probes are initiated.
     initialDelaySeconds: 10
+    # -- How often (in seconds) to perform the probe.
     periodSeconds: 10
+    # -- Minimum consecutive successes for the probe to be considered successful.
     successThreshold: 1
+    # -- Number of seconds after which the probe times out.
     timeoutSeconds: 1
   startupProbe:
+    # -- Enable startup probe.
     enabled: true
+    # -- Number of failures before the probe is considered failed.
     failureThreshold: 30
+    # -- How often (in seconds) to perform the probe.
     periodSeconds: 5
-  ## A comma separated list of cidrs we want always to block for incoming routes
+  # -- A comma separated list of cidrs to always block for incoming routes.
   alwaysBlock: ""
-  ## Specifies whether the cert rotator works as part of the webhook.
+  # -- (integer) BGP debounce timeout for FRR configuration reloads, in milliseconds. Default (when unset) is 3000 ms.This feature is experimental
+  bgpDebounceTimeout: null
+  # -- Specifies whether the cert rotator works as part of the webhook.
   disableCertRotation: false
-  ## Specifies whether the pod restarts when the rotator refreshes the cert secret.
-  ## Enabling this proved useful for the webhook's stability when it is redeployed multiple times in succession.
+  ## Note: Enabling this proved useful for the webhook's stability when it is redeployed multiple times in succession.
+  # -- Specifies whether the pod restarts when the rotator refreshes the cert secret. Useful for webhook stability during redeployments.
   restartOnRotatorSecretRefresh: false
   # frr contains configuration specific to the FRR container,
   frr:
     image:
+      # -- The FRR image repository.
       repository: quay.io/frrouting/frr
+      # -- The FRR image tag.
       tag: 10.4.1
+      # -- The FRR image pull policy.
       pullPolicy:
+    # -- Bind address for FRR metrics.
     metricsBindAddress: 127.0.0.1
+    # -- Port for FRR metrics.
     metricsPort: 7573
+    # -- Resource limits and requests for the FRR container.
     resources: {}
+    # -- Secure metrics port for FRR.
     secureMetricsPort: 9141
+    # -- Allow FRR to accept incoming BGP connections.
     acceptIncomingBGPConnections: false
   reloader:
+    # -- Resource limits and requests for the reloader container.
     resources: {}
   frrMetrics:
+    # -- Resource limits and requests for the FRR metrics container.
     resources: {}
   frrStatus:
+    # -- Polling interval for FRR status updates.
     pollInterval: "2m"
+    # -- Resource limits and requests for the FRR status container.
     resources: {}
 crds:
+  # -- Enable installation of CRDs.
   enabled: true
+  # -- Validation failure policy for CRDs. Can be Fail or Ignore.
   validationFailurePolicy: Fail

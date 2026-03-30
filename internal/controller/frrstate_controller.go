@@ -32,10 +32,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
+	"github.com/metallb/frr-k8s/internal/logging"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -48,7 +48,6 @@ type FRRStateReconciler struct {
 	client.Client
 	Scheme           *runtime.Scheme
 	Update           chan event.GenericEvent
-	Logger           log.Logger
 	NodeName         string
 	FRRStatus        frr.StatusFetcher
 	ConversionResult ConversionResultFetcher
@@ -82,8 +81,10 @@ type ConversionResultFetcher interface {
 // +kubebuilder:rbac:groups="",resources=nodes,verbs=get;list;watch
 
 func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "FRRStateReconciler", "start reconcile", req.String())
-	defer level.Info(r.Logger).Log("controller", "FRRStateReconciler", "end reconcile", req.String())
+	l := logging.GetLogger()
+	level.Info(l).Log("controller", "FRRStateReconciler", "start reconcile", req.String())
+	defer level.Info(l).Log("controller", "FRRStateReconciler", "end reconcile", req.String())
+	level.Debug(l).Log("controller", "FRRStateReconciler", "log level controller", "debug")
 
 	state := &frrk8sv1beta1.FRRNodeState{}
 
@@ -93,7 +94,7 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		err = r.Create(ctx, state)
 	}
 	if err != nil {
-		level.Error(r.Logger).Log("controller", "FRRStateReconciler", "failed to get", err)
+		level.Error(l).Log("controller", "FRRStateReconciler", "failed to get", err)
 		return ctrl.Result{}, err
 	}
 	frrStatus := r.FRRStatus.GetStatus()
@@ -110,10 +111,10 @@ func (r *FRRStateReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	state.Status = newStatus
 	err = r.Client.Status().Update(ctx, state)
 	if err != nil {
-		level.Error(r.Logger).Log("controller", "FRRStateReconciler", "failed to update", err)
+		level.Error(l).Log("controller", "FRRStateReconciler", "failed to update", err)
 		return ctrl.Result{}, err
 	}
-	level.Debug(r.Logger).Log("controller", "FRRStateReconciler", "updated nodestate", dumpResource(state))
+	level.Debug(l).Log("controller", "FRRStateReconciler", "updated nodestate", dumpResource(state))
 
 	return ctrl.Result{}, nil
 }

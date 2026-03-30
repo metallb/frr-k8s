@@ -18,11 +18,14 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"flag"
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -37,15 +40,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 
-	"github.com/go-kit/log"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/controller"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/logging"
+	"github.com/metallb/frr-k8s/internal/tlsconfig"
 	"github.com/metallb/frr-k8s/internal/version"
 	//+kubebuilder:scaffold:imports
 )
@@ -62,26 +67,44 @@ func init() {
 	//+kubebuilder:scaffold:scheme
 }
 
+const (
+	defaultDebounceTimeout = 3 * time.Second
+)
+
 type params struct {
-	metricsAddr      string
-	logLevel         string
-	nodeName         string
-	namespace        string
-	podName          string
-	pprofAddr        string
-	alwaysBlockCIDRs string
+	metricsAddr          string
+	metricsCertDir       string
+	healthProbeAddr      string
+	logLevel             string
+	nodeName             string
+	namespace            string
+	podName              string
+	pprofAddr            string
+	alwaysBlockCIDRs     string
+	tlsCipherSuites      string
+	tlsCurvePreferences  string
+	tlsMinVersion        string
+	bgpDebounceTimeoutMs string
 }
 
 func main() {
 	params := params{}
 
-	flag.StringVar(&params.metricsAddr, "metrics-bind-address", "127.0.0.1:7572", "The address the metric endpoint binds to.")
+	flag.StringVar(&params.metricsAddr, "metrics-bind-address", "0.0.0.0:9140", "The address the metric endpoint binds to.")
+	flag.StringVar(&params.metricsCertDir, "metrics-cert-dir", "", "Directory containing tls.crt and tls.key for the metrics server. If empty, auto-generates self-signed certs.")
+	flag.StringVar(&params.healthProbeAddr, "health-probe-bind-address", "127.0.0.1:7572", "The address the health probe endpoint binds to.")
 	flag.StringVar(&params.logLevel, "log-level", "info", fmt.Sprintf("log level. must be one of: [%s]", logging.Levels.String()))
 	flag.StringVar(&params.nodeName, "node-name", "", "The node this daemon is running on.")
 	flag.StringVar(&params.namespace, "namespace", "", "The namespace this daemon is deployed in")
 	flag.StringVar(&params.podName, "pod-name", "", "The name of the pod this process is running in")
 	flag.StringVar(&params.pprofAddr, "pprof-bind-address", "", "The address the pprof endpoints bind to.")
 	flag.StringVar(&params.alwaysBlockCIDRs, "always-block", "", "a list of comma separated cidrs we need to always block")
+	flag.StringVar(&params.tlsCipherSuites, "tls-cipher-suites", "", "Comma-separated list of TLS cipher suites. If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsCurvePreferences, "tls-curve-preferences", "", "Comma-separated list of numeric CurveID values (see https://pkg.go.dev/crypto/tls#CurveID). If empty, uses Go defaults.")
+	flag.StringVar(&params.tlsMinVersion, "tls-min-version", "", "Minimum TLS version (VersionTLS12 or VersionTLS13). If empty, defaults to VersionTLS13.")
+	flag.StringVar(&params.bgpDebounceTimeoutMs, "bgp-debounce-timeout", os.Getenv("FRR_K8S_BGP_DEBOUNCE_TIMEOUT"),
+		"BGP debounce timeout for FRR configuration reloads, in milliseconds. "+
+			"Can also be set via FRR_K8S_BGP_DEBOUNCE_TIMEOUT. Default is 3000 ms. This feature is experimental.")
 
 	opts := zap.Options{
 		Development: true,
@@ -89,9 +112,23 @@ func main() {
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
-	logger, err := logging.Init(params.logLevel)
+	// Parse the default log level once, and from here on forward use the parsed *logging.Level everywhere for
+	// the default log level.
+	defaultLogLevel, err := logging.ParseLevel(params.logLevel)
 	if err != nil {
+		setupLog.Error(err, "failed to parse log-level", "log-level", params.logLevel)
+		os.Exit(1)
+	}
+
+	if err := logging.Init(); err != nil {
 		fmt.Printf("failed to initialize logging: %s\n", err)
+		os.Exit(1)
+	}
+	logging.GetLogger().SetLogLevel(defaultLogLevel)
+
+	tlsOpt, err := tlsconfig.OptFor(params.tlsCipherSuites, params.tlsCurvePreferences, params.tlsMinVersion)
+	if err != nil {
+		setupLog.Error(err, "failed to parse TLS flags")
 		os.Exit(1)
 	}
 
@@ -101,16 +138,21 @@ func main() {
 
 	options := ctrl.Options{
 		Scheme:                 scheme,
-		HealthProbeBindAddress: "", // we use the metrics endpoint for healthchecks
+		HealthProbeBindAddress: params.healthProbeAddr,
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Secret{}:                  namespaceSelector,
-				&corev1.Pod{}:                     namespaceSelector,
-				&frrk8sv1beta1.FRRConfiguration{}: namespaceSelector,
+				&corev1.Secret{}:                     namespaceSelector,
+				&corev1.Pod{}:                        namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}:    namespaceSelector,
+				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
 			},
 		},
 		Metrics: metricsserver.Options{
-			BindAddress: params.metricsAddr,
+			BindAddress:    params.metricsAddr,
+			SecureServing:  true,
+			CertDir:        params.metricsCertDir,
+			TLSOpts:        []func(*tls.Config){tlsOpt},
+			FilterProvider: filters.WithAuthenticationAndAuthorization,
 		},
 		PprofBindAddress: params.pprofAddr,
 	}
@@ -121,11 +163,20 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up health check")
+		os.Exit(1)
+	}
+	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
+		setupLog.Error(err, "unable to set up ready check")
+		os.Exit(1)
+	}
+
 	ctx := ctrl.SetupSignalHandler()
 
 	//+kubebuilder:scaffold:builder
 
-	startFRRControllers(ctx, mgr, params, logger)
+	startFRRControllers(ctx, mgr, params, defaultLogLevel)
 
 	setupLog.Info("starting frr-k8s", "version", version.String(), "params", fmt.Sprintf("%+v", params))
 	if err := mgr.Start(ctx); err != nil {
@@ -134,13 +185,28 @@ func main() {
 	}
 }
 
-func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, logger log.Logger) {
+func startFRRControllers(ctx context.Context, mgr manager.Manager, params params, defaultLogLevel logging.Level) {
 	setupLog.Info("Starting controllers")
 	reloadStatusChan := make(chan event.GenericEvent)
 	reloadStatus := func() {
 		reloadStatusChan <- controller.NewStateEvent()
 	}
-	frrInstance := frr.NewFRR(ctx, reloadStatus, logger, logging.Level(params.logLevel))
+
+	// Parse BGP debounce timeout from flag/env or use default (3 seconds).
+	// The debounce timeout throttles how often FRR configuration reloads are applied, so that
+	// bursts of updates are coalesced into fewer reloads.
+	dbTimeout := defaultDebounceTimeout
+	if params.bgpDebounceTimeoutMs != "" {
+		parsed, err := strconv.Atoi(params.bgpDebounceTimeoutMs)
+		if err != nil || parsed <= 0 {
+			setupLog.Error(fmt.Errorf("invalid value"), "invalid BGP debounce timeout value, must be a positive integer", "provided", params.bgpDebounceTimeoutMs)
+			os.Exit(1)
+		}
+		dbTimeout = time.Duration(parsed) * time.Millisecond
+	}
+	setupLog.Info("using BGP debounce timeout", "milliseconds", dbTimeout.Milliseconds())
+
+	frrInstance := frr.NewFRR(ctx, reloadStatus, dbTimeout)
 
 	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
 	if err != nil {
@@ -148,16 +214,15 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		os.Exit(1)
 	}
 
-	dumpResources := params.logLevel == logging.LevelDebug || params.logLevel == logging.LevelAll
 	configReconciler := &controller.FRRConfigurationReconciler{
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		FRRHandler:       frrInstance,
-		Logger:           logger,
 		NodeName:         params.nodeName,
 		ReloadStatus:     reloadStatus,
 		AlwaysBlockCIDRS: alwaysBlock,
-		DumpResources:    dumpResources,
+		DefaultLogLevel:  defaultLogLevel,
+		Namespace:        params.namespace,
 	}
 	if err = configReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRConfiguration")
@@ -168,12 +233,21 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 		Client:           mgr.GetClient(),
 		Scheme:           mgr.GetScheme(),
 		FRRStatus:        frrInstance,
-		Logger:           logger,
 		NodeName:         params.nodeName,
 		Update:           reloadStatusChan,
 		ConversionResult: configReconciler,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "FRRStatus")
+		os.Exit(1)
+	}
+
+	if err = (&controller.FRRK8sConfigurationReconciler{
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		DefaultLogLevel: defaultLogLevel,
+		Namespace:       params.namespace,
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "FRRK8sConfiguration")
 		os.Exit(1)
 	}
 }

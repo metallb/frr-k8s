@@ -17,16 +17,15 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
+	"github.com/metallb/frr-k8s/internal/logging"
 )
 
 // NodeStateCleaner reconciles Pod objects to clean up FRRNodeState resources.
 type NodeStateCleaner struct {
 	client.Client
 	Scheme         *runtime.Scheme
-	Logger         log.Logger
 	Namespace      string
 	FRRK8sSelector labels.Selector
 }
@@ -34,12 +33,14 @@ type NodeStateCleaner struct {
 // +kubebuilder:rbac:groups=frrk8s.metallb.io,resources=frrnodestates,verbs=get;list;watch;delete
 
 func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	level.Info(r.Logger).Log("controller", "NodeStateCleaner", "start reconcile", req.String())
-	defer level.Info(r.Logger).Log("controller", "NodeStateCleaner", "end reconcile", req.String())
+	l := logging.GetLogger()
+	level.Info(l).Log("controller", "NodeStateCleaner", "start reconcile", req.String())
+	defer level.Info(l).Log("controller", "NodeStateCleaner", "end reconcile", req.String())
+	level.Debug(l).Log("controller", "NodeStateCleaner", "log level controller", "debug")
 
 	pods := &corev1.PodList{}
 	if err := r.List(ctx, pods, client.InNamespace(r.Namespace), client.MatchingLabelsSelector{Selector: r.FRRK8sSelector}); err != nil {
-		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to list FRR-K8s pods", err)
+		level.Error(l).Log("controller", "NodeStateCleaner", "failed to list FRR-K8s pods", err)
 		return ctrl.Result{}, err
 	}
 
@@ -50,23 +51,23 @@ func (r *NodeStateCleaner) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 
 	frrNodeStates := &frrk8sv1beta1.FRRNodeStateList{}
 	if err := r.List(ctx, frrNodeStates); err != nil {
-		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to list FRRNodeStates", err)
+		level.Error(l).Log("controller", "NodeStateCleaner", "failed to list FRRNodeStates", err)
 		return ctrl.Result{}, err
 	}
 
 	var errors []error
 	for _, nodeState := range frrNodeStates.Items {
 		if _, hasFRRPods := nodesWithFRRPods[nodeState.Name]; !hasFRRPods {
-			level.Info(r.Logger).Log("controller", "NodeStateCleaner", "deleting FRRNodeState", "name", nodeState.Name, "reason", "no FRR pods on node")
+			level.Info(l).Log("controller", "NodeStateCleaner", "deleting FRRNodeState", "name", nodeState.Name, "reason", "no FRR pods on node")
 			if err := r.Delete(ctx, &nodeState); err != nil {
-				level.Error(r.Logger).Log("controller", "NodeStateCleaner", "failed to delete FRRNodeState", "name", nodeState.Name, "error", err)
+				level.Error(l).Log("controller", "NodeStateCleaner", "failed to delete FRRNodeState", "name", nodeState.Name, "error", err)
 				errors = append(errors, fmt.Errorf("failed to delete FRRNodeState %s: %w", nodeState.Name, err))
 			}
 		}
 	}
 
 	if len(errors) > 0 {
-		level.Error(r.Logger).Log("controller", "NodeStateCleaner", "reconcile finished with errors", "error_count", len(errors))
+		level.Error(l).Log("controller", "NodeStateCleaner", "reconcile finished with errors", "error_count", len(errors))
 		return ctrl.Result{}, utilerrors.NewAggregate(errors)
 	}
 

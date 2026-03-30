@@ -3,6 +3,16 @@
 package k8s
 
 var (
-	FRRK8sNamespace = "frr-k8s-system"
-	FRRK8sDaemonset = "frr-k8s-daemon"
+	FRRK8sNamespace       = "frr-k8s-system"
+	FRRK8sDefaultLogLevel = "default"
+)
+
+const (
+	FRRK8sDaemonsetLS                = "app.kubernetes.io/component=frr-k8s"
+	FRRK8sStatusCleanerApp           = "app.kubernetes.io/component=statuscleaner"
+	FRRK8SContainerName              = "controller"
+	FRRK8SStatusContainerName        = "frr-status"
+	FRRContainerName                 = "frr"
+	FRRK8SStatusCleanerContainerName = "frr-k8s-statuscleaner"
+	FRRK8sConfigurationName          = "config"
 )

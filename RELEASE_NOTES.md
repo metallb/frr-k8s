@@ -1,5 +1,22 @@
 # FRRK8s Release Notes
 
+## Release v0.0.23
+
+### New Features
+- Add FRROperatorConfiguration CR that allows users to configure logging at runtime without the need for restarts.
+  
+  Default log levels are still set via the --log-level command line flag.
+  
+  Users can now set logging levels for all components at runtime via FRROperatorConfiguration .spec.logLevel. 
+  
+  The FRROperatorConfiguration object must be named `config` and must reside in the namespace that is watched by frr-k8s. (#386, @andreaskaris)
+- BGP debounce timeout for FRR configuration reloads is configurable. Only applies when METALLB_BGP_TYPE=frr. Can also be set via METALLB_BGP_DEBOUNCE_TIMEOUT or by bgp-debounce-timeout flag, default is 3000 ms. (#415, @adilGhaffarDev)
+- Replace kube-rbac-proxy with native TLS and RBAC, which enables configuring some TLS parameters. The old HTTP endpoints are no longer available, they are now HTTPS served by self-signed certificates / certificates passed to the binaries. (#409, @oribon)
+
+### Bug fixes
+- Fix BFD profile merging to allow adding BFD configuration to existing BGP neighbors without requiring deletion and recreation of FRRConfiguration objects.
+  This resolves the issue where users received "multiple bfd profiles specified" errors when attempting to enable BFD on peers with existing route learning configurations. (#400, @andreaskaris)
+
 ## Release v0.0.22
 
 ### Bug fixes

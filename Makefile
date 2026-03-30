@@ -75,7 +75,10 @@ test: manifests generate fmt vet envtest ## Run tests.
 
 .PHONY: build
 build: manifests generate fmt vet ## Build k8s-frr binary.
-	go build -o bin/frr-k8s cmd/main.go
+	go build -v -o bin/frr-k8s ./cmd/frr-k8s-controller
+	go build -v -o bin/frr-metrics ./cmd/metrics
+	go build -v -o bin/frr-status ./cmd/status
+	go build -v -o bin/statuscleaner ./cmd/statuscleaner
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
@@ -89,7 +92,7 @@ BRANCH = $(shell git rev-parse --abbrev-ref HEAD)
 
 .PHONY: docker-build
 docker-build: ## Build docker image with the k8s-frr.
-	docker build -t ${IMG} --build-arg GIT_COMMIT=$${COMMIT} --build-arg GIT_BRANCH=$${BRANCH} .
+	docker build -t ${IMG} --build-arg GIT_COMMIT=${COMMIT} --build-arg GIT_BRANCH=${BRANCH} .
 
 .PHONY: docker-push
 docker-push: ## Push docker image with the k8s-frr.
@@ -124,7 +127,7 @@ export KUBECONFIG=$(KUBECONFIG_PATH)
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.0.0
-CONTROLLER_TOOLS_VERSION ?= v0.14.0
+CONTROLLER_TOOLS_VERSION ?= v0.17.3
 KUBECTL_VERSION ?= v1.27.0
 GINKGO_VERSION ?= v2.19.0
 GOLANGCI_LINT_VERSION ?= v2.2.2
@@ -132,7 +135,7 @@ KIND_VERSION ?= v0.27.0
 KIND_CLUSTER_NAME ?= frr-k8s
 HELM_VERSION ?= v3.12.3
 HELM_DOCS_VERSION ?= v1.10.0
-APIDOCSGEN_VERSION ?= v0.0.12
+APIDOCSGEN_VERSION ?= v0.3.0
 
 .PHONY: install
 install: kubectl manifests kustomize ## Install CRDs into the K8s cluster specified in $KUBECONFIG_PATH.
@@ -288,8 +291,16 @@ generate-all-in-one: manifests kustomize ## Create manifests
 	$(KUSTOMIZE) build config/prometheus > config/all-in-one/frr-k8s-prometheus.yaml
 
 .PHONY: helm-docs
-helm-docs:
+helm-docs: ## Generate helm documentation
 	docker run --rm -v $$(pwd):/app -w /app jnorwood/helm-docs:$(HELM_DOCS_VERSION) helm-docs
+
+.PHONY: verify-helm-docs-comments
+verify-helm-docs-comments: ## Check that all documented helm values have comments
+	@if grep -n -E '\|\s*\|\s*$$' charts/frr-k8s/README.md; then \
+	  echo "Error: Found helm values with empty descriptions in README.md"; \
+	  echo "Please add documentation comments for all helm values int charts/frr-k8s/values.yaml"; \
+	  exit 1; \
+	fi
 
 .PHONY: api-docs
 api-docs: crd-ref-docs

@@ -4,7 +4,7 @@ metadata:
   labels:
     app.kubernetes.io/name: clusterrole
     app.kubernetes.io/instance: proxy-role
-    app.kubernetes.io/component: kube-rbac-proxy
+    app.kubernetes.io/component: frr-k8s
     app.kubernetes.io/created-by: frr-k8s
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize

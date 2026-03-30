@@ -7,6 +7,9 @@ metadata:
   labels: {{- include "frrk8s.labels" . | nindent 4 }}
 rules:
 - apiGroups: ["frrk8s.metallb.io"]
+  resources: ["frrk8sconfigurations"]
+  verbs: ["get", "list", "watch"]
+- apiGroups: ["frrk8s.metallb.io"]
   resources: ["frrconfigurations"]
   verbs: ["get", "list", "watch"]
 - apiGroups: ["frrk8s.metallb.io"]

@@ -42,6 +42,15 @@ spec:
         - "--restart-on-rotator-secret-refresh=true"
         {{- end }}
         - "--namespace=$(NAMESPACE)"
+        {{- if .Values.tls.cipherSuites }}
+        - --tls-cipher-suites={{ .Values.tls.cipherSuites }}
+        {{- end }}
+        {{- if .Values.tls.curvePreferences }}
+        - --tls-curve-preferences={{ .Values.tls.curvePreferences }}
+        {{- end }}
+        {{- if .Values.tls.minVersion }}
+        - --tls-min-version={{ .Values.tls.minVersion }}
+        {{- end }}
         env:
         - name: NAMESPACE
           valueFrom:

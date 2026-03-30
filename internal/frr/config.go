@@ -17,10 +17,10 @@ import (
 
 	"errors"
 
-	"github.com/go-kit/log"
 	"github.com/go-kit/log/level"
 	"github.com/metallb/frr-k8s/internal/community"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"github.com/metallb/frr-k8s/internal/logging"
 	"k8s.io/apimachinery/pkg/util/sets"
 )
 
@@ -32,7 +32,7 @@ var (
 )
 
 type Config struct {
-	Loglevel    string
+	Loglevel    Level
 	Hostname    string
 	Routers     []*RouterConfig
 	BFDProfiles []BFDProfile
@@ -330,7 +330,9 @@ var reloadConfig = func() error {
 // generateAndReloadConfigFile takes a 'struct Config' and, using a template,
 // generates and writes a valid FRR configuration file. If this completes
 // successfully it will also force FRR to reload that configuration file.
-func generateAndReloadConfigFile(config *Config, l log.Logger) error {
+func generateAndReloadConfigFile(config *Config) error {
+	l := logging.GetLogger()
+
 	filename, found := os.LookupEnv("FRR_CONFIG_FILE")
 	if found {
 		configFileName = filename
@@ -361,8 +363,8 @@ func generateAndReloadConfigFile(config *Config, l log.Logger) error {
 func debouncer(ctx context.Context, body func(config *Config) error,
 	reload <-chan reloadEvent,
 	reloadInterval time.Duration,
-	failureRetryInterval time.Duration,
-	l log.Logger) {
+	failureRetryInterval time.Duration) {
+	l := logging.GetLogger()
 	go func() {
 		var config *Config
 		var timeOut <-chan time.Time

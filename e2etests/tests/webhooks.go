@@ -182,106 +182,149 @@ var _ = ginkgo.Describe("Webhooks", func() {
 			),
 		)
 
-		ginkgo.It("Should reject create/update when there is a conflict with an existing config", func() {
-			nodes, err := k8s.Nodes(cs)
-			Expect(err).NotTo(HaveOccurred())
+		ginkgo.DescribeTable("Should reject create/update when there is a conflict with an existing config",
+			func(bgpConfig, updatedBGPConfig frrk8sv1beta1.BGPConfig, errorMsg string) {
+				nodes, err := k8s.Nodes(cs)
+				Expect(err).NotTo(HaveOccurred())
 
-			ginkgo.By("Creating the first config on the first node")
-			cfg1 := frrk8sv1beta1.FRRConfiguration{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "webhook-cfg1",
-					Namespace: k8s.FRRK8sNamespace,
-				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
-							{
-								ASN: 100,
-								VRF: "",
+				ginkgo.By("Creating the first config on the first node")
+				cfg1 := frrk8sv1beta1.FRRConfiguration{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "webhook-cfg1",
+						Namespace: k8s.FRRK8sNamespace,
+					},
+					Spec: frrk8sv1beta1.FRRConfigurationSpec{
+						BGP: bgpConfig,
+						NodeSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
 							},
 						},
 					},
-					NodeSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
-						},
-					},
-				},
-			}
-			err = updater.Update([]corev1.Secret{}, cfg1)
-			Expect(err).NotTo(HaveOccurred())
+				}
+				err = updater.Update([]corev1.Secret{}, cfg1)
+				Expect(err).NotTo(HaveOccurred())
 
-			ginkgo.By("Attempting to create a second config on the first node with a different ASN")
-			cfg2 := frrk8sv1beta1.FRRConfiguration{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "webhook-cfg2",
-					Namespace: k8s.FRRK8sNamespace,
-				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
-							{
-								ASN: 200,
-								VRF: "",
+				ginkgo.By("Attempting to create a second config on the first node with a conflict")
+				cfg2 := frrk8sv1beta1.FRRConfiguration{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "webhook-cfg2",
+						Namespace: k8s.FRRK8sNamespace,
+					},
+					Spec: frrk8sv1beta1.FRRConfigurationSpec{
+						BGP: updatedBGPConfig,
+						NodeSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
 							},
 						},
 					},
-					NodeSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
-						},
+				}
+				err = updater.Update([]corev1.Secret{}, cfg2)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errorMsg))
+
+				ginkgo.By("Creating the second config on the second node")
+				cfg2.Spec.NodeSelector = metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/hostname": nodes[1].GetLabels()["kubernetes.io/hostname"],
 					},
-				},
-			}
-			err = updater.Update([]corev1.Secret{}, cfg2)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("different asns"))
+				}
+				err = updater.Update([]corev1.Secret{}, cfg2)
+				Expect(err).NotTo(HaveOccurred())
 
-			ginkgo.By("Creating the second config on the second node")
-			cfg2.Spec.NodeSelector = metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"kubernetes.io/hostname": nodes[1].GetLabels()["kubernetes.io/hostname"],
-				},
-			}
-			err = updater.Update([]corev1.Secret{}, cfg2)
-			Expect(err).NotTo(HaveOccurred())
+				ginkgo.By("Attempting to update the second config to select the first node")
+				cfg2.Spec.NodeSelector = metav1.LabelSelector{
+					MatchLabels: map[string]string{
+						"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
+					},
+				}
+				err = updater.Update([]corev1.Secret{}, cfg2)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errorMsg))
 
-			ginkgo.By("Attempting to update the second config to select the first node")
-			cfg2.Spec.NodeSelector = metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
-				},
-			}
-			err = updater.Update([]corev1.Secret{}, cfg2)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("different asns"))
-
-			ginkgo.By("Attempting to create a third config in a different namespace on the first node with a different ASN")
-			cfg3 := frrk8sv1beta1.FRRConfiguration{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "webhook-cfg3",
-					Namespace: "default",
-				},
-				Spec: frrk8sv1beta1.FRRConfigurationSpec{
-					BGP: frrk8sv1beta1.BGPConfig{
-						Routers: []frrk8sv1beta1.Router{
-							{
-								ASN: 200,
-								VRF: "",
+				ginkgo.By("Attempting to create a third config in a different namespace on the first node with a conflict")
+				cfg3 := frrk8sv1beta1.FRRConfiguration{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "webhook-cfg3",
+						Namespace: "default",
+					},
+					Spec: frrk8sv1beta1.FRRConfigurationSpec{
+						BGP: updatedBGPConfig,
+						NodeSelector: metav1.LabelSelector{
+							MatchLabels: map[string]string{
+								"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
 							},
 						},
 					},
-					NodeSelector: metav1.LabelSelector{
-						MatchLabels: map[string]string{
-							"kubernetes.io/hostname": nodes[0].GetLabels()["kubernetes.io/hostname"],
+				}
+				err = updater.Update([]corev1.Secret{}, cfg3)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring(errorMsg))
+			},
+			ginkgo.Entry("conflict with ASN",
+				frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN: 100,
+							VRF: "",
 						},
 					},
 				},
-			}
-			err = updater.Update([]corev1.Secret{}, cfg3)
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("different asns"))
-		})
+				frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN: 200,
+							VRF: "",
+						},
+					},
+				},
+				"different asns",
+			),
+			ginkgo.Entry("conflict with BFD profile name",
+				frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN: 100,
+							VRF: "",
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:        200,
+									Address:    "1.2.3.4",
+									BFDProfile: "profile1",
+								},
+							},
+						},
+					},
+					BFDProfiles: []frrk8sv1beta1.BFDProfile{
+						{
+							Name: "profile1",
+						},
+					},
+				},
+				frrk8sv1beta1.BGPConfig{
+					Routers: []frrk8sv1beta1.Router{
+						{
+							ASN: 100,
+							VRF: "",
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:        200,
+									Address:    "1.2.3.4",
+									BFDProfile: "profile2",
+								},
+							},
+						},
+					},
+					BFDProfiles: []frrk8sv1beta1.BFDProfile{
+						{
+							Name: "profile2",
+						},
+					},
+				},
+				"multiple bfd profiles specified for",
+			),
+		)
 
 		ginkgo.It("Should not reject a resource with a missing secret ref", func() {
 			cfg := frrk8sv1beta1.FRRConfiguration{

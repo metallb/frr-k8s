@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	"github.com/metallb/frr-k8s/internal/logging"
@@ -35,10 +36,11 @@ func TestLiveness(t *testing.T) {
 		},
 	}
 
-	logger, err := logging.Init("error")
-	if err != nil {
+	if err := logging.InitWithWriter(os.Stdout); err != nil {
 		t.Fatalf("failed to create logger %v", err)
 	}
+	logger := logging.GetLogger()
+	logger.SetLogLevel(logging.LevelError)
 	req := httptest.NewRequest(http.MethodGet, "/livez", nil)
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
