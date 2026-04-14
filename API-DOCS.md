@@ -406,6 +406,7 @@ _Appears in:_
 | `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  | Optional: \{\} <br /> |
 | `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false | Optional: \{\} <br /> |
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false | Optional: \{\} <br /> |
+| `localASN` _integer_ | LocalASN allows advertising a different AS number to the peer using BGP's<br />local-as feature. When set, FRR will advertise this ASN to the peer<br />via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding<br />the router-level ASN for this specific session.<br />Note: this field is only applicable to eBGP sessions (where the peer ASN differs<br />from the router ASN). Setting it on an iBGP session is rejected. |  | Maximum: 4.294967295e+09 <br />Minimum: 1 <br />Optional: \{\} <br /> |
 
 
 #### PrefixSelector

@@ -331,5 +331,91 @@ var _ = ginkgo.Describe("Session", func() {
 			ginkgo.Entry("IPV4", ipfamily.IPv4),
 			ginkgo.Entry("IPV6", ipfamily.IPv6),
 		)
+
+		ginkgo.DescribeTable("Establishes sessions with localASN override", func(family ipfamily.Family) {
+			localASN := uint32(64520)
+
+			allFRRs := config.ContainersForVRF(infra.FRRContainers, "")
+			frrs := []*frrcontainer.FRR{}
+			for _, f := range allFRRs {
+				if f.RouterConfig.ASN != infra.FRRK8sASN {
+					frrs = append(frrs, f)
+				}
+			}
+			neighbors := []frrk8sv1beta1.Neighbor{}
+
+			for _, f := range frrs {
+				addresses := f.AddressesForFamily(family)
+				ebgpMultihop := false
+				if f.NeighborConfig.MultiHop && f.NeighborConfig.ASN != f.RouterConfig.ASN {
+					ebgpMultihop = true
+				}
+
+				for _, address := range addresses {
+					neighbors = append(neighbors, frrk8sv1beta1.Neighbor{
+						ASN:          f.RouterConfig.ASN,
+						Address:      address,
+						Password:     f.RouterConfig.Password,
+						Port:         &f.RouterConfig.BGPPort,
+						EBGPMultiHop: ebgpMultihop,
+						LocalASN:     localASN,
+					})
+				}
+			}
+
+			frrConfig := frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test",
+					Namespace: k8s.FRRK8sNamespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       infra.FRRK8sASN,
+								VRF:       "",
+								Neighbors: neighbors,
+							},
+						},
+					},
+				},
+			}
+
+			ginkgo.By("configuring FRR containers to expect localASN as frr-k8s's remote AS")
+			for _, c := range frrs {
+				err := frrcontainer.PairWithNodes(cs, c, family, func(frr *frrcontainer.FRR) {
+					frr.NeighborConfig.ASN = localASN
+				})
+				Expect(err).NotTo(HaveOccurred())
+			}
+
+			err := updater.Update([]corev1.Secret{}, frrConfig)
+			Expect(err).NotTo(HaveOccurred())
+
+			nodes, err := k8s.Nodes(cs)
+			Expect(err).NotTo(HaveOccurred())
+
+			ginkgo.By("validating sessions are established and peers report localASN as the remote AS")
+			for _, c := range frrs {
+				Eventually(func() error {
+					neighbors, err := frr.NeighborsInfo(c)
+					if err != nil {
+						return err
+					}
+					if err = frr.NeighborsMatchNodes(nodes, neighbors, family, c.RouterConfig.VRF); err != nil {
+						return fmt.Errorf("failed to match neighbors for %s: %w", c.Name, err)
+					}
+					for _, n := range neighbors {
+						if n.RemoteAS != fmt.Sprintf("%d", localASN) {
+							return fmt.Errorf("expected peer %s to report remote AS %d, got %s", n.ID, localASN, n.RemoteAS)
+						}
+					}
+					return nil
+				}, 4*time.Minute, time.Second).ShouldNot(HaveOccurred())
+			}
+		},
+			ginkgo.Entry("IPV4", ipfamily.IPv4),
+			ginkgo.Entry("IPV6", ipfamily.IPv6),
+		)
 	})
 })

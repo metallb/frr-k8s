@@ -806,6 +806,39 @@ func TestSingleSessionWithGracefulRestart(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestSingleSessionWithLocalASN(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "65001",
+						Addr:     "192.168.1.2",
+						LocalASN: 65410,
+					},
+				},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestMultipleRoutersImportVRFs(t *testing.T) {
 	testSetup(t)
 

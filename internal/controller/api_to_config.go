@@ -136,6 +136,9 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	}
 
 	for _, n := range r.Neighbors {
+		if n.LocalASN != 0 && n.ASN != 0 && n.ASN == r.ASN {
+			return nil, fmt.Errorf("neighbor %s: localASN is not supported for iBGP sessions (neighbor ASN %d equals router ASN)", neighborName(n), n.ASN)
+		}
 		frrNeigh, err := neighborToFRR(n, routerPrefixes, alwaysBlock, r.VRF, secrets, bfdProfiles)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n), r.ASN, r.VRF, err)
@@ -181,6 +184,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	res := &frr.NeighborConfig{
 		Name:            neighborName(n),
 		ASN:             asnFor(n),
+		LocalASN:        n.LocalASN,
 		SrcAddr:         n.SourceAddress,
 		Addr:            n.Address,
 		Iface:           n.Interface,
