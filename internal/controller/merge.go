@@ -367,19 +367,19 @@ func mergeL2VNIs(a, b []frr.L2VNI) ([]frr.L2VNI, error) {
 
 	byVNI := map[uint32]frr.L2VNI{}
 	for _, v := range a {
-		byVNI[v.VNI.VNI] = v
+		byVNI[v.VNI] = v
 	}
 	for _, v := range b {
-		existing, found := byVNI[v.VNI.VNI]
+		existing, found := byVNI[v.VNI]
 		if !found {
-			byVNI[v.VNI.VNI] = v
+			byVNI[v.VNI] = v
 			continue
 		}
-		merged, err := mergeVNIs(existing.VNI, v.VNI)
+		merged, err := mergeVNIProperties(existing.VNIProperties, v.VNIProperties)
 		if err != nil {
-			return nil, fmt.Errorf("could not merge l2vni %d, err: %w", existing.VNI.VNI, err)
+			return nil, fmt.Errorf("could not merge l2vni %d, err: %w", existing.VNI, err)
 		}
-		byVNI[v.VNI.VNI] = frr.L2VNI{VNI: merged}
+		byVNI[v.VNI] = frr.L2VNI{VNI: existing.VNI, VNIProperties: merged}
 	}
 
 	return sortMap(byVNI), nil
@@ -392,36 +392,37 @@ func mergeL3VNIs(a, b *frr.L3VNI) (*frr.L3VNI, error) {
 	if b == nil {
 		return a, nil
 	}
-	if a.VNI.VNI != b.VNI.VNI {
-		return nil, fmt.Errorf("different l3vni numbers (%d != %d)", a.VNI.VNI, b.VNI.VNI)
+	if a.VNI != b.VNI {
+		return nil, fmt.Errorf("different l3vni numbers (%d != %d)", a.VNI, b.VNI)
 	}
 
-	merged, err := mergeVNIs(a.VNI, b.VNI)
+	merged, err := mergeVNIProperties(a.VNIProperties, b.VNIProperties)
 	if err != nil {
 		return nil, err
 	}
 
 	advertisePrefixes := sets.New(append(a.AdvertisePrefixes, b.AdvertisePrefixes...)...)
 	return &frr.L3VNI{
-		VNI:               merged,
+		VNI:               a.VNI,
+		VNIProperties:     merged,
 		AdvertisePrefixes: sets.List(advertisePrefixes),
 	}, nil
 }
 
-// mergeVNIs merges the common VNI fields (RD, ImportRTs, ExportRTs).
+// mergeVNIProperties merges the common VNI properties (RD, ImportRTs, ExportRTs).
 // RD must be equal or one must be empty. Route targets are merged, but if one
 // side omits them (relying on FRR auto) while the other specifies them, that's
 // a conflict.
-func mergeVNIs(a, b frr.VNI) (frr.VNI, error) {
+func mergeVNIProperties(a, b frr.VNIProperties) (frr.VNIProperties, error) {
 	if a.RD != "" && b.RD != "" && a.RD != b.RD {
-		return frr.VNI{}, fmt.Errorf("different RD values (%s != %s)", a.RD, b.RD)
+		return frr.VNIProperties{}, fmt.Errorf("different RD values (%s != %s)", a.RD, b.RD)
 	}
 
 	if (len(a.ImportRTs) == 0) != (len(b.ImportRTs) == 0) {
-		return frr.VNI{}, fmt.Errorf("conflicting import route targets: mixing implicit and explicit route targets")
+		return frr.VNIProperties{}, fmt.Errorf("conflicting import route targets: mixing implicit and explicit route targets")
 	}
 	if (len(a.ExportRTs) == 0) != (len(b.ExportRTs) == 0) {
-		return frr.VNI{}, fmt.Errorf("conflicting export route targets: mixing implicit and explicit route targets")
+		return frr.VNIProperties{}, fmt.Errorf("conflicting export route targets: mixing implicit and explicit route targets")
 	}
 
 	rd := a.RD
@@ -432,8 +433,7 @@ func mergeVNIs(a, b frr.VNI) (frr.VNI, error) {
 	importRTs := mergeRTs(a.ImportRTs, b.ImportRTs)
 	exportRTs := mergeRTs(a.ExportRTs, b.ExportRTs)
 
-	return frr.VNI{
-		VNI:       a.VNI,
+	return frr.VNIProperties{
 		RD:        rd,
 		ImportRTs: importRTs,
 		ExportRTs: exportRTs,

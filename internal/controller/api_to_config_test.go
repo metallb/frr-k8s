@@ -3179,7 +3179,7 @@ func TestConversion(t *testing.T) {
 										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
 										AdvertiseSVI:  true,
 										L2VNIs: []v1beta1.L2VNI{
-											{VNI: v1beta1.VNI{VNI: 100, RD: "65001:100", ImportRTs: []v1beta1.ImportRouteTarget{"65001:100"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:100"}}},
+											{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "65001:100", ImportRTs: []v1beta1.ImportRouteTarget{"65001:100"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:100"}}},
 										},
 									},
 								},
@@ -3208,7 +3208,7 @@ func TestConversion(t *testing.T) {
 							AdvertiseVNIs: ptr.To("All"),
 							AdvertiseSVI:  true,
 							L2VNIs: []frr.L2VNI{
-								{VNI: frr.VNI{VNI: 100, RD: "65001:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+								{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65001:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
 							},
 						},
 					},
@@ -3230,7 +3230,8 @@ func TestConversion(t *testing.T) {
 									Prefixes: []string{"10.0.0.0/24"},
 									EVPN: &v1beta1.EVPNConfig{
 										L3VNI: &v1beta1.L3VNI{
-											VNI:               v1beta1.VNI{VNI: 500, RD: "65001:500", ImportRTs: []v1beta1.ImportRouteTarget{"65001:500"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:500"}},
+											VNI:               500,
+											VNIProperties:     v1beta1.VNIProperties{RD: "65001:500", ImportRTs: []v1beta1.ImportRouteTarget{"65001:500"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:500"}},
 											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
 										},
 									},
@@ -3250,7 +3251,8 @@ func TestConversion(t *testing.T) {
 						IPV4Prefixes: []string{"10.0.0.0/24"},
 						EVPN: &frr.EVPNConfig{
 							L3VNI: &frr.L3VNI{
-								VNI:               frr.VNI{VNI: 500, RD: "65001:500", ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
+								VNI:               500,
+								VNIProperties:     frr.VNIProperties{RD: "65001:500", ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
 								AdvertisePrefixes: []string{"unicast"},
 							},
 						},
@@ -3305,7 +3307,7 @@ func TestConversion(t *testing.T) {
 									},
 									EVPN: &v1beta1.EVPNConfig{
 										L3VNI: &v1beta1.L3VNI{
-											VNI:               v1beta1.VNI{VNI: 500},
+											VNI:               500,
 											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
 										},
 									},
@@ -3348,7 +3350,7 @@ func TestConversion(t *testing.T) {
 									EVPN: &v1beta1.EVPNConfig{
 										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
 										L2VNIs: []v1beta1.L2VNI{
-											{VNI: v1beta1.VNI{VNI: 100}},
+											{VNI: 100},
 										},
 									},
 								},
@@ -3374,7 +3376,7 @@ func TestConversion(t *testing.T) {
 						EVPN: &frr.EVPNConfig{
 							AdvertiseVNIs: ptr.To("All"),
 							L2VNIs: []frr.L2VNI{
-								{VNI: frr.VNI{VNI: 100}},
+								{VNI: 100},
 							},
 						},
 					},
@@ -3400,7 +3402,7 @@ func TestConversion(t *testing.T) {
 									},
 									EVPN: &v1beta1.EVPNConfig{
 										L2VNIs: []v1beta1.L2VNI{
-											{VNI: v1beta1.VNI{VNI: 100}},
+											{VNI: 100},
 										},
 									},
 								},
@@ -3416,7 +3418,7 @@ func TestConversion(t *testing.T) {
 									},
 									EVPN: &v1beta1.EVPNConfig{
 										L2VNIs: []v1beta1.L2VNI{
-											{VNI: v1beta1.VNI{VNI: 100}},
+											{VNI: 100},
 										},
 									},
 								},
@@ -3446,7 +3448,7 @@ func TestConversion(t *testing.T) {
 									},
 									EVPN: &v1beta1.EVPNConfig{
 										L2VNIs: []v1beta1.L2VNI{
-											{VNI: v1beta1.VNI{VNI: 500}},
+											{VNI: 500},
 										},
 									},
 								},
@@ -3455,7 +3457,7 @@ func TestConversion(t *testing.T) {
 									VRF: "red",
 									EVPN: &v1beta1.EVPNConfig{
 										L3VNI: &v1beta1.L3VNI{
-											VNI:               v1beta1.VNI{VNI: 500},
+											VNI:               500,
 											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
 										},
 									},

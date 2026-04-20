@@ -1486,18 +1486,18 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L2VNIs - disjoint",
 			a: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 200, RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
+					{VNI: 200, VNIProperties: frr.VNIProperties{RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
 				},
 			},
 			expected: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
-					{VNI: frr.VNI{VNI: 200, RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
+					{VNI: 200, VNIProperties: frr.VNIProperties{RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
 				},
 			},
 		},
@@ -1505,17 +1505,17 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L2VNIs - same VNI, merge RTs",
 			a: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
 				},
 			},
 			expected: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
 				},
 			},
 		},
@@ -1523,17 +1523,17 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L2VNIs - same VNI, one omits RD",
 			a: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
 				},
 			},
 			expected: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
 				},
 			},
 		},
@@ -1541,12 +1541,12 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L2VNIs - same VNI, conflicting RD",
 			a: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65000:100"}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100"}},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, RD: "65001:100"}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65001:100"}},
 				},
 			},
 			err: fmt.Errorf("conflicting RD"),
@@ -1555,12 +1555,12 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L2VNIs - same VNI, mixing implicit and explicit import RTs",
 			a: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100, ImportRTs: []string{"65000:100"}}},
+					{VNI: 100, VNIProperties: frr.VNIProperties{ImportRTs: []string{"65000:100"}}},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L2VNIs: []frr.L2VNI{
-					{VNI: frr.VNI{VNI: 100}},
+					{VNI: 100},
 				},
 			},
 			err: fmt.Errorf("conflicting import route targets"),
@@ -1569,14 +1569,16 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L3VNIs - one nil",
 			a: &frr.EVPNConfig{
 				L3VNI: &frr.L3VNI{
-					VNI:               frr.VNI{VNI: 500, RD: "65000:500"},
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500"},
 					AdvertisePrefixes: []string{"unicast"},
 				},
 			},
 			b: &frr.EVPNConfig{},
 			expected: &frr.EVPNConfig{
 				L3VNI: &frr.L3VNI{
-					VNI:               frr.VNI{VNI: 500, RD: "65000:500"},
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500"},
 					AdvertisePrefixes: []string{"unicast"},
 				},
 			},
@@ -1585,19 +1587,22 @@ func TestMergeEVPNConfigs(t *testing.T) {
 			name: "Merge L3VNIs - same VNI, merge RTs",
 			a: &frr.EVPNConfig{
 				L3VNI: &frr.L3VNI{
-					VNI:               frr.VNI{VNI: 500, RD: "65000:500", ImportRTs: []string{"65000:500"}, ExportRTs: []string{"65000:500"}},
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500", ImportRTs: []string{"65000:500"}, ExportRTs: []string{"65000:500"}},
 					AdvertisePrefixes: []string{"unicast"},
 				},
 			},
 			b: &frr.EVPNConfig{
 				L3VNI: &frr.L3VNI{
-					VNI:               frr.VNI{VNI: 500, ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
 					AdvertisePrefixes: []string{"unicast"},
 				},
 			},
 			expected: &frr.EVPNConfig{
 				L3VNI: &frr.L3VNI{
-					VNI:               frr.VNI{VNI: 500, RD: "65000:500", ImportRTs: []string{"65000:500", "65001:500"}, ExportRTs: []string{"65000:500", "65001:500"}},
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500", ImportRTs: []string{"65000:500", "65001:500"}, ExportRTs: []string{"65000:500", "65001:500"}},
 					AdvertisePrefixes: []string{"unicast"},
 				},
 			},
@@ -1605,10 +1610,10 @@ func TestMergeEVPNConfigs(t *testing.T) {
 		{
 			name: "Merge L3VNIs - different VNI numbers",
 			a: &frr.EVPNConfig{
-				L3VNI: &frr.L3VNI{VNI: frr.VNI{VNI: 500}, AdvertisePrefixes: []string{"unicast"}},
+				L3VNI: &frr.L3VNI{VNI: 500, AdvertisePrefixes: []string{"unicast"}},
 			},
 			b: &frr.EVPNConfig{
-				L3VNI: &frr.L3VNI{VNI: frr.VNI{VNI: 600}, AdvertisePrefixes: []string{"unicast"}},
+				L3VNI: &frr.L3VNI{VNI: 600, AdvertisePrefixes: []string{"unicast"}},
 			},
 			err: fmt.Errorf("different l3vni numbers"),
 		},

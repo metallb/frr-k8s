@@ -260,7 +260,7 @@ _Validation:_
 _Appears in:_
 - [L2VNI](#l2vni)
 - [L3VNI](#l3vni)
-- [VNI](#vni)
+- [VNIProperties](#vniproperties)
 
 
 
@@ -442,7 +442,7 @@ _Validation:_
 _Appears in:_
 - [L2VNI](#l2vni)
 - [L3VNI](#l3vni)
-- [VNI](#vni)
+- [VNIProperties](#vniproperties)
 
 
 
@@ -605,7 +605,7 @@ _Validation:_
 _Appears in:_
 - [L2VNI](#l2vni)
 - [L3VNI](#l3vni)
-- [VNI](#vni)
+- [VNIProperties](#vniproperties)
 
 
 
@@ -649,26 +649,6 @@ _Appears in:_
 | `namespace` _string_ | namespace defines the space within which the secret name must be unique. |  | Optional: \{\} <br /> |
 
 
-#### VNI
-
-
-
-VNI contains common fields for all VNI types.
-
-
-
-_Appears in:_
-- [L2VNI](#l2vni)
-- [L3VNI](#l3vni)
-
-| Field | Description | Default | Validation |
-| --- | --- | --- | --- |
-| `vni` _integer_ | VNI is the VXLAN Network Identifier (1-16777215). |  | Maximum: 1.6777215e+07 <br />Minimum: 1 <br />Required: \{\} <br /> |
-| `rd` _[RouteDistinguisher](#routedistinguisher)_ | RD is the route distinguisher for this VNI.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100") |  | MaxLength: 21 <br />Optional: \{\} <br /> |
-| `importRTs` _[ImportRouteTarget](#importroutetarget) array_ | ImportRTs is the list of route targets to import.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN\|*:MN\|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100") |  | MaxItems: 100 <br />MaxLength: 21 <br />Optional: \{\} <br /> |
-| `exportRTs` _[ExportRouteTarget](#exportroutetarget) array_ | ExportRTs is the list of route targets to export.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100", "192.0.2.1:100") |  | MaxItems: 100 <br />MaxLength: 21 <br />Optional: \{\} <br /> |
-
-
 #### VNIAdvertisement
 
 _Underlying type:_ _string_
@@ -685,5 +665,24 @@ _Appears in:_
 | --- | --- |
 | `Disabled` | VNIAdvertisementDisabled disables VNI advertisement.<br /> |
 | `All` | VNIAdvertisementAll enables advertisement of all VNIs.<br /> |
+
+
+#### VNIProperties
+
+
+
+VNIProperties contains common properties for all VNI types.
+
+
+
+_Appears in:_
+- [L2VNI](#l2vni)
+- [L3VNI](#l3vni)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `rd` _[RouteDistinguisher](#routedistinguisher)_ | RD is the route distinguisher for this VNI.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100") |  | MaxLength: 21 <br />Optional: \{\} <br /> |
+| `importRTs` _[ImportRouteTarget](#importroutetarget) array_ | ImportRTs is the list of route targets to import.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN\|*:MN\|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100") |  | MaxItems: 100 <br />MaxLength: 21 <br />Optional: \{\} <br /> |
+| `exportRTs` _[ExportRouteTarget](#exportroutetarget) array_ | ExportRTs is the list of route targets to export.<br />Format: A.B.C.D:MN\|EF:OPQR\|GHJK:MN (e.g., "65000:100", "192.0.2.1:100") |  | MaxItems: 100 <br />MaxLength: 21 <br />Optional: \{\} <br /> |
 
 

@@ -753,13 +753,15 @@ func evpnToFRR(e *v1beta1.EVPNConfig) *frr.EVPNConfig {
 
 	for _, l2 := range e.L2VNIs {
 		res.L2VNIs = append(res.L2VNIs, frr.L2VNI{
-			VNI: vniToFRR(l2.VNI),
+			VNI:           l2.VNI,
+			VNIProperties: vniPropertiesToFRR(l2.VNIProperties),
 		})
 	}
 
 	if e.L3VNI != nil {
 		res.L3VNI = &frr.L3VNI{
-			VNI:               vniToFRR(e.L3VNI.VNI),
+			VNI:               e.L3VNI.VNI,
+			VNIProperties:     vniPropertiesToFRR(e.L3VNI.VNIProperties),
 			AdvertisePrefixes: toStringSlice(e.L3VNI.AdvertisePrefixes),
 		}
 	}
@@ -767,9 +769,8 @@ func evpnToFRR(e *v1beta1.EVPNConfig) *frr.EVPNConfig {
 	return res
 }
 
-func vniToFRR(v v1beta1.VNI) frr.VNI {
-	return frr.VNI{
-		VNI:       v.VNI,
+func vniPropertiesToFRR(v v1beta1.VNIProperties) frr.VNIProperties {
+	return frr.VNIProperties{
 		RD:        string(v.RD),
 		ImportRTs: toStringSlice(v.ImportRTs),
 		ExportRTs: toStringSlice(v.ExportRTs),
@@ -833,16 +834,16 @@ func validateUniqueVNIs(routersForVRF map[string]*frr.RouterConfig) error {
 			continue
 		}
 		for _, l2 := range r.EVPN.L2VNIs {
-			if existing, found := seen[l2.VNI.VNI]; found {
-				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l2vni in vrf %q", l2.VNI.VNI, existing.vniType, existing.vrf, vrf)
+			if existing, found := seen[l2.VNI]; found {
+				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l2vni in vrf %q", l2.VNI, existing.vniType, existing.vrf, vrf)
 			}
-			seen[l2.VNI.VNI] = vniLocation{vrf: vrf, vniType: "l2vni"}
+			seen[l2.VNI] = vniLocation{vrf: vrf, vniType: "l2vni"}
 		}
 		if r.EVPN.L3VNI != nil {
-			if existing, found := seen[r.EVPN.L3VNI.VNI.VNI]; found {
-				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l3vni in vrf %q", r.EVPN.L3VNI.VNI.VNI, existing.vniType, existing.vrf, vrf)
+			if existing, found := seen[r.EVPN.L3VNI.VNI]; found {
+				return fmt.Errorf("duplicate VNI %d: configured as %s in vrf %q and as l3vni in vrf %q", r.EVPN.L3VNI.VNI, existing.vniType, existing.vrf, vrf)
 			}
-			seen[r.EVPN.L3VNI.VNI.VNI] = vniLocation{vrf: vrf, vniType: "l3vni"}
+			seen[r.EVPN.L3VNI.VNI] = vniLocation{vrf: vrf, vniType: "l3vni"}
 		}
 	}
 	return nil

@@ -436,8 +436,8 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 									AdvertiseVNIs: ptr.To(frrk8sv1beta1.VNIAdvertisementAll),
 									L2VNIs: []frrk8sv1beta1.L2VNI{
 										{
-											VNI: frrk8sv1beta1.VNI{
-												VNI: evpnL2VNI,
+											VNI: evpnL2VNI,
+											VNIProperties: frrk8sv1beta1.VNIProperties{
 												RD:  frrk8sv1beta1.RouteDistinguisher(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI)),
 												ImportRTs: []frrk8sv1beta1.ImportRouteTarget{
 													frrk8sv1beta1.ImportRouteTarget(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI)),
@@ -493,8 +493,8 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 									AdvertiseVNIs: ptr.To(frrk8sv1beta1.VNIAdvertisementAll),
 									L2VNIs: []frrk8sv1beta1.L2VNI{
 										{
-											VNI: frrk8sv1beta1.VNI{
-												VNI:       evpnL2VNI,
+											VNI: evpnL2VNI,
+											VNIProperties: frrk8sv1beta1.VNIProperties{
 												RD:        frrk8sv1beta1.RouteDistinguisher(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI)),
 												ImportRTs: []frrk8sv1beta1.ImportRouteTarget{frrk8sv1beta1.ImportRouteTarget(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI))},
 												ExportRTs: []frrk8sv1beta1.ExportRouteTarget{frrk8sv1beta1.ExportRouteTarget(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI))},
@@ -523,8 +523,8 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 									AdvertiseVNIs: ptr.To(frrk8sv1beta1.VNIAdvertisementAll),
 									L2VNIs: []frrk8sv1beta1.L2VNI{
 										{
-											VNI: frrk8sv1beta1.VNI{
-												VNI:       evpnL2VNI,
+											VNI: evpnL2VNI,
+											VNIProperties: frrk8sv1beta1.VNIProperties{
 												RD:        frrk8sv1beta1.RouteDistinguisher(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI)),
 												ImportRTs: []frrk8sv1beta1.ImportRouteTarget{frrk8sv1beta1.ImportRouteTarget(fmt.Sprintf("%d:%d", externalFRR.RouterConfig.ASN, evpnL2VNI))},
 												ExportRTs: []frrk8sv1beta1.ExportRouteTarget{frrk8sv1beta1.ExportRouteTarget(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL2VNI))},
@@ -652,8 +652,8 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 									Prefixes: []string{prefix},
 									EVPN: &frrk8sv1beta1.EVPNConfig{
 										L3VNI: &frrk8sv1beta1.L3VNI{
-											VNI: frrk8sv1beta1.VNI{
-												VNI: evpnL3VNI,
+											VNI: evpnL3VNI,
+											VNIProperties: frrk8sv1beta1.VNIProperties{
 												RD:  frrk8sv1beta1.RouteDistinguisher(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL3VNI)),
 												ImportRTs: []frrk8sv1beta1.ImportRouteTarget{
 													frrk8sv1beta1.ImportRouteTarget(fmt.Sprintf("%d:%d", infra.FRRK8sASN, evpnL3VNI)),

@@ -1041,17 +1041,15 @@ func TestEVPNWithL2VNIs(t *testing.T) {
 					AdvertiseVNIs: ptr.To("All"),
 					L2VNIs: []L2VNI{
 						{
-							VNI: VNI{
-								VNI:       1000,
+							VNI: 1000,
+							VNIProperties: VNIProperties{
 								RD:        "65000:1000",
 								ImportRTs: []string{"65000:1000"},
 								ExportRTs: []string{"65000:1000"},
 							},
 						},
 						{
-							VNI: VNI{
-								VNI: 2000,
-							},
+							VNI: 2000,
 						},
 					},
 				},
@@ -1080,8 +1078,8 @@ func TestEVPNWithL3VNI(t *testing.T) {
 				VRF:   "red",
 				EVPN: &EVPNConfig{
 					L3VNI: &L3VNI{
-						VNI: VNI{
-							VNI:       3000,
+						VNI: 3000,
+						VNIProperties: VNIProperties{
 							RD:        "65000:3000",
 							ImportRTs: []string{"65000:3000"},
 							ExportRTs: []string{"65000:3000"},
@@ -1170,25 +1168,23 @@ func TestEVPNFull(t *testing.T) {
 					AdvertiseSVI:  true,
 					L2VNIs: []L2VNI{
 						{
-							VNI: VNI{
-								VNI:       1000,
+							VNI: 1000,
+							VNIProperties: VNIProperties{
 								RD:        "65000:1000",
 								ImportRTs: []string{"65000:1000"},
 								ExportRTs: []string{"65000:1000"},
 							},
 						},
 						{
-							VNI: VNI{
-								VNI:       1001,
+							VNI: 1001,
+							VNIProperties: VNIProperties{
 								RD:        "65000:1001",
 								ImportRTs: []string{"65000:1001", "65000:1099"},
 								ExportRTs: []string{"65000:1001"},
 							},
 						},
 						{
-							VNI: VNI{
-								VNI: 1002,
-							},
+							VNI: 1002,
 						},
 					},
 				},
@@ -1198,8 +1194,8 @@ func TestEVPNFull(t *testing.T) {
 				VRF:   "red",
 				EVPN: &EVPNConfig{
 					L3VNI: &L3VNI{
-						VNI: VNI{
-							VNI:       3000,
+						VNI: 3000,
+						VNIProperties: VNIProperties{
 							RD:        "65000:3000",
 							ImportRTs: []string{"65000:3000"},
 							ExportRTs: []string{"65000:3000"},
@@ -1213,8 +1209,8 @@ func TestEVPNFull(t *testing.T) {
 				VRF:   "blue",
 				EVPN: &EVPNConfig{
 					L3VNI: &L3VNI{
-						VNI: VNI{
-							VNI:       4000,
+						VNI: 4000,
+						VNIProperties: VNIProperties{
 							RD:        "65000:4000",
 							ImportRTs: []string{"65000:4000", "65000:4099"},
 							ExportRTs: []string{"65000:4000", "65000:4099"},

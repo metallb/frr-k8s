@@ -222,19 +222,20 @@ type EVPNConfig struct {
 	L3VNI         *L3VNI
 }
 
-type VNI struct {
-	VNI       uint32
+type VNIProperties struct {
 	RD        string
 	ImportRTs []string
 	ExportRTs []string
 }
 
 type L2VNI struct {
-	VNI
+	VNI uint32
+	VNIProperties
 }
 
 type L3VNI struct {
-	VNI
+	VNI uint32
+	VNIProperties
 	AdvertisePrefixes []string
 }
 

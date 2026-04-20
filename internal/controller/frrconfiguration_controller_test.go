@@ -854,8 +854,7 @@ var _ = Describe("Frrk8s controller", func() {
 								EVPN: &v1beta1.EVPNConfig{
 									AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
 									L2VNIs: []v1beta1.L2VNI{
-										{VNI: v1beta1.VNI{
-											VNI:       1000,
+										{VNI: 1000, VNIProperties: v1beta1.VNIProperties{
 											RD:        "65000:1000",
 											ImportRTs: []v1beta1.ImportRouteTarget{"65000:1000"},
 											ExportRTs: []v1beta1.ExportRouteTarget{"65000:1000"},
@@ -868,8 +867,7 @@ var _ = Describe("Frrk8s controller", func() {
 								VRF: "red",
 								EVPN: &v1beta1.EVPNConfig{
 									L3VNI: &v1beta1.L3VNI{
-										VNI: v1beta1.VNI{
-											VNI:       3000,
+										VNI: 3000, VNIProperties: v1beta1.VNIProperties{
 											RD:        "65000:3000",
 											ImportRTs: []v1beta1.ImportRouteTarget{"65000:3000"},
 											ExportRTs: []v1beta1.ExportRouteTarget{"65000:3000"},
@@ -920,8 +918,7 @@ var _ = Describe("Frrk8s controller", func() {
 							EVPN: &frr.EVPNConfig{
 								AdvertiseVNIs: ptr.To("All"),
 								L2VNIs: []frr.L2VNI{
-									{VNI: frr.VNI{
-										VNI:       1000,
+									{VNI: 1000, VNIProperties: frr.VNIProperties{
 										RD:        "65000:1000",
 										ImportRTs: []string{"65000:1000"},
 										ExportRTs: []string{"65000:1000"},
@@ -938,8 +935,7 @@ var _ = Describe("Frrk8s controller", func() {
 							ImportVRFs:   []string{},
 							EVPN: &frr.EVPNConfig{
 								L3VNI: &frr.L3VNI{
-									VNI: frr.VNI{
-										VNI:       3000,
+									VNI: 3000, VNIProperties: frr.VNIProperties{
 										RD:        "65000:3000",
 										ImportRTs: []string{"65000:3000"},
 										ExportRTs: []string{"65000:3000"},
@@ -975,7 +971,7 @@ var _ = Describe("Frrk8s controller", func() {
 								EVPN: &v1beta1.EVPNConfig{
 									AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
 									L2VNIs: []v1beta1.L2VNI{
-										{VNI: v1beta1.VNI{VNI: 1000}},
+										{VNI: 1000},
 									},
 								},
 							},
@@ -993,7 +989,7 @@ var _ = Describe("Frrk8s controller", func() {
 			By("adding another L2VNI")
 			frrConfig.Spec.BGP.Routers[0].EVPN.L2VNIs = append(
 				frrConfig.Spec.BGP.Routers[0].EVPN.L2VNIs,
-				v1beta1.L2VNI{VNI: v1beta1.VNI{VNI: 2000}},
+				v1beta1.L2VNI{VNI: 2000},
 			)
 			err = k8sClient.Update(context.Background(), frrConfig)
 			Expect(err).ToNot(HaveOccurred())

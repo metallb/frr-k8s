@@ -60,7 +60,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 0}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 0}},
 							},
 						}},
 					},
@@ -73,7 +73,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "invalid"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "invalid"}}},
 							},
 						}},
 					},
@@ -86,7 +86,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "65000:abc"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "65000:abc"}}},
 							},
 						}},
 					},
@@ -99,7 +99,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "nocolon"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "nocolon"}}},
 							},
 						}},
 					},
@@ -112,7 +112,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "abc:100"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "abc:100"}}},
 							},
 						}},
 					},
@@ -125,7 +125,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "70000:70000"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "70000:70000"}}},
 							},
 						}},
 					},
@@ -138,7 +138,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{VNI: 100, RD: "192.0.2.1:70000"}}},
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "192.0.2.1:70000"}}},
 							},
 						}},
 					},
@@ -151,8 +151,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"*:100"},
 								}}},
 							},
@@ -167,8 +166,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"nocolon"},
 								}}},
 							},
@@ -183,8 +181,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"nocolon"},
 								}}},
 							},
@@ -199,8 +196,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"65000:abc"},
 								}}},
 							},
@@ -215,8 +211,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"65000:abc"},
 								}}},
 							},
@@ -231,8 +226,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"abc:100"},
 								}}},
 							},
@@ -247,8 +241,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"abc:100"},
 								}}},
 							},
@@ -263,8 +256,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"*:abc"},
 								}}},
 							},
@@ -279,8 +271,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"70000:70000"},
 								}}},
 							},
@@ -295,8 +286,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"192.0.2.1:70000"},
 								}}},
 							},
@@ -341,7 +331,7 @@ var _ = Describe("CRD validation", func() {
 							VRF: "red",
 							EVPN: &v1beta1.EVPNConfig{
 								L3VNI: &v1beta1.L3VNI{
-									VNI:               v1beta1.VNI{VNI: 500},
+									VNI:               500,
 									AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"evpn"},
 								},
 							},
@@ -358,7 +348,7 @@ var _ = Describe("CRD validation", func() {
 							VRF: "red",
 							EVPN: &v1beta1.EVPNConfig{
 								L3VNI: &v1beta1.L3VNI{
-									VNI: v1beta1.VNI{VNI: 500},
+									VNI: 500,
 								},
 							},
 						}},
@@ -379,8 +369,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"*:100"},
 								}}},
 							},
@@ -395,9 +384,8 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI: 100,
-									RD:  "4294967295:100",
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
+									RD: "4294967295:100",
 								}}},
 							},
 						}},
@@ -411,9 +399,8 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI: 100,
-									RD:  "100:4294967295",
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
+									RD: "100:4294967295",
 								}}},
 							},
 						}},
@@ -427,9 +414,8 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI: 100,
-									RD:  "192.0.2.1:100",
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
+									RD: "192.0.2.1:100",
 								}}},
 							},
 						}},
@@ -444,8 +430,7 @@ var _ = Describe("CRD validation", func() {
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
 								AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       1000,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 1000, VNIProperties: v1beta1.VNIProperties{
 									RD:        "65000:1000",
 									ImportRTs: []v1beta1.ImportRouteTarget{"65000:1000"},
 									ExportRTs: []v1beta1.ExportRouteTarget{"65000:1000"},
@@ -462,8 +447,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"4294967295:100"},
 								}}},
 							},
@@ -478,8 +462,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"100:4294967295"},
 								}}},
 							},
@@ -494,8 +477,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ImportRTs: []v1beta1.ImportRouteTarget{"192.0.2.1:100"},
 								}}},
 							},
@@ -510,8 +492,7 @@ var _ = Describe("CRD validation", func() {
 						Routers: []v1beta1.Router{{
 							ASN: 65000,
 							EVPN: &v1beta1.EVPNConfig{
-								L2VNIs: []v1beta1.L2VNI{{VNI: v1beta1.VNI{
-									VNI:       100,
+								L2VNIs: []v1beta1.L2VNI{{VNI: 100, VNIProperties: v1beta1.VNIProperties{
 									ExportRTs: []v1beta1.ExportRouteTarget{"10.0.0.1:65535"},
 								}}},
 							},

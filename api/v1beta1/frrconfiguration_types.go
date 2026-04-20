@@ -497,14 +497,8 @@ const (
 	VNIAdvertisementAll VNIAdvertisement = "All"
 )
 
-// VNI contains common fields for all VNI types.
-type VNI struct {
-	// VNI is the VXLAN Network Identifier (1-16777215).
-	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=16777215
-	VNI uint32 `json:"vni"`
-
+// VNIProperties contains common properties for all VNI types.
+type VNIProperties struct {
 	// RD is the route distinguisher for this VNI.
 	// Format: A.B.C.D:MN|EF:OPQR|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100")
 	// +optional
@@ -525,12 +519,24 @@ type VNI struct {
 
 // L2VNI represents a Layer 2 VNI configuration.
 type L2VNI struct {
-	VNI `json:",inline"`
+	// VNI is the VXLAN Network Identifier (1-16777215).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=16777215
+	VNI uint32 `json:"vni"`
+
+	VNIProperties `json:",inline"`
 }
 
 // L3VNI represents a Layer 3 VNI configuration.
 type L3VNI struct {
-	VNI `json:",inline"`
+	// VNI is the VXLAN Network Identifier (1-16777215).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=16777215
+	VNI uint32 `json:"vni"`
+
+	VNIProperties `json:",inline"`
 
 	// AdvertisePrefixes controls which prefixes to advertise as EVPN type-5 routes.
 	// - "unicast": advertise the unicast prefixes of the router.

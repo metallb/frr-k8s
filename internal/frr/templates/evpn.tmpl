@@ -21,7 +21,7 @@
 
 {{- range .EVPN.L2VNIs }}
 {{- if or .RD .ImportRTs .ExportRTs }}
-    vni {{.VNI.VNI}}
+    vni {{.VNI}}
 {{- if .RD }}
       rd {{.RD}}
 {{- end }}

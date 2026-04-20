@@ -29,7 +29,7 @@ ipv6 nht resolve-via-default
 {{- if and $r.VRF $r.EVPN $r.EVPN.L3VNI }}
 
 vrf {{$r.VRF}}
-  vni {{$r.EVPN.L3VNI.VNI.VNI}}
+  vni {{$r.EVPN.L3VNI.VNI}}
 exit-vrf
 {{- end }}
 {{- end }}
