@@ -257,12 +257,6 @@ func templateConfig(data interface{}) (string, error) {
 				}
 				return "ip"
 			},
-			"hasAddressFamilyUnicast": func(addressFamilies []string) bool {
-				if len(addressFamilies) == 0 {
-					return true
-				}
-				return slices.Contains(addressFamilies, string(v1beta1.AddressFamilyUnicast))
-			},
 			"hasAddressFamilyEVPN": func(addressFamilies []string) bool {
 				return slices.Contains(addressFamilies, string(v1beta1.AddressFamilyEVPN))
 			},
@@ -272,8 +266,9 @@ func templateConfig(data interface{}) (string, error) {
 			"hasAdvertisesEVPNPrefixUnicast": func(prefixType string) bool {
 				return prefixType == string(v1beta1.AdvertisePrefixUnicast)
 			},
-			"activateNeighborFor": func(ipFamily string, neighbourFamily ipfamily.Family) bool {
-				return (string(neighbourFamily) == ipFamily || neighbourFamily == ipfamily.DualStack)
+			"activateNeighborFor": func(family string, neighbourFamily ipfamily.Family, addressFamilies []string) bool {
+				hasUnicast := len(addressFamilies) == 0 || slices.Contains(addressFamilies, string(v1beta1.AddressFamilyUnicast))
+				return hasUnicast && (string(neighbourFamily) == family || neighbourFamily == ipfamily.DualStack)
 			},
 			"allowedIncomingList": func(neighbor *NeighborConfig) string {
 				return fmt.Sprintf("%s-inpl-%s", neighbor.ID(), neighbor.IPFamily)
