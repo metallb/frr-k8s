@@ -3287,7 +3287,54 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     fmt.Errorf("advertiseVNIs, advertiseSVI and l2vnis require at least one neighbor with evpn address family"),
+			err:     fmt.Errorf("advertiseVNIs=All, advertiseSVI and l2vnis require at least one neighbor with evpn address family"),
+		},
+		{
+			name: "EVPN: advertiseVNIs=Disabled without EVPN neighbor succeeds",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementDisabled),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN: 65001,
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"unicast"},
+							},
+						},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("Disabled"),
+						},
+					},
+				},
+			},
+			err: nil,
 		},
 		{
 			name: "EVPN: L3VNI with neighbors fails",

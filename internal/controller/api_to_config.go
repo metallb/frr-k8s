@@ -810,9 +810,10 @@ func validateEVPNConfig(r *frr.RouterConfig) error {
 		}
 	}
 
-	needsEVPNNeighbor := r.EVPN.AdvertiseVNIs != nil || r.EVPN.AdvertiseSVI || len(r.EVPN.L2VNIs) > 0
+	hasAdvertiseAll := r.EVPN.AdvertiseVNIs != nil && *r.EVPN.AdvertiseVNIs == string(v1beta1.VNIAdvertisementAll)
+	needsEVPNNeighbor := hasAdvertiseAll || r.EVPN.AdvertiseSVI || len(r.EVPN.L2VNIs) > 0
 	if needsEVPNNeighbor && !hasEVPNNeighbor {
-		return fmt.Errorf("advertiseVNIs, advertiseSVI and l2vnis require at least one neighbor with evpn address family")
+		return fmt.Errorf("advertiseVNIs=All, advertiseSVI and l2vnis require at least one neighbor with evpn address family")
 	}
 
 	if r.EVPN.L3VNI != nil && len(r.Neighbors) > 0 {
