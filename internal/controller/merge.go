@@ -281,6 +281,10 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 		return fmt.Errorf("multiple connect times specified for %s", neighborKey)
 	}
 
+	if n1.LocalASN != n2.LocalASN {
+		return fmt.Errorf("multiple localASNs specified for %s", neighborKey)
+	}
+
 	return nil
 }
 
