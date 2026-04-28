@@ -810,9 +810,7 @@ func validateEVPNConfig(r *frr.RouterConfig) error {
 		}
 	}
 
-	hasAdvertiseAll := r.EVPN.AdvertiseVNIs != nil && *r.EVPN.AdvertiseVNIs == string(v1beta1.VNIAdvertisementAll)
-	needsEVPNNeighbor := hasAdvertiseAll || r.EVPN.AdvertiseSVI || len(r.EVPN.L2VNIs) > 0
-	if needsEVPNNeighbor && !hasEVPNNeighbor {
+	if evpnNeedsNeighbor(r.EVPN) && !hasEVPNNeighbor {
 		return fmt.Errorf("advertiseVNIs=All, advertiseSVI and l2vnis require at least one neighbor with evpn address family")
 	}
 
@@ -821,6 +819,11 @@ func validateEVPNConfig(r *frr.RouterConfig) error {
 	}
 
 	return nil
+}
+
+func evpnNeedsNeighbor(evpn *frr.EVPNConfig) bool {
+	hasAdvertiseAll := evpn.AdvertiseVNIs != nil && *evpn.AdvertiseVNIs == string(v1beta1.VNIAdvertisementAll)
+	return hasAdvertiseAll || evpn.AdvertiseSVI || len(evpn.L2VNIs) > 0
 }
 
 func validateUniqueVNIs(routersForVRF map[string]*frr.RouterConfig) error {
