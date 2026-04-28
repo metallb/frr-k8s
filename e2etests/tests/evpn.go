@@ -6,7 +6,9 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -33,6 +35,9 @@ import (
 //go:embed testdata/evpn-setup.sh
 var evpnSetupScript string
 
+//go:embed testdata/evpn-node-setup.sh
+var evpnNodeSetupScript string
+
 const (
 	evpnL2VNI      = 1000
 	evpnL2VLANID   = 100
@@ -42,14 +47,26 @@ const (
 	evpnBridge     = "evpnbr"
 	evpnVxlan      = "evpnvx"
 	evpnL3VRFTable = 10
-	// evpnAccessIface is the name of the veth interface created by hack/evpn-setup.sh
-	// on each container for L2 VNI local connectivity. Its MAC is advertised as a
-	// type-2 route via EVPN.
-	evpnAccessIface = "evpnacc"
+	evpnL2Iface = "evpnl2-100"
 )
 
-// runEVPNSetupScript runs hack/evpn-setup.sh with the given parameters.
+// runEVPNSetupScript runs evpn-setup.sh with the given parameters.
+// Both evpn-setup.sh and evpn-node-setup.sh are written to a temp directory
+// so evpn-setup.sh can locate and pipe evpn-node-setup.sh into containers.
 func runEVPNSetupScript(nodes []corev1.Node, externalFRR *frrcontainer.FRR, l2 bool, l3 bool, cleanup bool) error {
+	tmpDir, err := os.MkdirTemp("", "evpn-setup-*")
+	if err != nil {
+		return fmt.Errorf("creating temp dir: %w", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	if err := os.WriteFile(filepath.Join(tmpDir, "evpn-setup.sh"), []byte(evpnSetupScript), 0755); err != nil {
+		return fmt.Errorf("writing evpn-setup.sh: %w", err)
+	}
+	if err := os.WriteFile(filepath.Join(tmpDir, "evpn-node-setup.sh"), []byte(evpnNodeSetupScript), 0755); err != nil {
+		return fmt.Errorf("writing evpn-node-setup.sh: %w", err)
+	}
+
 	nodeNames := make([]string, 0, len(nodes))
 	for _, n := range nodes {
 		nodeNames = append(nodeNames, n.Name)
@@ -63,6 +80,9 @@ func runEVPNSetupScript(nodes []corev1.Node, externalFRR *frrcontainer.FRR, l2 b
 		fmt.Sprintf("CONTAINER_RUNTIME=%s", executor.ContainerRuntime),
 		fmt.Sprintf("EVPN_BRIDGE=%s", evpnBridge),
 		fmt.Sprintf("EVPN_VXLAN=%s", evpnVxlan),
+		fmt.Sprintf("FRRK8S_NAMESPACE=%s", k8s.FRRK8sNamespace),
+		fmt.Sprintf("FRRK8S_LABEL=%s", k8s.FRRK8sDaemonsetLS),
+		fmt.Sprintf("FRRK8S_CONTAINER=%s", k8s.FRRContainerName),
 	}
 
 	if l2 {
@@ -85,8 +105,7 @@ func runEVPNSetupScript(nodes []corev1.Node, externalFRR *frrcontainer.FRR, l2 b
 		env = append(env, "EVPN_CLEANUP=true")
 	}
 
-	cmd := exec.Command("bash", "-s")
-	cmd.Stdin = strings.NewReader(evpnSetupScript)
+	cmd := exec.Command("bash", filepath.Join(tmpDir, "evpn-setup.sh"))
 	cmd.Env = append(cmd.Environ(), env...)
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -143,7 +162,7 @@ func nodeL2VNIMacs(nodes []corev1.Node) ([]string, error) {
 	macs := make([]string, 0, len(nodes))
 	for _, n := range nodes {
 		out, err := executor.Host.Exec(executor.ContainerRuntime, "exec", n.Name,
-			"cat", fmt.Sprintf("/sys/class/net/%s/address", evpnAccessIface))
+			"cat", fmt.Sprintf("/sys/class/net/%s/address", evpnL2Iface))
 		if err != nil {
 			return nil, fmt.Errorf("failed to get MAC for node %s: %w", n.Name, err)
 		}

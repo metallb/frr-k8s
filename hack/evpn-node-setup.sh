@@ -1,0 +1,1 @@
+../e2etests/tests/testdata/evpn-node-setup.sh

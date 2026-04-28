@@ -263,7 +263,7 @@ spec:
           advertisePrefixes: ["unicast"]
 ```
 
-**Note:** EVPN requires host networking setup (VXLAN interfaces, bridges, VRFs) outside of frr-k8s. See `hack/evpn-setup.sh` for a reference configuration.
+**Note:** EVPN requires host networking setup (VXLAN interfaces, bridges, VRFs) outside of frr-k8s. See `hack/evpn-node-setup.sh` for a reference per-node configuration script.
 
 ### Adding a raw configuration
 

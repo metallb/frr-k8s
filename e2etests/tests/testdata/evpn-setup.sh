@@ -1,20 +1,19 @@
 #!/bin/bash
 # =============================================================================
-# EVPN Host Networking Setup for frr-k8s Integration Tests
+# EVPN Orchestrator for frr-k8s Integration Tests
 # =============================================================================
 #
-# Prepares the Linux networking infrastructure (bridges, VXLAN, VLANs, SVIs,
-# VRFs, access ports) needed for EVPN testing on a kind cluster. Configures
-# both kind cluster nodes (frr-k8s side) and the external FRR container (peer).
+# Orchestrates EVPN networking setup across cluster nodes and an external FRR
+# container. Delegates per-node networking to evpn-node-setup.sh (which can
+# also be used standalone on any node).
 #
 # What this script does:
-#   ON ALL CONTAINERS (kind nodes + external FRR):
-#   - Bridge with VLAN filtering + VXLAN device (external vnifilter mode)
-#   - L2 VNI: VLAN-to-VNI mapping + access port (veth pair for MAC learning)
-#   - L3 VNI: Linux VRF + SVI (VLAN sub-interface) + test prefix
+#   ON CLUSTER NODES (via kubectl exec into frr-k8s FRR pods):
+#   - Runs evpn-node-setup.sh to configure bridge, VXLAN, VNIs, VRFs
 #
-#   ON EXTERNAL FRR CONTAINER ONLY:
-#   - FRR EVPN BGP config via vtysh (neighbor activation, advertise-all-vni,
+#   ON EXTERNAL FRR CONTAINER (via container runtime exec):
+#   - Runs evpn-node-setup.sh for networking setup
+#   - Configures FRR EVPN BGP via vtysh (neighbor activation, advertise-all-vni,
 #     VNI RD/RTs, VRF-VNI binding, prefix advertisement)
 #
 # What this script does NOT do:
@@ -24,33 +23,33 @@
 #
 # Topology:
 #
-#   kind network (docker bridge)
+#   cluster network
 #   ┌─────────────────────────────────────────────────────────┐
 #   │                                                         │
 #   │  ┌──────────────────────┐   ┌────────────────────────┐  │
-#   │  │ kind-worker (node)   │   │ external FRR container │  │
+#   │  │ cluster node         │   │ external FRR container │  │
 #   │  │                      │   │                        │  │
-#   │  │  ┌───────────────┐   │   │  ┌────────────────┐   │  │
-#   │  │  │ evpnbr (bridge│   │   │  │ evpnbr (bridge)│   │  │
-#   │  │  │  VLAN filter) │   │   │  │                │   │  │
-#   │  │  │  ├─ evpnvx    │   │   │  │  ├─ evpnvx     │   │  │
-#   │  │  │  │  (VXLAN)   │◄──────────│  (VXLAN)      │   │  │
-#   │  │  │  ├─ evpnaccbr │   │   │  │  ├─ evpnaccbr  │   │  │
-#   │  │  │  │  (access)  │   │   │  │  │  (access)   │   │  │
-#   │  │  │  └─ SVI (.vid)│   │   │  │  └─ SVI (.vid) │   │  │
-#   │  │  └───────┬───────┘   │   │  └────────┬───────┘   │  │
-#   │  │          │           │   │           │           │  │
-#   │  │  FRR (frr-k8s)       │   │  FRR (standalone)     │  │
-#   │  │  config from CRD     │   │  config from script   │  │
+#   │  │  ┌────────────────┐  │   │  ┌────────────────┐    │  │
+#   │  │  │ evpnbr (bridge │  │   │  │ evpnbr (bridge)│    │  │
+#   │  │  │  VLAN filter)  │  │   │  │                │    │  │
+#   │  │  │  ├─ evpnvx     │  │   │  │  ├─ evpnvx     │    │  │
+#   │  │  │  │  (VXLAN)    │◄────────│  (VXLAN)       │    │  │
+#   │  │  │  ├─ evpnl2br-* │  │   │  │  ├─ evpnl2br-* │    │  │
+#   │  │  │  │  (access)   │  │   │  │  │  (access)   │    │  │
+#   │  │  │  └─ SVI (.vid) │  │   │  │  └─ SVI (.vid) │    │  │
+#   │  │  └───────┬────────┘  │   │  └────────┬───────┘    │  │
+#   │  │          │           │   │           │            │  │
+#   │  │  FRR (frr-k8s)       │   │  FRR (standalone)      │  │
+#   │  │  config from CRD     │   │  config from script    │  │
 #   │  └──────────────────────┘   └────────────────────────┘  │
 #   └─────────────────────────────────────────────────────────┘
 #
-# Expected FRRConfiguration CRDs (applied by test, NOT by this script).
+# Expected FRRConfiguration CRDs (applied by test or manually, NOT by this script).
 # Values must match the environment variables passed to this script.
 # One FRRConfiguration per node with a nodeSelector, since each node has
-# a distinct prefix (10.200.<node-index>.0/24) in the VRF:
+# a distinct prefix in the VRF:
 #
-#   # Per-node FRRConfiguration (one per kind worker node):
+#   # Per-node FRRConfiguration (one per cluster node):
 #   spec:
 #     nodeSelector:
 #       kubernetes.io/hostname: <node-name>
@@ -71,7 +70,7 @@
 #       - asn: $EVPN_FRR_K8S_ASN               # only if EVPN_L3_VNI is set
 #         vrf: $EVPN_L3_VRF
 #         prefixes:
-#         - 10.200.<node-index>.0/24  # must match route in VRF on this node
+#         - <node-prefix>  # must match route in VRF on this node
 #         evpn:
 #           l3VNI:
 #             vni: $EVPN_L3_VNI
@@ -82,7 +81,7 @@
 #
 # Environment variables:
 #   Required:
-#     EVPN_NODES          - Space-separated kind node container names
+#     EVPN_NODES          - Space-separated Kubernetes node names
 #     EVPN_EXTERNAL       - External FRR container name
 #     EVPN_EXTERNAL_ASN   - External FRR's BGP ASN
 #     EVPN_FRR_K8S_ASN    - frr-k8s BGP ASN (for neighbor config + shared RTs)
@@ -94,21 +93,24 @@
 #   L3 VNI (optional, provide all three or none):
 #     EVPN_L3_VNI         - L3 VNI number (e.g., 3000)
 #     EVPN_L3_VLAN_ID     - VLAN ID for L3 VNI SVI (e.g., 4000)
-#     EVPN_L3_VRF         - VRF name (e.g., red)
+#     EVPN_L3_VRF         - VRF name (e.g., evpnred)
 #
 #   Control:
 #     EVPN_CLEANUP        - Set to "true" to tear down instead of set up
 #
 #   Advanced:
 #     CONTAINER_RUNTIME   - Container runtime command (default: docker)
-#     EVPN_NETWORK        - Docker network for IP discovery (default: kind)
+#     EVPN_NETWORK        - Docker network for external FRR IP discovery (default: kind)
 #     EVPN_BRIDGE         - Bridge device name (default: evpnbr)
 #     EVPN_VXLAN          - VXLAN device name (default: evpnvx)
 #     EVPN_L3_VRF_TABLE   - VRF routing table number (default: 10)
+#     FRRK8S_NAMESPACE    - frr-k8s pod namespace (default: frr-k8s-system)
+#     FRRK8S_LABEL        - frr-k8s pod label selector (default: app.kubernetes.io/component=frr-k8s)
+#     FRRK8S_CONTAINER    - FRR container name in pod (default: frr)
 #
 # Usage:
 #   # L2 VNI only
-#   EVPN_NODES="frr-k8s-worker frr-k8s-worker2" \
+#   EVPN_NODES="node1 node2" \
 #   EVPN_EXTERNAL="ebgp-single-hop" \
 #   EVPN_EXTERNAL_ASN=4200000000 \
 #   EVPN_FRR_K8S_ASN=64512 \
@@ -116,11 +118,11 @@
 #   ./hack/evpn-setup.sh
 #
 #   # L3 VNI only
-#   EVPN_NODES="frr-k8s-worker frr-k8s-worker2" \
+#   EVPN_NODES="node1 node2" \
 #   EVPN_EXTERNAL="ebgp-single-hop" \
 #   EVPN_EXTERNAL_ASN=4200000000 \
 #   EVPN_FRR_K8S_ASN=64512 \
-#   EVPN_L3_VNI=3000 EVPN_L3_VLAN_ID=4000 EVPN_L3_VRF=red \
+#   EVPN_L3_VNI=3000 EVPN_L3_VLAN_ID=4000 EVPN_L3_VRF=evpnred \
 #   ./hack/evpn-setup.sh
 #
 #   # Cleanup
@@ -130,12 +132,17 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
+
 # Defaults
 CONTAINER_RUNTIME="${CONTAINER_RUNTIME:-docker}"
 EVPN_NETWORK="${EVPN_NETWORK:-kind}"
 EVPN_BRIDGE="${EVPN_BRIDGE:-evpnbr}"
 EVPN_VXLAN="${EVPN_VXLAN:-evpnvx}"
 EVPN_L3_VRF_TABLE="${EVPN_L3_VRF_TABLE:-10}"
+FRRK8S_NAMESPACE="${FRRK8S_NAMESPACE:-frr-k8s-system}"
+FRRK8S_LABEL="${FRRK8S_LABEL:-app=frr-k8s}"
+FRRK8S_CONTAINER="${FRRK8S_CONTAINER:-frr}"
 
 # =============================================================================
 # Helpers
@@ -145,14 +152,14 @@ log() {
     echo "[$(date '+%H:%M:%S')] $1"
 }
 
-exec_in() {
-    local container=$1; shift
-    $CONTAINER_RUNTIME exec "$container" /bin/sh -c "$*"
-}
-
 vtysh_in() {
     local container=$1; shift
     $CONTAINER_RUNTIME exec "$container" vtysh "$@"
+}
+
+get_node_ip() {
+    local node=$1
+    kubectl get node "$node" -o jsonpath='{.status.addresses[?(@.type=="InternalIP")].address}'
 }
 
 get_container_ip() {
@@ -160,6 +167,13 @@ get_container_ip() {
     $CONTAINER_RUNTIME inspect \
         -f "{{(index .NetworkSettings.Networks \"${EVPN_NETWORK}\").IPAddress}}" \
         "$container"
+}
+
+get_frr_pod() {
+    local node=$1
+    kubectl get pods -n "$FRRK8S_NAMESPACE" -l "$FRRK8S_LABEL" \
+        --field-selector "spec.nodeName=$node" \
+        -o jsonpath='{.items[0].metadata.name}'
 }
 
 validate_env() {
@@ -190,97 +204,56 @@ validate_env() {
 }
 
 # =============================================================================
-# Network setup (shared between kind nodes and external FRR container)
+# Node setup delegation
 # =============================================================================
 
-# Creates a bridge with VLAN filtering and a VXLAN device in external/vnifilter
-# mode. The VXLAN device supports multiple VNIs on a single device; FRR manages
-# VNI-to-VTEP mappings via BGP EVPN signaling.
-#
-# Args: $1=container, $2=local VTEP IP
-setup_bridge_vxlan() {
-    local container=$1 local_ip=$2
+# Builds the env var export lines for evpn-node-setup.sh.
+# Args: $1=local_ip, $2=l2_ip (or ""), $3=l3_prefix (or "")
+build_node_env() {
+    local local_ip=$1 l2_ip=$2 l3_prefix=$3
 
-    log "[$container] Creating bridge and VXLAN (local VTEP: $local_ip)..."
-    exec_in "$container" "
-        ip link del $EVPN_BRIDGE 2>/dev/null || true
-        ip link del $EVPN_VXLAN 2>/dev/null || true
-
-        ip link add $EVPN_BRIDGE type bridge vlan_filtering 1 vlan_default_pvid 0
-        ip link set $EVPN_BRIDGE addrgenmode none
-        ip link set $EVPN_BRIDGE up
-
-        ip link add $EVPN_VXLAN type vxlan dstport 4789 local $local_ip nolearning external vnifilter
-        ip link set $EVPN_VXLAN addrgenmode none
-        ip link set $EVPN_VXLAN master $EVPN_BRIDGE
-        ip link set $EVPN_VXLAN up
-
-        bridge link set dev $EVPN_VXLAN vlan_tunnel on neigh_suppress on learning off
-    "
+    echo "export EVPN_LOCAL_IP=$local_ip"
+    echo "export EVPN_BRIDGE=$EVPN_BRIDGE"
+    echo "export EVPN_VXLAN=$EVPN_VXLAN"
+    if [ -n "${EVPN_L2_VNI:-}" ]; then
+        echo "export EVPN_L2_VNI=$EVPN_L2_VNI"
+        echo "export EVPN_L2_VLAN_ID=$EVPN_L2_VLAN_ID"
+        echo "export EVPN_L2_IP=$l2_ip"
+    fi
+    if [ -n "${EVPN_L3_VNI:-}" ]; then
+        echo "export EVPN_L3_VNI=$EVPN_L3_VNI"
+        echo "export EVPN_L3_VLAN_ID=$EVPN_L3_VLAN_ID"
+        echo "export EVPN_L3_VRF=$EVPN_L3_VRF"
+        echo "export EVPN_L3_VRF_TABLE=$EVPN_L3_VRF_TABLE"
+        echo "export EVPN_L3_PREFIX=$l3_prefix"
+    fi
+    if [ "${EVPN_CLEANUP:-}" = "true" ]; then
+        echo "export EVPN_CLEANUP=true"
+    fi
 }
 
-# Adds L2 VNI to the bridge/VXLAN and creates an access port (veth pair) for
-# local L2 connectivity. The access port has an IP address that generates ARP
-# entries, causing FRR to advertise type-2 (MAC/IP) routes via EVPN.
-#
-# Args: $1=container, $2=node index (for unique IP: 10.100.0.<index>)
-setup_l2_vni() {
-    local container=$1 node_index=$2
-
-    log "[$container] Setting up L2 VNI $EVPN_L2_VNI (VLAN $EVPN_L2_VLAN_ID)..."
-    exec_in "$container" "
-        # Map VLAN to VNI on bridge and VXLAN
-        bridge vlan add dev $EVPN_BRIDGE vid $EVPN_L2_VLAN_ID self
-        bridge vlan add dev $EVPN_VXLAN vid $EVPN_L2_VLAN_ID
-        bridge vni add dev $EVPN_VXLAN vni $EVPN_L2_VNI
-        bridge vlan add dev $EVPN_VXLAN vid $EVPN_L2_VLAN_ID tunnel_info id $EVPN_L2_VNI
-
-        # Access port: veth pair, bridge side gets PVID/untagged
-        ip link del evpnacc 2>/dev/null || true
-        ip link add evpnacc type veth peer name evpnaccbr
-        ip link set evpnaccbr master $EVPN_BRIDGE
-        bridge vlan add dev evpnaccbr vid $EVPN_L2_VLAN_ID pvid untagged
-        ip link set evpnaccbr up
-        ip link set evpnacc up
-        ip addr add 10.100.0.${node_index}/24 dev evpnacc
-    "
+# Runs evpn-node-setup.sh on a cluster node via kubectl exec into its frr-k8s pod.
+# Args: $1=node_name, $2=local_ip, $3=l2_ip, $4=l3_prefix
+run_node_setup_k8s() {
+    local node=$1 local_ip=$2 l2_ip=$3 l3_prefix=$4
+    local pod
+    pod=$(get_frr_pod "$node")
+    log "[$node] Running node setup via pod $pod..."
+    {
+        build_node_env "$local_ip" "$l2_ip" "$l3_prefix"
+        cat "$SCRIPT_DIR/evpn-node-setup.sh"
+    } | kubectl exec -n "$FRRK8S_NAMESPACE" "$pod" -c "$FRRK8S_CONTAINER" -i -- bash
 }
 
-# Adds L3 VNI with a Linux VRF, SVI, and a test prefix. The VRF is created in
-# the kernel so FRR's zebra can adopt it. The SVI bridges the VXLAN L3 VNI into
-# the VRF for symmetric IRB. A dummy interface with a test prefix provides a
-# connected route for FRR to advertise as a type-5 (IP prefix) route.
-#
-# Args: $1=container, $2=node index (for unique prefix: 10.200.<index>.0/24)
-setup_l3_vni() {
-    local container=$1 node_index=$2
-
-    log "[$container] Setting up L3 VNI $EVPN_L3_VNI (VLAN $EVPN_L3_VLAN_ID, VRF $EVPN_L3_VRF)..."
-    exec_in "$container" "
-        # Linux VRF -- FRR zebra will adopt this when it processes 'vrf <name>'
-        ip link add $EVPN_L3_VRF type vrf table $EVPN_L3_VRF_TABLE 2>/dev/null || true
-        ip link set $EVPN_L3_VRF up
-
-        # Map VLAN to L3 VNI
-        bridge vlan add dev $EVPN_BRIDGE vid $EVPN_L3_VLAN_ID self
-        bridge vlan add dev $EVPN_VXLAN vid $EVPN_L3_VLAN_ID
-        bridge vni add dev $EVPN_VXLAN vni $EVPN_L3_VNI
-        bridge vlan add dev $EVPN_VXLAN vid $EVPN_L3_VLAN_ID tunnel_info id $EVPN_L3_VNI
-
-        # SVI: VLAN sub-interface on the bridge, enslaved to VRF
-        ip link del ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID} 2>/dev/null || true
-        ip link add ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID} link $EVPN_BRIDGE type vlan id $EVPN_L3_VLAN_ID
-        ip link set ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID} addrgenmode none
-        ip link set ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID} master $EVPN_L3_VRF
-        ip link set ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID} up
-
-        # Test prefix: dummy interface in VRF with a connected route
-        ip link del evpndummy 2>/dev/null || true
-        ip link add evpndummy type dummy
-        ip link set evpndummy master $EVPN_L3_VRF
-        ip link set evpndummy up
-        ip addr add 10.200.${node_index}.1/24 dev evpndummy
-    "
+# Runs evpn-node-setup.sh on the external FRR container via container runtime.
+# Args: $1=container, $2=local_ip, $3=l2_ip, $4=l3_prefix
+run_node_setup_container() {
+    local container=$1 local_ip=$2 l2_ip=$3 l3_prefix=$4
+    log "[$container] Running node setup via $CONTAINER_RUNTIME..."
+    {
+        build_node_env "$local_ip" "$l2_ip" "$l3_prefix"
+        cat "$SCRIPT_DIR/evpn-node-setup.sh"
+    } | $CONTAINER_RUNTIME exec -i "$container" bash
 }
 
 # =============================================================================
@@ -293,11 +266,6 @@ setup_l3_vni() {
 #
 # Both sides use the same route-target values (EVPN_FRR_K8S_ASN:VNI) so that
 # routes are imported/exported correctly regardless of eBGP/iBGP.
-#
-# NOTE: This configures FRR via vtysh (runtime config). If the test framework
-# later calls UpdateBGPConfigFile, these changes will be overwritten. For
-# integration tests (Phase 7), EVPN config should be included in the BGP
-# config template instead.
 configure_external_frr() {
     local container=$1
 
@@ -306,7 +274,7 @@ configure_external_frr() {
     # Discover node IPs for neighbor activation
     local neighbor_ips=""
     for node in $EVPN_NODES; do
-        neighbor_ips="$neighbor_ips $(get_container_ip "$node")"
+        neighbor_ips="$neighbor_ips $(get_node_ip "$node")"
     done
 
     # =========================================================================
@@ -400,19 +368,6 @@ configure_external_frr() {
 # Cleanup
 # =============================================================================
 
-cleanup_networking() {
-    local container=$1
-    log "[$container] Cleaning up EVPN networking..."
-    exec_in "$container" "
-        ip link del evpnacc 2>/dev/null || true
-        ip link del evpndummy 2>/dev/null || true
-        ip link del ${EVPN_BRIDGE}.${EVPN_L3_VLAN_ID:-0} 2>/dev/null || true
-        ip link del $EVPN_VXLAN 2>/dev/null || true
-        ip link del $EVPN_BRIDGE 2>/dev/null || true
-        ip link del ${EVPN_L3_VRF:-__nonexistent__} 2>/dev/null || true
-    " || true
-}
-
 cleanup_external_frr() {
     local container=$1
     log "[$container] Cleaning up FRR EVPN config..."
@@ -470,29 +425,32 @@ run_setup() {
     log "  frr-k8s ASN:  $EVPN_FRR_K8S_ASN"
     log "  Bridge/VXLAN: $EVPN_BRIDGE/$EVPN_VXLAN"
 
-    # --- Kind nodes ---
+    # --- Cluster nodes (via kubectl exec into frr-k8s pods) ---
     local node_index=1
     for node in $EVPN_NODES; do
-        local node_ip
-        node_ip=$(get_container_ip "$node")
+        local node_ip l2_ip="" l3_prefix=""
+        node_ip=$(get_node_ip "$node")
         log "[$node] VTEP IP: $node_ip"
 
-        setup_bridge_vxlan "$node" "$node_ip"
-        [ -n "${EVPN_L2_VNI:-}" ] && setup_l2_vni "$node" "$node_index"
-        [ -n "${EVPN_L3_VNI:-}" ] && setup_l3_vni "$node" "$node_index"
+        [ -n "${EVPN_L2_VNI:-}" ] && l2_ip="10.100.0.${node_index}/24"
+        [ -n "${EVPN_L3_VNI:-}" ] && l3_prefix="10.200.${node_index}.1/24"
+
+        run_node_setup_k8s "$node" "$node_ip" "$l2_ip" "$l3_prefix"
 
         node_index=$((node_index + 1))
     done
 
-    # --- External FRR container ---
+    # --- External FRR container (via container runtime) ---
     local ext_ip
     ext_ip=$(get_container_ip "$EVPN_EXTERNAL")
     log "[$EVPN_EXTERNAL] VTEP IP: $ext_ip"
 
-    setup_bridge_vxlan "$EVPN_EXTERNAL" "$ext_ip"
+    local ext_l2_ip="" ext_l3_prefix=""
     # Use index 10 for external container to avoid IP collisions with nodes
-    [ -n "${EVPN_L2_VNI:-}" ] && setup_l2_vni "$EVPN_EXTERNAL" 10
-    [ -n "${EVPN_L3_VNI:-}" ] && setup_l3_vni "$EVPN_EXTERNAL" 10
+    [ -n "${EVPN_L2_VNI:-}" ] && ext_l2_ip="10.100.0.10/24"
+    [ -n "${EVPN_L3_VNI:-}" ] && ext_l3_prefix="10.200.10.1/24"
+
+    run_node_setup_container "$EVPN_EXTERNAL" "$ext_ip" "$ext_l2_ip" "$ext_l3_prefix"
 
     configure_external_frr "$EVPN_EXTERNAL"
 
@@ -508,10 +466,10 @@ run_cleanup() {
 
     # Clean external FRR config before removing its network devices
     cleanup_external_frr "$EVPN_EXTERNAL"
-    cleanup_networking "$EVPN_EXTERNAL"
+    run_node_setup_container "$EVPN_EXTERNAL" "x" "" ""
 
     for node in $EVPN_NODES; do
-        cleanup_networking "$node"
+        run_node_setup_k8s "$node" "x" "" ""
     done
 
     log "EVPN cleanup complete"
