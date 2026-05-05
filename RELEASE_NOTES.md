@@ -1,5 +1,10 @@
 # FRRK8s Release Notes
 
+## Release v0.0.24
+
+### New Features
+- Add `localASN` field to `Neighbor` to advertise a different AS number to a specific peer via FRR's `local-as no-prepend replace-as` feature. (#430, @adilGhaffarDev)
+
 ## Release v0.0.23
 
 ### New Features
