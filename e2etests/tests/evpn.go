@@ -140,7 +140,7 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 			}
 
 			ginkgo.By("Collecting node MAC addresses for type-2 route validation")
-			nodeMacs, err := nodeL2VNIMacs(nodes)
+			nodeMacs, err := nodeL2VNIMacs(pods)
 			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Validating EVPN type-2 routes are exchanged")
@@ -153,7 +153,7 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 			for nodeIdx := range nodes {
 				nodeIP := fmt.Sprintf("10.100.0.%d", nodeIdx+1)
 				Eventually(func() error {
-					return ping(externalFRR.Name, nodeIP)
+					return ping(externalFRR, nodeIP)
 				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
 					"L2 ping from external FRR to node %s (%s) failed", nodes[nodeIdx].Name, nodeIP)
 			}
@@ -369,7 +369,7 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 			for nodeIdx := range nodes {
 				nodeIP := fmt.Sprintf("10.200.%d.1", nodeIdx+1)
 				Eventually(func() error {
-					return pingVRF(externalFRR.Name, evpnL3VRF, nodeIP)
+					return pingVRF(externalFRR, evpnL3VRF, nodeIP)
 				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
 					"L3 ping from external FRR to node %s (%s) via VRF %s failed", nodes[nodeIdx].Name, nodeIP, evpnL3VRF)
 			}
@@ -611,17 +611,17 @@ func vniExists(exec executor.Executor, vni uint32) error {
 	return nil
 }
 
-func nodeL2VNIMacs(nodes []corev1.Node) ([]string, error) {
-	macs := make([]string, 0, len(nodes))
-	for _, n := range nodes {
-		out, err := executor.Host.Exec(executor.ContainerRuntime, "exec", n.Name,
-			"cat", fmt.Sprintf("/sys/class/net/%s/address", evpnL2Iface))
+func nodeL2VNIMacs(frrk8sPods []*corev1.Pod) ([]string, error) {
+	macs := make([]string, 0, len(frrk8sPods))
+	for _, pod := range frrk8sPods {
+		podExec := executor.ForPod(pod.Namespace, pod.Name, k8s.FRRContainerName)
+		out, err := podExec.Exec("cat", fmt.Sprintf("/sys/class/net/%s/address", evpnL2Iface))
 		if err != nil {
-			return nil, fmt.Errorf("failed to get MAC for node %s: %w", n.Name, err)
+			return nil, fmt.Errorf("failed to get MAC for pod %s: %w", pod.Name, err)
 		}
 		mac := strings.TrimSpace(out)
 		if mac == "" {
-			return nil, fmt.Errorf("empty MAC for node %s", n.Name)
+			return nil, fmt.Errorf("empty MAC for pod %s", pod.Name)
 		}
 		macs = append(macs, mac)
 	}
@@ -737,20 +737,18 @@ func checkType5Routes(exec executor.Executor, expectedRoutes map[string]string) 
 	return nil
 }
 
-func ping(container, targetIP string) error {
-	out, err := executor.Host.Exec(executor.ContainerRuntime, "exec", container,
-		"ping", "-c", "1", "-W", "2", targetIP)
+func ping(exec executor.Executor, targetIP string) error {
+	out, err := exec.Exec("ping", "-c", "1", "-W", "2", targetIP)
 	if err != nil {
-		return fmt.Errorf("ping %s from %s failed: %w\noutput: %s", targetIP, container, err, out)
+		return fmt.Errorf("ping %s failed: %w\noutput: %s", targetIP, err, out)
 	}
 	return nil
 }
 
-func pingVRF(container, vrf, targetIP string) error {
-	out, err := executor.Host.Exec(executor.ContainerRuntime, "exec", container,
-		"ip", "vrf", "exec", vrf, "ping", "-c", "1", "-W", "2", targetIP)
+func pingVRF(exec executor.Executor, vrf, targetIP string) error {
+	out, err := exec.Exec("ip", "vrf", "exec", vrf, "ping", "-c", "1", "-W", "2", targetIP)
 	if err != nil {
-		return fmt.Errorf("ping %s via VRF %s from %s failed: %w\noutput: %s", targetIP, vrf, container, err, out)
+		return fmt.Errorf("ping %s via VRF %s failed: %w\noutput: %s", targetIP, vrf, err, out)
 	}
 	return nil
 }
