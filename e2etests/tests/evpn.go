@@ -138,15 +138,15 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 					"L2 VNI %d not visible on pod %s", evpnL2VNI, pod.Name)
 			}
 
-			ginkgo.By("Collecting node MAC addresses for type-2 route validation")
-			nodeMacs, err := nodeL2VNIMacs(pods)
+			ginkgo.By("Collecting expected type-2 routes")
+			expectedType2, err := expectedL2VNIRoutes(pods)
 			Expect(err).NotTo(HaveOccurred())
 
 			ginkgo.By("Validating EVPN type-2 routes are exchanged")
 			Eventually(func() error {
-				return frr.HasEVPNType2Routes(externalFRR, nodeMacs)
+				return frr.HasEVPNType2Routes(externalFRR, expectedType2)
 			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
-				"Type-2 routes for node MACs not found on external FRR")
+				"Type-2 routes not found on external FRR")
 
 			ginkgo.By("Validating L2 data path from external FRR to nodes")
 			for nodeIdx := range nodes {
@@ -351,10 +351,10 @@ var _ = ginkgo.Describe("EVPN IPV4", func() {
 			ginkgo.By("Validating EVPN type-5 routes are received on external FRR")
 			expectedRoutes := map[string]string{}
 			for nodeIdx, node := range nodes {
-				routeKey := fmt.Sprintf("[5]:[0]:[24]:[10.200.%d.0]", nodeIdx+1)
+				prefix := fmt.Sprintf("10.200.%d.0/24", nodeIdx+1)
 				for _, addr := range node.Status.Addresses {
 					if addr.Type == corev1.NodeInternalIP && !strings.Contains(addr.Address, ":") {
-						expectedRoutes[routeKey] = addr.Address
+						expectedRoutes[prefix] = addr.Address
 						break
 					}
 				}
@@ -573,8 +573,8 @@ func runEVPNSetupScript(nodes []corev1.Node, externalFRR *frrcontainer.FRR, l2 b
 }
 
 
-func nodeL2VNIMacs(frrk8sPods []*corev1.Pod) ([]string, error) {
-	macs := make([]string, 0, len(frrk8sPods))
+func expectedL2VNIRoutes(frrk8sPods []*corev1.Pod) (map[string]string, error) {
+	routes := make(map[string]string, len(frrk8sPods))
 	for _, pod := range frrk8sPods {
 		podExec := executor.ForPod(pod.Namespace, pod.Name, k8s.FRRContainerName)
 		out, err := podExec.Exec("cat", fmt.Sprintf("/sys/class/net/%s/address", evpnL2Iface))
@@ -585,9 +585,9 @@ func nodeL2VNIMacs(frrk8sPods []*corev1.Pod) ([]string, error) {
 		if mac == "" {
 			return nil, fmt.Errorf("empty MAC for pod %s", pod.Name)
 		}
-		macs = append(macs, mac)
+		routes[mac] = pod.Status.HostIP
 	}
-	return macs, nil
+	return routes, nil
 }
 
 

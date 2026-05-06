@@ -5,6 +5,7 @@ package frr
 import (
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"go.universe.tf/e2etest/pkg/executor"
@@ -52,61 +53,37 @@ func HasEVPNVNI(exec executor.Executor, vni uint32) error {
 	return nil
 }
 
-// CheckType2Routes verifies that EVPN type-2 (MAC/IP) routes exist for
-// all the given MAC addresses.
-func HasEVPNType2Routes(exec executor.Executor, expectedMACs []string) error {
-	out, err := exec.Exec("vtysh", "-c", "show bgp l2vpn evpn route type macip json")
-	if err != nil {
-		return fmt.Errorf("failed to query type-2 routes: %w", err)
+// HasEVPNType2Routes verifies that EVPN type-2 (MAC/IP) routes exist for
+// the expected MACs with the correct next-hops. Keys are MAC addresses,
+// values are expected next-hop IPs.
+func HasEVPNType2Routes(exec executor.Executor, expectedRoutes map[string]string) error {
+	remapped := make(map[string]string, len(expectedRoutes))
+	for mac, nh := range expectedRoutes {
+		remapped[fmt.Sprintf("[2]:[0]:[48]:[%s]", mac)] = nh
 	}
-	var top map[string]json.RawMessage
-	if err := json.Unmarshal([]byte(out), &top); err != nil {
-		return fmt.Errorf("failed to parse type-2 routes: %w", err)
-	}
-
-	var routeKeys []string
-	for key, val := range top {
-		if key == "numPrefix" || key == "numPaths" {
-			continue
-		}
-		var rd map[string]json.RawMessage
-		if err := json.Unmarshal(val, &rd); err != nil {
-			continue
-		}
-		for routeKey := range rd {
-			routeKeys = append(routeKeys, routeKey)
-		}
-	}
-
-	var missing []string
-	for _, mac := range expectedMACs {
-		found := false
-		for _, rk := range routeKeys {
-			if strings.Contains(strings.ToLower(rk), strings.ToLower(mac)) {
-				found = true
-				break
-			}
-		}
-		if !found {
-			missing = append(missing, mac)
-		}
-	}
-	if len(missing) > 0 {
-		return fmt.Errorf("type-2 routes missing for MACs: %v", missing)
-	}
-	return nil
+	return hasEVPNRoutes(exec, "show bgp l2vpn evpn route type macip json", remapped)
 }
 
-// CheckType5Routes verifies that EVPN type-5 (prefix) routes exist with
-// the expected next-hops.
+// HasEVPNType5Routes verifies that EVPN type-5 (prefix) routes exist with
+// the expected next-hops. Keys are CIDR prefixes (e.g. "10.200.1.0/24"),
+// values are expected next-hop IPs.
 func HasEVPNType5Routes(exec executor.Executor, expectedRoutes map[string]string) error {
-	out, err := exec.Exec("vtysh", "-c", "show bgp l2vpn evpn route type prefix json")
+	remapped := make(map[string]string, len(expectedRoutes))
+	for cidr, nh := range expectedRoutes {
+		parts := strings.SplitN(cidr, "/", 2)
+		remapped[fmt.Sprintf("[5]:[0]:[%s]:[%s]", parts[1], parts[0])] = nh
+	}
+	return hasEVPNRoutes(exec, "show bgp l2vpn evpn route type prefix json", remapped)
+}
+
+func hasEVPNRoutes(exec executor.Executor, vtyshCmd string, expectedRoutes map[string]string) error {
+	out, err := exec.Exec("vtysh", "-c", vtyshCmd)
 	if err != nil {
-		return fmt.Errorf("failed to query type-5 routes: %w", err)
+		return fmt.Errorf("failed to query routes: %w", err)
 	}
 	var top map[string]json.RawMessage
 	if err := json.Unmarshal([]byte(out), &top); err != nil {
-		return fmt.Errorf("failed to parse type-5 routes: %w", err)
+		return fmt.Errorf("failed to parse routes: %w", err)
 	}
 
 	type nexthop struct {
@@ -147,25 +124,25 @@ func HasEVPNType5Routes(exec executor.Executor, expectedRoutes map[string]string
 	}
 
 	var missing []string
-	for routeKey, expectedNH := range expectedRoutes {
-		nhs, ok := routeNextHops[routeKey]
-		if !ok {
-			missing = append(missing, fmt.Sprintf("%s (not found)", routeKey))
-			continue
-		}
+	for expected, expectedNH := range expectedRoutes {
 		found := false
-		for _, nh := range nhs {
-			if nh == expectedNH {
+		for routeKey, nhs := range routeNextHops {
+			if strings.HasPrefix(routeKey, expected) {
+				if slices.Contains(nhs, expectedNH) {
+					found = true
+					break
+				}
+				missing = append(missing, fmt.Sprintf("%s (expected NH %s, got %v)", expected, expectedNH, nhs))
 				found = true
 				break
 			}
 		}
 		if !found {
-			missing = append(missing, fmt.Sprintf("%s (expected NH %s, got %v)", routeKey, expectedNH, nhs))
+			missing = append(missing, fmt.Sprintf("%s (not found)", expected))
 		}
 	}
 	if len(missing) > 0 {
-		return fmt.Errorf("type-5 routes missing or wrong: %v", missing)
+		return fmt.Errorf("routes missing or wrong: %v", missing)
 	}
 	return nil
 }
