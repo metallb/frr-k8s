@@ -388,7 +388,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `asn` _integer_ | ASN is the AS number to use for the local end of the session.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br />Optional: \{\} <br /> |
+| `asn` _integer_ | ASN is the AS number to use for the local end of the session.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Format: int64 <br />Maximum: 4.294967295e+09 <br />Minimum: 0 <br />Optional: \{\} <br /> |
 | `dynamicASN` _[DynamicASNMode](#dynamicasnmode)_ | DynamicASN detects the AS number to use for the local end of the session<br />without explicitly setting it via the ASN field. Limited to:<br />internal - if the neighbor's ASN is different than the router's the connection is denied.<br />external - if the neighbor's ASN is the same as the router's the connection is denied.<br />ASN and DynamicASN are mutually exclusive and one of them must be specified. |  | Enum: [internal external] <br />Optional: \{\} <br /> |
 | `sourceaddress` _string_ | SourceAddress is the IPv4 or IPv6 source address to use for the BGP<br />session to this neighbour, may be specified as either an IP address<br />directly or as an interface name |  | Optional: \{\} <br /> |
 | `address` _string_ | Address is the IP address to establish the session with. |  | Optional: \{\} <br /> |
@@ -406,7 +406,7 @@ _Appears in:_
 | `toReceive` _[Receive](#receive)_ | ToReceive represents the list of prefixes to receive from the given neighbor. |  | Optional: \{\} <br /> |
 | `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false | Optional: \{\} <br /> |
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false | Optional: \{\} <br /> |
-| `localASN` _integer_ | LocalASN allows advertising a different AS number to the peer using BGP's<br />local-as feature. When set, FRR will advertise this ASN to the peer<br />via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding<br />the router-level ASN for this specific session.<br />Note: this field is only applicable to eBGP sessions (where the peer ASN differs<br />from the router ASN). Setting it on an iBGP session is rejected. |  | Maximum: 4.294967295e+09 <br />Minimum: 1 <br />Optional: \{\} <br /> |
+| `localASN` _integer_ | LocalASN allows advertising a different AS number to the peer using BGP's<br />local-as feature. When set, FRR will advertise this ASN to the peer<br />via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding<br />the router-level ASN for this specific session.<br />Note: this field is only applicable to eBGP sessions (where the peer ASN differs<br />from the router ASN). Setting it on an iBGP session is rejected. |  | Format: int64 <br />Maximum: 4.294967295e+09 <br />Minimum: 1 <br />Optional: \{\} <br /> |
 
 
 #### PrefixSelector
@@ -478,7 +478,7 @@ _Appears in:_
 
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
-| `asn` _integer_ | ASN is the AS number to use for the local end of the session. |  | Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
+| `asn` _integer_ | ASN is the AS number to use for the local end of the session. |  | Format: int64 <br />Maximum: 4.294967295e+09 <br />Minimum: 0 <br /> |
 | `id` _string_ | ID is the BGP router ID |  | Optional: \{\} <br /> |
 | `vrf` _string_ | VRF is the host vrf used to establish sessions from this router. |  | Optional: \{\} <br /> |
 | `neighbors` _[Neighbor](#neighbor) array_ | Neighbors is the list of neighbors we want to establish BGP sessions with. |  | Optional: \{\} <br /> |

@@ -70,6 +70,7 @@ type Router struct {
 	// ASN is the AS number to use for the local end of the session.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=4294967295
+	// +kubebuilder:validation:Format=int64
 	ASN uint32 `json:"asn"`
 	// ID is the BGP router ID
 	// +optional
@@ -102,6 +103,7 @@ type Neighbor struct {
 	// ASN and DynamicASN are mutually exclusive and one of them must be specified.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=4294967295
+	// +kubebuilder:validation:Format=int64
 	// +optional
 	ASN uint32 `json:"asn,omitempty"`
 
@@ -218,6 +220,7 @@ type Neighbor struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=4294967295
+	// +kubebuilder:validation:Format=int64
 	LocalASN uint32 `json:"localASN,omitempty"`
 }
 
