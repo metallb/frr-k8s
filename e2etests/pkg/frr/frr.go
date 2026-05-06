@@ -10,12 +10,31 @@ import (
 
 	"go.universe.tf/e2etest/pkg/executor"
 	metallbfrr "go.universe.tf/e2etest/pkg/frr"
+	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
+	corev1 "k8s.io/api/core/v1"
 )
 
-// NeighborHasEVPN checks that the given neighbor has the l2vpnEvpn address
+// FRR wraps an executor to provide FRR query methods. It works with any
+// executor — pod, container, or host — making the same queries available
+// regardless of where FRR is running.
+type FRR struct {
+	exec executor.Executor
+}
+
+// ForPod returns an FRR querying the FRR daemon in the given pod.
+func ForPod(pod *corev1.Pod) *FRR {
+	return &FRR{exec: executor.ForPod(pod.Namespace, pod.Name, "frr")}
+}
+
+// ForContainer returns an FRR querying the FRR daemon in the given container.
+func ForContainer(c *frrcontainer.FRR) *FRR {
+	return &FRR{exec: executor.ForContainer(c.Name)}
+}
+
+// HasEVPNNeighbor checks that the given neighbor has the l2vpnEvpn address
 // family active and is connected.
-func HasEVPNNeighbor(exec executor.Executor, neighborIP string) error {
-	neighbors, err := metallbfrr.NeighborsInfo(exec)
+func (f *FRR) HasEVPNNeighbor(neighborIP string) error {
+	neighbors, err := metallbfrr.NeighborsInfo(f.exec)
 	if err != nil {
 		return err
 	}
@@ -35,14 +54,14 @@ func HasEVPNNeighbor(exec executor.Executor, neighborIP string) error {
 	return fmt.Errorf("neighbor %s not found", neighborIP)
 }
 
-// VNIExists checks that the given VNI is visible in FRR's EVPN state.
-func HasEVPNVNI(exec executor.Executor, vni uint32) error {
-	out, err := exec.Exec("vtysh", "-c", fmt.Sprintf("show evpn vni %d json", vni))
+// HasEVPNVNI checks that the given VNI is visible in FRR's EVPN state.
+func (f *FRR) HasEVPNVNI(vni int) error {
+	out, err := f.exec.Exec("vtysh", "-c", fmt.Sprintf("show evpn vni %d json", vni))
 	if err != nil {
 		return fmt.Errorf("failed to query VNI %d: %w", vni, err)
 	}
 	var result struct {
-		VNI uint32 `json:"vni"`
+		VNI int `json:"vni"`
 	}
 	if err := json.Unmarshal([]byte(out), &result); err != nil {
 		return fmt.Errorf("failed to parse VNI %d output: %w", vni, err)
@@ -56,28 +75,28 @@ func HasEVPNVNI(exec executor.Executor, vni uint32) error {
 // HasEVPNType2Routes verifies that EVPN type-2 (MAC/IP) routes exist for
 // the expected MACs with the correct next-hops. Keys are MAC addresses,
 // values are expected next-hop IPs.
-func HasEVPNType2Routes(exec executor.Executor, expectedRoutes map[string]string) error {
+func (f *FRR) HasEVPNType2Routes(expectedRoutes map[string]string) error {
 	remapped := make(map[string]string, len(expectedRoutes))
 	for mac, nh := range expectedRoutes {
 		remapped[fmt.Sprintf("[2]:[0]:[48]:[%s]", mac)] = nh
 	}
-	return hasEVPNRoutes(exec, "show bgp l2vpn evpn route type macip json", remapped)
+	return f.hasEVPNRoutes("show bgp l2vpn evpn route type macip json", remapped)
 }
 
 // HasEVPNType5Routes verifies that EVPN type-5 (prefix) routes exist with
 // the expected next-hops. Keys are CIDR prefixes (e.g. "10.200.1.0/24"),
 // values are expected next-hop IPs.
-func HasEVPNType5Routes(exec executor.Executor, expectedRoutes map[string]string) error {
+func (f *FRR) HasEVPNType5Routes(expectedRoutes map[string]string) error {
 	remapped := make(map[string]string, len(expectedRoutes))
 	for cidr, nh := range expectedRoutes {
 		parts := strings.SplitN(cidr, "/", 2)
 		remapped[fmt.Sprintf("[5]:[0]:[%s]:[%s]", parts[1], parts[0])] = nh
 	}
-	return hasEVPNRoutes(exec, "show bgp l2vpn evpn route type prefix json", remapped)
+	return f.hasEVPNRoutes("show bgp l2vpn evpn route type prefix json", remapped)
 }
 
-func hasEVPNRoutes(exec executor.Executor, vtyshCmd string, expectedRoutes map[string]string) error {
-	out, err := exec.Exec("vtysh", "-c", vtyshCmd)
+func (f *FRR) hasEVPNRoutes(vtyshCmd string, expectedRoutes map[string]string) error {
+	out, err := f.exec.Exec("vtysh", "-c", vtyshCmd)
 	if err != nil {
 		return fmt.Errorf("failed to query routes: %w", err)
 	}

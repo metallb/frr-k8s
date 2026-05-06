@@ -77,7 +77,7 @@
 #
 # Environment variables:
 #   Required:
-#     EVPN_LOCAL_IP       - VTEP IP address for this node
+#     EVPN_VTEP_IP        - VTEP IP address for this node
 #
 #   L2 VNI (optional, provide all three or none):
 #     EVPN_L2_VNI         - L2 VNI number (e.g., 1000)
@@ -100,19 +100,20 @@
 #
 # Usage:
 #   # L2 VNI setup
-#   EVPN_LOCAL_IP=172.18.0.3 \
+#   EVPN_VTEP_IP=172.18.0.3 \
 #   EVPN_L2_VNI=1000 EVPN_L2_VLAN_ID=100 EVPN_L2_IP=10.100.0.1/24 \
 #   ./evpn-node-setup.sh
 #
 #   # L3 VNI setup
-#   EVPN_LOCAL_IP=172.18.0.3 \
+#   EVPN_VTEP_IP=172.18.0.3 \
 #   EVPN_L3_VNI=3000 EVPN_L3_VLAN_ID=4000 EVPN_L3_VRF=evpnred \
 #   EVPN_L3_PREFIX=10.200.1.1/24 \
 #   ./evpn-node-setup.sh
 #
 #   # Cleanup
-#   EVPN_CLEANUP=true EVPN_LOCAL_IP=x \
+#   EVPN_CLEANUP=true EVPN_VTEP_IP=172.18.0.3 \
 #   EVPN_L3_VNI=3000 EVPN_L3_VLAN_ID=4000 EVPN_L3_VRF=evpnred \
+#   EVPN_L3_PREFIX=10.200.1.1/24 \
 #   ./evpn-node-setup.sh
 #
 # =============================================================================
@@ -140,8 +141,8 @@ validate_env() {
         return
     fi
 
-    if [ -z "${EVPN_LOCAL_IP:-}" ]; then
-        echo "ERROR: EVPN_LOCAL_IP is required"
+    if [ -z "${EVPN_VTEP_IP:-}" ]; then
+        echo "ERROR: EVPN_VTEP_IP is required"
         ok=false
     fi
 
@@ -181,7 +182,7 @@ validate_env() {
 # mode. The VXLAN device supports multiple VNIs on a single device; FRR manages
 # VNI-to-VTEP mappings via BGP EVPN signaling.
 setup_bridge_vxlan() {
-    log "Creating bridge and VXLAN (local VTEP: $EVPN_LOCAL_IP)..."
+    log "Creating bridge and VXLAN (local VTEP: $EVPN_VTEP_IP)..."
 
     ip link del "$EVPN_BRIDGE" 2>/dev/null || true
     ip link del "$EVPN_VXLAN" 2>/dev/null || true
@@ -190,7 +191,7 @@ setup_bridge_vxlan() {
     ip link set "$EVPN_BRIDGE" addrgenmode none
     ip link set "$EVPN_BRIDGE" up
 
-    ip link add "$EVPN_VXLAN" type vxlan dstport 4789 local "$EVPN_LOCAL_IP" nolearning external vnifilter
+    ip link add "$EVPN_VXLAN" type vxlan dstport 4789 local "$EVPN_VTEP_IP" nolearning external vnifilter
     ip link set "$EVPN_VXLAN" addrgenmode none
     ip link set "$EVPN_VXLAN" master "$EVPN_BRIDGE"
     ip link set "$EVPN_VXLAN" up
