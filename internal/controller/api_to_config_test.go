@@ -2594,6 +2594,34 @@ func TestConversion(t *testing.T) {
 			err:     errors.New("neighbor internal@192.0.2.22 has both ASN and DynamicASN specified"),
 		},
 		{
+			name: "Neighbor with localASN on iBGP session is rejected",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65010,
+									ID:  "192.0.2.5",
+									VRF: "",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											Address:  "192.0.2.22",
+											ASN:      65010,
+											LocalASN: 64520,
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("neighbor 65010@192.0.2.22: localASN is not supported for iBGP sessions (neighbor ASN 65010 equals router ASN)"),
+		},
+		{
 			name: "Neighbor with DynamicASN",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{

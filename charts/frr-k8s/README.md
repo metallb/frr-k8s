@@ -31,7 +31,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.acceptIncomingBGPConnections | bool | `false` | Allow FRR to accept incoming BGP connections. |
 | frrk8s.frr.image.pullPolicy | string | `nil` | The FRR image pull policy. |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` | The FRR image repository. |
-| frrk8s.frr.image.tag | string | `"10.4.1"` | The FRR image tag. |
+| frrk8s.frr.image.tag | string | `"10.4.3"` | The FRR image tag. |
 | frrk8s.frr.metricsBindAddress | string | `"127.0.0.1"` | Bind address for FRR metrics. |
 | frrk8s.frr.metricsPort | int | `7573` | Port for FRR metrics. |
 | frrk8s.frr.resources | object | `{}` | Resource limits and requests for the FRR container. |

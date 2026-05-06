@@ -1240,6 +1240,60 @@ func TestMergeNeighbors(t *testing.T) {
 			},
 			err: fmt.Errorf("got multiple bfd profiles specified for %s", "192.0.2.0"),
 		},
+		{
+			name: "LocalASN, both specify same value",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					LocalASN: 64520,
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					LocalASN: 64520,
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					LocalASN: 64520,
+					Outgoing: frr.AllowedOut{},
+					Incoming: frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "LocalASN, both specify different values",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					LocalASN: 64520,
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					LocalASN: 64521,
+				},
+			},
+			err: fmt.Errorf("multiple localASNs specified for %s", "65040@192.0.1.20"),
+		},
 	}
 
 	for _, test := range tests {

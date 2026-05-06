@@ -80,6 +80,7 @@ type NeighborConfig struct {
 	BFDProfile      string
 	GracefulRestart bool
 	EBGPMultiHop    bool
+	LocalASN        uint32
 	VRFName         string
 	Incoming        AllowedIn
 	Outgoing        AllowedOut

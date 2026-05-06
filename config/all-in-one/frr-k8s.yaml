@@ -330,6 +330,18 @@ spec:
                                   KeepaliveTime is the requested BGP keepalive time, per RFC4271.
                                   Defaults to 60s.
                                 type: string
+                              localASN:
+                                description: |-
+                                  LocalASN allows advertising a different AS number to the peer using BGP's
+                                  local-as feature. When set, FRR will advertise this ASN to the peer
+                                  via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding
+                                  the router-level ASN for this specific session.
+                                  Note: this field is only applicable to eBGP sessions (where the peer ASN differs
+                                  from the router ASN). Setting it on an iBGP session is rejected.
+                                format: int32
+                                maximum: 4294967295
+                                minimum: 1
+                                type: integer
                               password:
                                 description: |-
                                   Password to be used for establishing the BGP session.
@@ -1308,7 +1320,7 @@ spec:
         env:
         - name: TINI_SUBREAPER
           value: "true"
-        image: quay.io/frrouting/frr:10.4.1
+        image: quay.io/frrouting/frr:10.4.3
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -1349,7 +1361,7 @@ spec:
         - --metrics-bind-address=0.0.0.0
         command:
         - /etc/frr_metrics/frr-metrics
-        image: quay.io/frrouting/frr:10.4.1
+        image: quay.io/frrouting/frr:10.4.3
         name: frr-metrics
         ports:
         - containerPort: 9141
@@ -1383,7 +1395,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: quay.io/frrouting/frr:10.4.1
+        image: quay.io/frrouting/frr:10.4.3
         name: frr-status
         volumeMounts:
         - mountPath: /var/run/frr
@@ -1394,7 +1406,7 @@ spec:
           name: frr-status
       - command:
         - /etc/frr_reloader/frr-reloader.sh
-        image: quay.io/frrouting/frr:10.4.1
+        image: quay.io/frrouting/frr:10.4.3
         name: reloader
         volumeMounts:
         - mountPath: /var/run/frr
@@ -1409,7 +1421,7 @@ spec:
         - /bin/sh
         - -c
         - cp -rLf /tmp/frr/* /etc/frr/
-        image: quay.io/frrouting/frr:10.4.1
+        image: quay.io/frrouting/frr:10.4.3
         name: cp-frr-files
         securityContext:
           runAsGroup: 101
