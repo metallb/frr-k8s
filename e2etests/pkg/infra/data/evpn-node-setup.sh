@@ -79,16 +79,18 @@
 #   Required:
 #     EVPN_VTEP_IP        - VTEP IP address for this node
 #
-#   L2 VNI (optional, provide all three or none):
+#   L2 VNI (optional; requires VNI + VLAN_ID + at least one of IP/IPV6):
 #     EVPN_L2_VNI         - L2 VNI number (e.g., 1000)
 #     EVPN_L2_VLAN_ID     - VLAN ID for L2 VNI (e.g., 100)
-#     EVPN_L2_IP          - IP/mask for access port (e.g., 10.100.0.1/24)
+#     EVPN_L2_IP          - IPv4/mask for access port (e.g., 10.100.0.1/24)
+#     EVPN_L2_IPV6        - IPv6/mask for access port (e.g., fc00:100::1/64)
 #
-#   L3 VNI (optional, provide all four or none):
+#   L3 VNI (optional; requires VNI + VLAN_ID + VRF + at least one of PREFIX/IPV6_PREFIX):
 #     EVPN_L3_VNI         - L3 VNI number (e.g., 3000)
 #     EVPN_L3_VLAN_ID     - VLAN ID for L3 VNI SVI (e.g., 4000)
 #     EVPN_L3_VRF         - VRF name (e.g., evpnred)
-#     EVPN_L3_PREFIX      - IP/mask for dummy interface (e.g., 10.200.1.1/24)
+#     EVPN_L3_PREFIX      - IPv4/mask for dummy interface (e.g., 10.200.1.1/24)
+#     EVPN_L3_IPV6_PREFIX - IPv6/mask for dummy interface (e.g., fc00:200:1::1/64)
 #
 #   Control:
 #     EVPN_CLEANUP        - Set to "true" to tear down instead of set up
@@ -156,15 +158,19 @@ validate_env() {
             echo "ERROR: EVPN_L2_VLAN_ID is required when EVPN_L2_VNI is set"
             ok=false
         fi
-        if [ -z "${EVPN_L2_IP:-}" ]; then
-            echo "ERROR: EVPN_L2_IP is required when EVPN_L2_VNI is set"
+        if [ -z "${EVPN_L2_IP:-}" ] && [ -z "${EVPN_L2_IPV6:-}" ]; then
+            echo "ERROR: at least one of EVPN_L2_IP or EVPN_L2_IPV6 is required when EVPN_L2_VNI is set"
             ok=false
         fi
     fi
 
     if [ -n "${EVPN_L3_VNI:-}" ]; then
-        if [ -z "${EVPN_L3_VLAN_ID:-}" ] || [ -z "${EVPN_L3_VRF:-}" ] || [ -z "${EVPN_L3_PREFIX:-}" ]; then
-            echo "ERROR: EVPN_L3_VLAN_ID, EVPN_L3_VRF and EVPN_L3_PREFIX are required when EVPN_L3_VNI is set"
+        if [ -z "${EVPN_L3_VLAN_ID:-}" ] || [ -z "${EVPN_L3_VRF:-}" ]; then
+            echo "ERROR: EVPN_L3_VLAN_ID and EVPN_L3_VRF are required when EVPN_L3_VNI is set"
+            ok=false
+        fi
+        if [ -z "${EVPN_L3_PREFIX:-}" ] && [ -z "${EVPN_L3_IPV6_PREFIX:-}" ]; then
+            echo "ERROR: at least one of EVPN_L3_PREFIX or EVPN_L3_IPV6_PREFIX is required when EVPN_L3_VNI is set"
             ok=false
         fi
     fi
@@ -220,7 +226,8 @@ setup_l2_vni() {
     bridge vlan add dev "$l2_iface_br" vid "$EVPN_L2_VLAN_ID" pvid untagged
     ip link set "$l2_iface_br" up
     ip link set "$l2_iface" up
-    ip addr add "$EVPN_L2_IP" dev "$l2_iface"
+    if [ -n "${EVPN_L2_IP:-}" ]; then ip addr add "$EVPN_L2_IP" dev "$l2_iface"; fi
+    if [ -n "${EVPN_L2_IPV6:-}" ]; then ip addr add "$EVPN_L2_IPV6" dev "$l2_iface"; fi
 }
 
 # Adds L3 VNI with a Linux VRF, SVI, and a test prefix. The VRF is created in
@@ -253,7 +260,8 @@ setup_l3_vni() {
     ip link add "$l3_iface" type dummy
     ip link set "$l3_iface" master "$EVPN_L3_VRF"
     ip link set "$l3_iface" up
-    ip addr add "$EVPN_L3_PREFIX" dev "$l3_iface"
+    if [ -n "${EVPN_L3_PREFIX:-}" ]; then ip addr add "$EVPN_L3_PREFIX" dev "$l3_iface"; fi
+    if [ -n "${EVPN_L3_IPV6_PREFIX:-}" ]; then ip addr add "$EVPN_L3_IPV6_PREFIX" dev "$l3_iface"; fi
 }
 
 # =============================================================================

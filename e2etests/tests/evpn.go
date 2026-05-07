@@ -40,21 +40,23 @@ const (
 )
 
 var evpnL2Config = infra.EVPNConfig{
-	L2VNI:    evpnL2VNI,
-	L2VLANID: evpnL2VLANID,
-	L2IPFmt:  "10.100.0.%d/24",
-	Bridge:   evpnBridge,
-	Vxlan:    evpnVxlan,
+	L2VNI:     evpnL2VNI,
+	L2VLANID:  evpnL2VLANID,
+	L2IPFmt:   "10.100.0.%d/24",
+	L2IPv6Fmt: "fc00:100::%d/64",
+	Bridge:    evpnBridge,
+	Vxlan:     evpnVxlan,
 }
 
 var evpnL3Config = infra.EVPNConfig{
-	L3VNI:       evpnL3VNI,
-	L3VLANID:    evpnL3VLANID,
-	L3VRF:       evpnL3VRF,
-	L3VRFTable:  evpnL3VRFTable,
-	L3PrefixFmt: "10.200.%d.1/24",
-	Bridge:      evpnBridge,
-	Vxlan:       evpnVxlan,
+	L3VNI:           evpnL3VNI,
+	L3VLANID:        evpnL3VLANID,
+	L3VRF:           evpnL3VRF,
+	L3VRFTable:      evpnL3VRFTable,
+	L3PrefixFmt:     "10.200.%d.1/24",
+	L3IPv6PrefixFmt: "fc00:200:%d::1/64",
+	Bridge:          evpnBridge,
+	Vxlan:           evpnVxlan,
 }
 
 var _ = ginkgo.Describe("EVPN", func() {
@@ -105,11 +107,20 @@ var _ = ginkgo.Describe("EVPN", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By("Pairing external FRR with nodes (EVPN)")
-		err = frr.PairWithNodesForEVPN(infra.EVPNContainer, cs, frr.EVPNConfig{
-			L2VNI: cfg.L2VNI,
-			L3VNI: cfg.L3VNI,
-			L3VRF: cfg.L3VRF,
-		}, ipfamily.IPv4)
+		advertiseFamily := ipfamily.DualStack
+		switch {
+		case cfg.L3IPv6PrefixFmt == "":
+			advertiseFamily = ipfamily.IPv4
+		case cfg.L3PrefixFmt == "":
+			advertiseFamily = ipfamily.IPv6
+		}
+		evpnCfg := frr.EVPNConfig{
+			L2VNI:           cfg.L2VNI,
+			L3VNI:           cfg.L3VNI,
+			L3VRF:           cfg.L3VRF,
+			AdvertiseFamily: advertiseFamily,
+		}
+		err = frr.PairWithNodesForEVPN(infra.EVPNContainer, cs, evpnCfg, ipfamily.IPv4)
 		Expect(err).NotTo(HaveOccurred())
 		return config.PeersForContainers([]*frrcontainer.FRR{infra.EVPNContainer}, ipfamily.IPv4)
 	}
@@ -158,19 +169,32 @@ var _ = ginkgo.Describe("EVPN", func() {
 		}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
 			"Type-2 routes not found on external FRR")
 
-		ginkgo.By("Validating L2 data path from external FRR to nodes")
-		for _, node := range nodes {
-			l2IP := evpnInfra.L2IP(node.Name)
-			Eventually(func() error {
-				return ping(infra.EVPNContainer, l2IP)
-			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
-				"L2 ping from external FRR to node %s (%s) failed", node.Name, l2IP)
+		if evpnCfg.L2IPFmt != "" {
+			ginkgo.By("Validating L2 data path from external FRR to nodes")
+			for _, node := range nodes {
+				l2IP := evpnInfra.L2IP(node.Name)
+				Eventually(func() error {
+					return ping(infra.EVPNContainer, l2IP)
+				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
+					"L2 ping from external FRR to node %s (%s) failed", node.Name, l2IP)
+			}
+		}
+
+		if evpnCfg.L2IPv6Fmt != "" {
+			ginkgo.By("Validating L2 data path (IPv6) from external FRR to nodes")
+			for _, node := range nodes {
+				l2IPv6 := evpnInfra.L2IPv6(node.Name)
+				Eventually(func() error {
+					return ping(infra.EVPNContainer, l2IPv6)
+				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
+					"L2 ping (IPv6) from external FRR to node %s (%s) failed", node.Name, l2IPv6)
+			}
 		}
 	}
 
 	// validateL3VNI validates L3 VNI EVPN state: sessions, type-5 routes,
 	// and data path connectivity.
-	validateL3VNI := func(evpnInfra *infra.EVPN) {
+	validateL3VNI := func(evpnCfg infra.EVPNConfig, evpnInfra *infra.EVPN) {
 		ginkgo.GinkgoHelper()
 		ginkgo.By("Validating BGP sessions are established")
 		ValidateFRRPeeredWithNodes(nodes, infra.EVPNContainer, ipfamily.IPv4)
@@ -191,20 +215,38 @@ var _ = ginkgo.Describe("EVPN", func() {
 		for _, node := range nodes {
 			nodeIP, err := k8s.NodeIPForFamily(node, ipfamily.IPv4)
 			Expect(err).NotTo(HaveOccurred())
-			expectedRoutes[evpnInfra.L3Prefix(node.Name)] = nodeIP
+			if evpnCfg.L3PrefixFmt != "" {
+				expectedRoutes[evpnInfra.L3Prefix(node.Name)] = nodeIP
+			}
+			if evpnCfg.L3IPv6PrefixFmt != "" {
+				expectedRoutes[evpnInfra.L3IPv6Prefix(node.Name)] = nodeIP
+			}
 		}
 
 		Eventually(func() error {
 			return frr.ForContainer(infra.EVPNContainer).HasEVPNType5Routes(expectedRoutes)
 		}, 30*time.Second, time.Second).ShouldNot(HaveOccurred())
 
-		ginkgo.By("Validating L3 data path from external FRR to nodes via VRF")
-		for _, node := range nodes {
-			l3IP := evpnInfra.L3PrefixIP(node.Name)
-			Eventually(func() error {
-				return pingVRF(infra.EVPNContainer, evpnL3VRF, l3IP)
-			}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
-				"L3 ping from external FRR to node %s (%s) via VRF %s failed", node.Name, l3IP, evpnL3VRF)
+		if evpnCfg.L3PrefixFmt != "" {
+			ginkgo.By("Validating L3 data path from external FRR to nodes via VRF")
+			for _, node := range nodes {
+				l3IP := evpnInfra.L3PrefixIP(node.Name)
+				Eventually(func() error {
+					return pingVRF(infra.EVPNContainer, evpnL3VRF, l3IP)
+				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
+					"L3 ping from external FRR to node %s (%s) via VRF %s failed", node.Name, l3IP, evpnL3VRF)
+			}
+		}
+
+		if evpnCfg.L3IPv6PrefixFmt != "" {
+			ginkgo.By("Validating L3 data path (IPv6) from external FRR to nodes via VRF")
+			for _, node := range nodes {
+				l3IPv6 := evpnInfra.L3IPv6PrefixIP(node.Name)
+				Eventually(func() error {
+					return pingVRF(infra.EVPNContainer, evpnL3VRF, l3IPv6)
+				}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
+					"L3 ping (IPv6) from external FRR to node %s (%s) via VRF %s failed", node.Name, l3IPv6, evpnL3VRF)
+			}
 		}
 	}
 
@@ -335,11 +377,16 @@ var _ = ginkgo.Describe("EVPN", func() {
 	ginkgo.Context("L3 VNI", func() {
 		// l3VNIConfigs builds per-node FRRConfigurations with both the default-VRF
 		// router (neighbors + advertiseVNIs) and the VRF router (L3VNI).
-		l3VNIConfigs := func(neighbors []frrk8sv1beta1.Neighbor, evpnInfra *infra.EVPN) []frrk8sv1beta1.FRRConfiguration {
+		l3VNIConfigs := func(neighbors []frrk8sv1beta1.Neighbor, evpnCfg infra.EVPNConfig, evpnInfra *infra.EVPN) []frrk8sv1beta1.FRRConfiguration {
 			var cfgs []frrk8sv1beta1.FRRConfiguration
 			for _, node := range nodes {
-				prefixes := []string{evpnInfra.L3Prefix(node.Name)}
-
+				var prefixes []string
+				if evpnCfg.L3PrefixFmt != "" {
+					prefixes = append(prefixes, evpnInfra.L3Prefix(node.Name))
+				}
+				if evpnCfg.L3IPv6PrefixFmt != "" {
+					prefixes = append(prefixes, evpnInfra.L3IPv6Prefix(node.Name))
+				}
 				cfgs = append(cfgs, frrk8sv1beta1.FRRConfiguration{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      fmt.Sprintf("test-evpn-l3-%s", node.Name),
@@ -394,12 +441,12 @@ var _ = ginkgo.Describe("EVPN", func() {
 			ginkgo.By("Building FRRConfigurations with EVPN L3 VNI")
 			neighbors := neighborsWithEVPN(peersConfig)
 
-			for _, frrCfg := range l3VNIConfigs(neighbors, evpnInfra) {
+			for _, frrCfg := range l3VNIConfigs(neighbors, cfg, evpnInfra) {
 				err := updater.Update(peersConfig.Secrets, frrCfg)
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			validateL3VNI(evpnInfra)
+			validateL3VNI(cfg, evpnInfra)
 		})
 
 		ginkgo.It("should work with L3 VNI config split across multiple FRRConfigurations", func() {
@@ -411,7 +458,7 @@ var _ = ginkgo.Describe("EVPN", func() {
 
 			// Split each per-node config into two: one for the default-VRF router
 			// (neighbors + advertiseVNIs) and one for the VRF router (L3VNI).
-			for _, frrCfg := range l3VNIConfigs(neighbors, evpnInfra) {
+			for _, frrCfg := range l3VNIConfigs(neighbors, cfg, evpnInfra) {
 				nodeSelector := frrCfg.Spec.NodeSelector
 				routers := frrCfg.Spec.BGP.Routers
 
@@ -445,7 +492,7 @@ var _ = ginkgo.Describe("EVPN", func() {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
-			validateL3VNI(evpnInfra)
+			validateL3VNI(cfg, evpnInfra)
 		})
 	})
 })

@@ -19,9 +19,10 @@ import (
 // EVPNConfig holds the EVPN parameters needed for BGP peering configuration on
 // the external FRR container.
 type EVPNConfig struct {
-	L2VNI int
-	L3VNI int
-	L3VRF string
+	L2VNI           int
+	L3VNI           int
+	L3VRF           string
+	AdvertiseFamily ipfamily.Family
 }
 
 // PairWithNodesForEVPN generates a BGP configuration with EVPN support for all
@@ -65,6 +66,8 @@ func PairWithNodesForEVPN(c *frrcontainer.FRR, cs clientset.Interface, cfg EVPNC
 			ImportRTSelf: fmt.Sprintf("%d:%d", data.RouterASN, cfg.L3VNI),
 			ImportRTPeer: fmt.Sprintf("%d:%d", c.NeighborConfig.ASN, cfg.L3VNI),
 			ExportRT:     fmt.Sprintf("%d:%d", data.RouterASN, cfg.L3VNI),
+			IPv4:         cfg.AdvertiseFamily == ipfamily.IPv4 || cfg.AdvertiseFamily == ipfamily.DualStack,
+			IPv6:         cfg.AdvertiseFamily == ipfamily.IPv6 || cfg.AdvertiseFamily == ipfamily.DualStack,
 		}
 	}
 
@@ -116,6 +119,8 @@ type evpnL3VNIData struct {
 	ImportRTSelf string
 	ImportRTPeer string
 	ExportRT     string
+	IPv4         bool
+	IPv6         bool
 }
 
 // evpnConfigTemplate contains only the EVPN-specific FRR stanzas that are
@@ -140,15 +145,27 @@ router bgp {{ .RouterASN }}
 {{- if .L3VNI }}
 
 router bgp {{ .RouterASN }} vrf {{ .L3VNI.VRF }}
+  {{- if .L3VNI.IPv4 }}
   address-family ipv4 unicast
     redistribute connected
   exit-address-family
+  {{- end }}
+  {{- if .L3VNI.IPv6 }}
+  address-family ipv6 unicast
+    redistribute connected
+  exit-address-family
+  {{- end }}
   address-family l2vpn evpn
     rd {{ .L3VNI.RD }}
     route-target import {{ .L3VNI.ImportRTSelf }}
     route-target import {{ .L3VNI.ImportRTPeer }}
     route-target export {{ .L3VNI.ExportRT }}
+    {{- if .L3VNI.IPv4 }}
     advertise ipv4 unicast
+    {{- end }}
+    {{- if .L3VNI.IPv6 }}
+    advertise ipv6 unicast
+    {{- end }}
   exit-address-family
 {{- end }}
 `

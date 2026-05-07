@@ -40,6 +40,10 @@ type EVPNConfig struct {
 	// L2IPFmt pattern for L2 access port addresses, with a single %d for the
 	// target index (e.g. "10.100.0.%d/24").
 	L2IPFmt string
+	// L2IPv6Fmt pattern for L2 access port IPv6 addresses, with a single %d
+	// for the target index (e.g. "fc00:100::%d/64"). Use L2IPv6() to get the
+	// host IP for a given index. Empty disables IPv6 on L2 access ports.
+	L2IPv6Fmt string
 	// L3VNI number for L3 IP-VRF (e.g. 3000). Zero disables it.
 	L3VNI int
 	// L3VLANID local VLAN ID segmenting the L3 IP-VRF on the bridge (e.g.
@@ -52,6 +56,10 @@ type EVPNConfig struct {
 	// L3PrefixFmt pattern for L3 VRF connected prefixes, with a single %d for
 	// the target index (e.g. "10.200.%d.1/24").
 	L3PrefixFmt string
+	// L3IPv6PrefixFmt pattern for L3 VRF connected IPv6 prefixes, with a
+	// single %d for the target index (e.g. "fc00:200:%d::1/64"). Use
+	// L3IPv6Prefix() / L3IPv6PrefixIP(). Empty disables IPv6 on L3 VRF.
+	L3IPv6PrefixFmt string
 }
 
 // EVPN is the result of SetupEVPN. It provides name-based lookups for the
@@ -77,6 +85,26 @@ func (s *EVPN) L3Prefix(name string) string {
 // L3PrefixIP returns the L3 host IP (without mask) for the named target.
 func (s *EVPN) L3PrefixIP(name string) string {
 	ip, _, _ := net.ParseCIDR(fmt.Sprintf(s.cfg.L3PrefixFmt, s.indices[name]))
+	return ip.String()
+}
+
+// L2IPv6 returns the L2 access port IPv6 (without mask) for the named target.
+func (s *EVPN) L2IPv6(name string) string {
+	ip, _, _ := net.ParseCIDR(fmt.Sprintf(s.cfg.L2IPv6Fmt, s.indices[name]))
+	return ip.String()
+}
+
+// L3IPv6Prefix returns the L3 VRF connected IPv6 network prefix (CIDR) for the
+// named target.
+func (s *EVPN) L3IPv6Prefix(name string) string {
+	_, network, _ := net.ParseCIDR(fmt.Sprintf(s.cfg.L3IPv6PrefixFmt, s.indices[name]))
+	return network.String()
+}
+
+// L3IPv6PrefixIP returns the L3 IPv6 host IP (without mask) for the named
+// target.
+func (s *EVPN) L3IPv6PrefixIP(name string) string {
+	ip, _, _ := net.ParseCIDR(fmt.Sprintf(s.cfg.L3IPv6PrefixFmt, s.indices[name]))
 	return ip.String()
 }
 
@@ -216,7 +244,12 @@ func buildTargetEnv(cfg EVPNConfig, vtepIP string, targetIndex int) string {
 	if cfg.L2VNI > 0 {
 		fmt.Fprintf(&b, "export EVPN_L2_VNI=%d\n", cfg.L2VNI)
 		fmt.Fprintf(&b, "export EVPN_L2_VLAN_ID=%d\n", cfg.L2VLANID)
-		fmt.Fprintf(&b, "export EVPN_L2_IP=%s\n", fmt.Sprintf(cfg.L2IPFmt, targetIndex))
+		if cfg.L2IPFmt != "" {
+			fmt.Fprintf(&b, "export EVPN_L2_IP=%s\n", fmt.Sprintf(cfg.L2IPFmt, targetIndex))
+		}
+		if cfg.L2IPv6Fmt != "" {
+			fmt.Fprintf(&b, "export EVPN_L2_IPV6=%s\n", fmt.Sprintf(cfg.L2IPv6Fmt, targetIndex))
+		}
 	}
 
 	if cfg.L3VNI > 0 {
@@ -224,7 +257,12 @@ func buildTargetEnv(cfg EVPNConfig, vtepIP string, targetIndex int) string {
 		fmt.Fprintf(&b, "export EVPN_L3_VLAN_ID=%d\n", cfg.L3VLANID)
 		fmt.Fprintf(&b, "export EVPN_L3_VRF=%s\n", cfg.L3VRF)
 		fmt.Fprintf(&b, "export EVPN_L3_VRF_TABLE=%d\n", cfg.L3VRFTable)
-		fmt.Fprintf(&b, "export EVPN_L3_PREFIX=%s\n", fmt.Sprintf(cfg.L3PrefixFmt, targetIndex))
+		if cfg.L3PrefixFmt != "" {
+			fmt.Fprintf(&b, "export EVPN_L3_PREFIX=%s\n", fmt.Sprintf(cfg.L3PrefixFmt, targetIndex))
+		}
+		if cfg.L3IPv6PrefixFmt != "" {
+			fmt.Fprintf(&b, "export EVPN_L3_IPV6_PREFIX=%s\n", fmt.Sprintf(cfg.L3IPv6PrefixFmt, targetIndex))
+		}
 	}
 
 	return b.String()
