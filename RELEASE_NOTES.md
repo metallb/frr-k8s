@@ -1,5 +1,10 @@
 # FRRK8s Release Notes
 
+## Release v0.0.25
+
+### Bug fixes
+- Fixes invalid maximum value in CRD validation of ASNs in Kubernetes v1.36.0 (#433, @PseudoResonance)
+
 ## Release v0.0.24
 
 ### New Features
