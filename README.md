@@ -202,6 +202,69 @@ spec:
               mode: all
 ```
 
+#### EVPN Configuration
+
+frr-k8s supports EVPN (Ethernet VPN) for advertising Layer 2 and Layer 3 VPN routes over BGP.
+
+To enable EVPN on a neighbor, set the `addressFamilies` field and enable VNI discovery with `advertiseVNIs: All` on the router. By default neighbors are only activated for unicast:
+
+```yaml
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: 192.168.1.1
+        asn: 64512
+        addressFamilies: ["unicast", "evpn"]
+      evpn:
+        advertiseVNIs: All
+```
+
+##### L2 VNI (MAC-VRF)
+
+Individual L2 VNIs can be customized with route distinguishers and route targets:
+
+```yaml
+      evpn:
+        advertiseVNIs: All
+        l2vnis:
+        - vni: 1000
+          rd: "64512:1000"
+          importRTs: ["64512:1000"]
+          exportRTs: ["64512:1000"]
+```
+
+##### L3 VNI (IP-VRF)
+
+L3 VNIs are configured on a separate VRF router (without neighbors). The `advertisePrefixes` field controls which prefixes are advertised as EVPN type-5 routes:
+
+```yaml
+spec:
+  bgp:
+    routers:
+    - asn: 64512
+      neighbors:
+      - address: 192.168.1.1
+        asn: 64512
+        addressFamilies: ["unicast", "evpn"]
+      evpn:
+        advertiseVNIs: All
+    - asn: 64512
+      vrf: tenant-red
+      prefixes:
+      - 10.0.1.0/24
+      evpn:
+        l3vni:
+          vni: 2000
+          rd: "64512:2000"
+          importRTs: ["64512:2000"]
+          exportRTs: ["64512:2000"]
+          advertisePrefixes: ["unicast"]
+```
+
+**Note:** EVPN requires host networking setup (VXLAN interfaces, bridges, VRFs) outside of frr-k8s. See `hack/evpn-node-setup.sh` for a reference per-node configuration script.
+
 ### Adding a raw configuration
 
 > **WARNING**: The `rawConfig` feature is **UNSUPPORTED** and intended **ONLY FOR EXPERIMENTATION**.
