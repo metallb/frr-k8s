@@ -9,6 +9,12 @@ metadata:
     {{- range $key, $value := .Values.frrk8s.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
+  {{- if .Values.frrk8s.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.frrk8s.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
 spec:
   selector:
     matchLabels:
@@ -17,6 +23,11 @@ spec:
     metadata:
       annotations:
         kubectl.kubernetes.io/default-container: frr-k8s-statuscleaner
+        {{- if .Values.frrk8s.podAnnotations }}
+        {{- range $key, $value := .Values.frrk8s.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      {{- end }}
       labels:
         app.kubernetes.io/component: statuscleaner
     spec:
@@ -29,8 +40,19 @@ spec:
       {{- end }}
       containers:
       - command:
+        {{- if .Values.frrk8s.statusCleaner.extraCommand }}
+        {{- with .Values.frrk8s.statusCleaner.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
         - /statuscleaner
+        {{- end }}
         args:
+        {{- if .Values.frrk8s.statusCleaner.extraArgs }}
+        {{- with .Values.frrk8s.statusCleaner.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
         - --webhook-port={{ .Values.frrk8s.webhookPort }}
         {{- with .Values.frrk8s.logLevel }}
         - --log-level={{ . }}
@@ -50,6 +72,7 @@ spec:
         {{- end }}
         {{- if .Values.tls.minVersion }}
         - --tls-min-version={{ .Values.tls.minVersion }}
+        {{- end }}
         {{- end }}
         env:
         - name: NAMESPACE
@@ -90,7 +113,7 @@ spec:
           periodSeconds: {{ .Values.frrk8s.readinessProbe.periodSeconds }}
           failureThreshold: {{ .Values.frrk8s.readinessProbe.failureThreshold }}
         {{- end }}
-        {{- with .Values.frrk8s.resources }}
+        {{- with .Values.frrk8s.statusCleaner.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -120,10 +143,10 @@ spec:
       priorityClassName: {{ . | quote }}
       {{- end }}
       volumes:
-        - name: cert
-          secret:
-            defaultMode: 420
-            secretName: frr-k8s-webhook-server-cert
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: frr-k8s-webhook-server-cert
       serviceAccountName: {{ template "frrk8s.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
       hostNetwork: true

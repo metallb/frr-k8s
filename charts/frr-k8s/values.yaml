@@ -92,8 +92,8 @@ frrk8s:
     repository: quay.io/metallb/frr-k8s
     # -- The frr-k8s image tag. If not set, defaults to the chart appVersion.
     tag:
-    # -- The frr-k8s image pull policy.
-    pullPolicy:
+    # -- The frr-k8s image pull policy. Available values: "Always", "IfNotPresent", "Never".
+    pullPolicy: IfNotPresent
   ## @param controller.updateStrategy.type FRR-K8s controller daemonset strategy type
   ## ref: https://kubernetes.io/docs/tasks/manage-daemon/update-daemon-set/
   ##
@@ -113,11 +113,6 @@ frrk8s:
   ## By default secretName: {{ "metallb.fullname" }}-memberlist
   ##
   # secretName:
-  # -- Resource limits and requests for the frr-k8s controller container.
-  resources: {}
-    # limits:
-      # cpu: 100m
-      # memory: 100Mi
   # -- Node selector for pod assignment.
   nodeSelector: {}
   # -- Tolerations for pod assignment.
@@ -129,6 +124,8 @@ frrk8s:
   ## Selects which runtime class will be used by the pod.
   # -- Runtime class name for the pod.
   runtimeClassName: ""
+  # -- Additional annotations to add to the daemonset.
+  annotations: {}
   # -- Additional annotations to add to the pod.
   podAnnotations: {}
   # -- Additional labels to add to the pod.
@@ -179,37 +176,78 @@ frrk8s:
   # -- Specifies whether the pod restarts when the rotator refreshes the cert secret. Useful for webhook stability during redeployments.
   restartOnRotatorSecretRefresh: false
   # frr contains configuration specific to the FRR container,
+  ## If true, then used manual created configMap with name <frrk8s.fullname>-frr-startup-extra
+  extraConfigsStartup: false
+  ## Additional specs for custom initContainers
+  extraInitContainers: []
+  ## Additional specs for custom containers
+  extraContainers: []
+  # controller contains configuration specific to the "controller" container,
+  controller:
+    resources: {}
+    #  limits:
+    #    cpu: 100m
+    #    memory: 100Mi
+    extraCommand: []
+    extraArgs: []
+  # frr contains configuration specific to the "frr" container,
   frr:
     image:
       # -- The FRR image repository.
       repository: quay.io/frrouting/frr
       # -- The FRR image tag.
       tag: 10.4.3
-      # -- The FRR image pull policy.
-      pullPolicy:
-    # -- Bind address for FRR metrics.
-    metricsBindAddress: 127.0.0.1
-    # -- Port for FRR metrics.
-    metricsPort: 7573
+      # -- The FRR image pull policy. Available values: "Always", "IfNotPresent", "Never".
+      pullPolicy: IfNotPresent
     # -- Resource limits and requests for the FRR container.
     resources: {}
     # -- Secure metrics port for FRR.
     secureMetricsPort: 9141
     # -- Allow FRR to accept incoming BGP connections.
     acceptIncomingBGPConnections: false
+    extraCommand: []
+    extraArgs: []
+  # reloader contains configuration specific to the "reloader" container,
   reloader:
     # -- Resource limits and requests for the reloader container.
     resources: {}
+    extraCommand: []
+    extraArgs: []
+  # frrMetrics contains configuration specific to the "frr-metrics" container,
   frrMetrics:
     # -- Resource limits and requests for the FRR metrics container.
     resources: {}
+    extraCommand: []
+    extraArgs: []
+  # frrStatus contains configuration specific to the "frr-status" container,
   frrStatus:
     # -- Polling interval for FRR status updates.
     pollInterval: "2m"
     # -- Resource limits and requests for the FRR status container.
     resources: {}
+    extraCommand: []
+    extraArgs: []
+  # frrStatus contains configuration specific to the "frr-status" container
+  # in deployment <frrk8s.fullname>-statuscleaner,
+  statusCleaner:
+    resources: {}
+    extraCommand: []
+    extraArgs: []
+  # cpFrrFiles contains configuration specific to the "cp-frr-files" initContainer,
+  cpFrrFiles:
+    extraCommand: []
+  # cpReloader contains configuration specific to the "cp-reloader" initContainer,
+  cpReloader:
+    extraCommand: []
+  # cpMetrics contains configuration specific to the "cp-metrics" initContainer,
+  cpMetrics:
+    extraCommand: []
+  # cpFrrStatus contains configuration specific to the "cp-frr-status" initContainer
+  cpFrrStatus:
+    extraCommand: []
 crds:
   # -- Enable installation of CRDs.
   enabled: true
   # -- Validation failure policy for CRDs. Can be Fail or Ignore.
   validationFailurePolicy: Fail
+

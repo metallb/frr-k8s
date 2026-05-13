@@ -112,6 +112,12 @@ metadata:
     {{- range $key, $value := .Values.frrk8s.labels }}
     {{ $key }}: {{ $value | quote }}
     {{- end }}
+  {{- if .Values.frrk8s.annotations }}
+  annotations:
+    {{- range $key, $value := .Values.frrk8s.annotations }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
 spec:
   {{- if .Values.frrk8s.updateStrategy }}
   updateStrategy: {{- toYaml .Values.frrk8s.updateStrategy | nindent 4 }}
@@ -128,6 +134,12 @@ spec:
         {{- range $key, $value := .Values.frrk8s.labels }}
         {{ $key }}: {{ $value | quote }}
         {{- end }}
+      {{- if .Values.frrk8s.podAnnotations }}
+      annotations:
+        {{- range $key, $value := .Values.frrk8s.podAnnotations }}
+        {{ $key }}: {{ $value | quote }}
+        {{- end }}
+      {{- end }}
     spec:
       {{- if .Values.frrk8s.runtimeClassName }}
       runtimeClassName: {{ .Values.frrk8s.runtimeClassName }}
@@ -140,71 +152,139 @@ spec:
       terminationGracePeriodSeconds: 0
       hostNetwork: true
       volumes:
-        - name: frr-sockets
-          emptyDir: {}
-        - name: frr-startup
-          configMap:
-            name: {{ template "frrk8s.fullname" . }}-frr-startup
-        - name: frr-conf
-          emptyDir: {}
-        - name: reloader
-          emptyDir: {}
-        - name: metrics
-          emptyDir: {}
-        - name: frr-status
-          emptyDir: {}
-        - name: frr-lib
-          emptyDir: {}
-        - name: frr-tmp
-          emptyDir: {}
+      - name: frr-sockets
+        emptyDir: {}
+      - name: frr-startup
+        configMap:
+          {{- if .Values.frrk8s.extraConfigsStartup }}
+          name: {{ template "frrk8s.fullname" . }}-frr-startup-extra
+          {{- else }}
+          name: {{ template "frrk8s.fullname" . }}-frr-startup
+          {{- end }}
+      - name: frr-conf
+        emptyDir: {}
+      - name: reloader
+        emptyDir: {}
+      - name: metrics
+        emptyDir: {}
+      - name: frr-status
+        emptyDir: {}
+      - name: frr-lib
+        emptyDir: {}
+      - name: frr-tmp
+        emptyDir: {}
       {{- if .Values.tls.metricsTLSSecret }}
-        - name: metrics-certs
-          secret:
-            secretName: {{ .Values.tls.metricsTLSSecret }}
+      - name: metrics-certs
+        secret:
+          secretName: {{ .Values.tls.metricsTLSSecret }}
       {{- end }}
       initContainers:
-        # Copies the initial config files with the right permissions to the shared volume.
-        - name: cp-frr-files
-          image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
-          securityContext:
-            runAsUser: 100
-            runAsGroup: 101
-          command: ["/bin/sh", "-c", "cp -rLf /tmp/frr/* /etc/frr/"]
-          volumeMounts:
-            - name: frr-startup
-              mountPath: /tmp/frr
-            - name: frr-conf
-              mountPath: /etc/frr
-        # Copies the reloader to the shared volume between the speaker and reloader.
-        - name: cp-reloader
-          image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
-          command: ["/bin/sh", "-c", "cp -f /frr-reloader.sh /etc/frr_reloader/"]
-          volumeMounts:
-            - name: reloader
-              mountPath: /etc/frr_reloader
-        # Copies the metrics exporter
-        - name: cp-metrics
-          image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
-          command: ["/bin/sh", "-c", "cp -f /frr-metrics /etc/frr_metrics/"]
-          volumeMounts:
-            - name: metrics
-              mountPath: /etc/frr_metrics
-        - name: cp-frr-status
-          image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
-          command: ["/bin/sh", "-c", "cp -f /frr-status /etc/frr_status/"]
-          volumeMounts:
-            - name: frr-status
-              mountPath: /etc/frr_status
+      # Specs for custom extra initContainers
+      {{- if .Values.frrk8s.extraInitContainers }}
+      {{- with .Values.frrk8s.extraInitContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- end }}
+      # Copies the initial config files with the right permissions to the shared volume.
+      - name: cp-frr-files
+        image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
+        securityContext:
+          runAsUser: 100
+          runAsGroup: 101
+        command:
+        {{- if .Values.frrk8s.cpFrrFiles.extraCommand }}
+        {{- with .Values.frrk8s.cpFrrFiles.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /bin/sh
+        - -c
+        - |
+          cp -rLf /tmp/frr/* /etc/frr/
+        {{- end }}
+        volumeMounts:
+        - name: frr-startup
+          mountPath: /tmp/frr
+        - name: frr-conf
+          mountPath: /etc/frr
+      # Copies the reloader to the shared volume between the speaker and reloader.
+      - name: cp-reloader
+        image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
+        command:
+        {{- if .Values.frrk8s.cpReloader.extraCommand }}
+        {{- with .Values.frrk8s.cpReloader.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /bin/sh
+        - -c
+        - |
+          cp -f /frr-reloader.sh /etc/frr_reloader/
+        {{- end }}
+        volumeMounts:
+        - name: reloader
+          mountPath: /etc/frr_reloader
+      # Copies the metrics exporter
+      - name: cp-metrics
+        image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
+        command:
+        {{- if .Values.frrk8s.cpMetrics.extraCommand }}
+        {{- with .Values.frrk8s.cpMetrics.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /bin/sh
+        - -c
+        - |
+          cp -f /frr-metrics /etc/frr_metrics/
+        {{- end }}
+        volumeMounts:
+        - name: metrics
+          mountPath: /etc/frr_metrics
+      - name: cp-frr-status
+        image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
+        command:
+        {{- if .Values.frrk8s.cpFrrStatus.extraCommand }}
+        {{- with .Values.frrk8s.cpFrrStatus.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /bin/sh
+        - -c
+        - |
+          cp -f /frr-status /etc/frr_status/
+        {{- end }}
+        volumeMounts:
+        - name: frr-status
+          mountPath: /etc/frr_status
       shareProcessNamespace: true
       containers:
+      # Specs for custom extra containers
+      {{- if .Values.frrk8s.extraContainers }}
+      {{- with .Values.frrk8s.extraContainers }}
+      {{- toYaml . | nindent 6 }}
+      {{- end }}
+      {{- end }}
+      # Specs for main containers
       - name: controller
         image: {{ .Values.frrk8s.image.repository }}:{{ .Values.frrk8s.image.tag | default .Chart.AppVersion }}
         {{- if .Values.frrk8s.image.pullPolicy }}
         imagePullPolicy: {{ .Values.frrk8s.image.pullPolicy }}
         {{- end }}
         command:
-          - /frr-k8s
+        {{- if .Values.frrk8s.controller.extraCommand }}
+        {{- with .Values.frrk8s.controller.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /frr-k8s
+        {{- end }}
         args:
+        {{- if .Values.frrk8s.controller.extraArgs }}
+        {{- with .Values.frrk8s.controller.extraArgs -}}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
         - "--node-name=$(NODE_NAME)"
         - "--namespace=$(NAMESPACE)"
         - "--metrics-bind-address=0.0.0.0:{{ .Values.prometheus.secureMetricsPort }}"
@@ -229,6 +309,7 @@ spec:
         {{- if .Values.tls.metricsTLSSecret }}
         - --metrics-cert-dir=/etc/metrics
         {{- end }}
+        {{- end }}
         env:
         - name: FRR_CONFIG_FILE
           value: /etc/frr_reloader/frr.conf
@@ -243,8 +324,8 @@ spec:
             fieldRef:
               fieldPath: metadata.namespace
         ports:
-          - containerPort: {{ .Values.prometheus.secureMetricsPort }}
-            name: metricshttps
+        - containerPort: {{ .Values.prometheus.secureMetricsPort }}
+          name: metricshttps
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
           httpGet:
@@ -269,7 +350,7 @@ spec:
           successThreshold: {{ .Values.frrk8s.readinessProbe.successThreshold }}
           failureThreshold: {{ .Values.frrk8s.readinessProbe.failureThreshold }}
         {{- end }}
-        {{- with .Values.frrk8s.resources }}
+        {{- with .Values.frrk8s.controller.resources }}
         resources:
           {{- toYaml . | nindent 10 }}
         {{- end }}
@@ -282,13 +363,13 @@ spec:
             add:
             - NET_RAW
         volumeMounts:
-          - name: reloader
-            mountPath: /etc/frr_reloader
-          {{- if .Values.tls.metricsTLSSecret }}
-          - name: metrics-certs
-            mountPath: /etc/metrics
-            readOnly: true
-          {{- end }}
+        - name: reloader
+          mountPath: /etc/frr_reloader
+        {{- if .Values.tls.metricsTLSSecret }}
+        - name: metrics-certs
+          mountPath: /etc/metrics
+          readOnly: true
+        {{- end }}
       - name: frr
         securityContext:
           allowPrivilegeEscalation: false
@@ -304,24 +385,36 @@ spec:
         imagePullPolicy: {{ .Values.frrk8s.frr.image.pullPolicy }}
         {{- end }}
         env:
-          - name: TINI_SUBREAPER
-            value: "true"
+        - name: TINI_SUBREAPER
+          value: "true"
         volumeMounts:
-          - name: frr-sockets
-            mountPath: /var/run/frr
-          - name: frr-conf
-            mountPath: /etc/frr
-          - name: frr-lib
-            mountPath: /var/lib/frr
-          - name: frr-tmp
-            mountPath: /var/tmp/frr
+        - name: frr-sockets
+          mountPath: /var/run/frr
+        - name: frr-conf
+          mountPath: /etc/frr
+        - name: frr-lib
+          mountPath: /var/lib/frr
+        - name: frr-tmp
+          mountPath: /var/tmp/frr
         command:
-          - /bin/sh
-          - -c
-          - /sbin/tini -- /usr/lib/frr/docker-start
+        {{- if .Values.frrk8s.frr.extraCommand }}
+        {{- with .Values.frrk8s.frr.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /bin/sh
+        - -c
+        - /sbin/tini -- /usr/lib/frr/docker-start
+        {{- end }}
+        {{- if .Values.frrk8s.frr.extraArgs }}
+        args:
+        {{- with .Values.frrk8s.frr.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }}
         {{- with .Values.frrk8s.frr.resources }}
         resources:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
         {{- if .Values.frrk8s.livenessProbe.enabled }}
         livenessProbe:
@@ -346,93 +439,131 @@ spec:
         {{- if .Values.frrk8s.frr.image.pullPolicy }}
         imagePullPolicy: {{ .Values.frrk8s.frr.image.pullPolicy }}
         {{- end }}
-        command: ["/etc/frr_reloader/frr-reloader.sh"]
+        command:
+        {{- if .Values.frrk8s.reloader.extraCommand }}
+        {{- with .Values.frrk8s.reloader.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /etc/frr_reloader/frr-reloader.sh
+        {{- end }}
+        {{- if .Values.frrk8s.reloader.extraArgs }}
+        args:
+        {{- with .Values.frrk8s.reloader.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- end }}
         volumeMounts:
-          - name: frr-sockets
-            mountPath: /var/run/frr
-          - name: frr-conf
-            mountPath: /etc/frr
-          - name: reloader
-            mountPath: /etc/frr_reloader
+        - name: frr-sockets
+          mountPath: /var/run/frr
+        - name: frr-conf
+          mountPath: /etc/frr
+        - name: reloader
+          mountPath: /etc/frr_reloader
         {{- with .Values.frrk8s.reloader.resources }}
         resources:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
       - name: frr-metrics
         image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
-        command: ["/etc/frr_metrics/frr-metrics"]
+        command:
+        {{- if .Values.frrk8s.frrMetrics.extraCommand }}
+        {{- with .Values.frrk8s.frrMetrics.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /etc/frr_metrics/frr-metrics
+        {{- end }}
         args:
-          - --metrics-port={{ .Values.frrk8s.frr.secureMetricsPort }}
-          - --metrics-bind-address=0.0.0.0
-          {{- if .Values.tls.metricsTLSSecret }}
-          - --tls-cert-file=/etc/metrics/tls.crt
-          - --tls-private-key-file=/etc/metrics/tls.key
-          {{- end }}
-          {{- if .Values.tls.cipherSuites }}
-          - --tls-cipher-suites={{ .Values.tls.cipherSuites }}
-          {{- end }}
-          {{- if .Values.tls.curvePreferences }}
-          - --tls-curve-preferences={{ .Values.tls.curvePreferences }}
-          {{- end }}
-          {{- if .Values.tls.minVersion }}
-          - --tls-min-version={{ .Values.tls.minVersion }}
-          {{- end }}
+        {{- if .Values.frrk8s.frrMetrics.extraArgs }}
+        {{- with .Values.frrk8s.frrMetrics.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - --metrics-port={{ .Values.frrk8s.frr.secureMetricsPort }}
+        - --metrics-bind-address=0.0.0.0
+        {{- if .Values.tls.metricsTLSSecret }}
+        - --tls-cert-file=/etc/metrics/tls.crt
+        - --tls-private-key-file=/etc/metrics/tls.key
+        {{- end }}
+        {{- if .Values.tls.cipherSuites }}
+        - --tls-cipher-suites={{ .Values.tls.cipherSuites }}
+        {{- end }}
+        {{- if .Values.tls.curvePreferences }}
+        - --tls-curve-preferences={{ .Values.tls.curvePreferences }}
+        {{- end }}
+        {{- if .Values.tls.minVersion }}
+        - --tls-min-version={{ .Values.tls.minVersion }}
+        {{- end }}
+        {{- end }}
         ports:
-          - containerPort: {{ .Values.frrk8s.frr.secureMetricsPort }}
-            name: frrmetricshttps
+        - containerPort: {{ .Values.frrk8s.frr.secureMetricsPort }}
+          name: frrmetricshttps
         volumeMounts:
-          - name: frr-sockets
-            mountPath: /var/run/frr
-          - name: frr-conf
-            mountPath: /etc/frr
-          - name: metrics
-            mountPath: /etc/frr_metrics
-          {{- if .Values.tls.metricsTLSSecret }}
-          - name: metrics-certs
-            mountPath: /etc/metrics
-            readOnly: true
-          {{- end }}
+        - name: frr-sockets
+          mountPath: /var/run/frr
+        - name: frr-conf
+          mountPath: /etc/frr
+        - name: metrics
+          mountPath: /etc/frr_metrics
+        {{- if .Values.tls.metricsTLSSecret }}
+        - name: metrics-certs
+          mountPath: /etc/metrics
+          readOnly: true
+        {{- end }}
         {{- with .Values.frrk8s.frrMetrics.resources }}
         resources:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
       - name: frr-status
-        args:
-          - --node-name=$(NODE_NAME)
-          - --namespace=$(NAMESPACE)
-          - --pod-name=$(POD_NAME)
-          {{- with .Values.frrk8s.logLevel }}
-          - --log-level={{ . }}
-          {{- end }}
-          {{- if .Values.frrk8s.frrStatus.pollInterval }}
-          - --poll-interval={{ .Values.frrk8s.frrStatus.pollInterval }}
-          {{- end }}
         command:
-          - /etc/frr_status/frr-status
+        {{- if .Values.frrk8s.frrStatus.extraCommand }}
+        {{- with .Values.frrk8s.frrStatus.extraCommand }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - /etc/frr_status/frr-status
+        {{- end }}
+        args:
+        {{- if .Values.frrk8s.frrStatus.extraArgs }}
+        {{- with .Values.frrk8s.frrStatus.extraArgs }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+        {{- else }}
+        - --node-name=$(NODE_NAME)
+        - --namespace=$(NAMESPACE)
+        - --pod-name=$(POD_NAME)
+        {{- with .Values.frrk8s.logLevel }}
+        - --log-level={{ . }}
+        {{- end }}
+        {{- if .Values.frrk8s.frrStatus.pollInterval }}
+        - --poll-interval={{ .Values.frrk8s.frrStatus.pollInterval }}
+        {{- end }}
+        {{- end }}
         env:
-          - name: NODE_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: spec.nodeName
-          - name: NAMESPACE
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.namespace
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
         image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
         volumeMounts:
-          - mountPath: /var/run/frr
-            name: frr-sockets
-          - mountPath: /etc/frr
-            name: frr-conf
-          - mountPath: /etc/frr_status
-            name: frr-status
+        - mountPath: /var/run/frr
+          name: frr-sockets
+        - mountPath: /etc/frr
+          name: frr-conf
+        - mountPath: /etc/frr_status
+          name: frr-status
         {{- with .Values.frrk8s.frrStatus.resources }}
         resources:
-          {{- toYaml . | nindent 12 }}
+          {{- toYaml . | nindent 10 }}
         {{- end }}
       nodeSelector:
         "kubernetes.io/os": linux
