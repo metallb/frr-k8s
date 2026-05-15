@@ -4,7 +4,10 @@ package frr
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
+	"hash/crc32"
+	"net"
 	"os"
 	"strings"
 	"sync"
@@ -51,8 +54,44 @@ func (f *FRR) ApplyConfig(config *Config) error {
 
 	// TODO add internal wrapper
 	config.Hostname = hostname
+	// On IPv6-only nodes, FRR defaults router-id to 0.0.0.0 (RFC 6286 violation).
+	if !hasIPv4Address() {
+		routerID := hashRouterID(hostname)
+		for _, r := range config.Routers {
+			if r.RouterID == "" {
+				r.RouterID = routerID
+			}
+		}
+	}
 	f.reloadConfig <- reloadEvent{config: config}
 	return nil
+}
+
+var netInterfaces = net.Interfaces
+
+func hasIPv4Address() bool {
+	ifaces, err := netInterfaces()
+	if err != nil {
+		return false
+	}
+	for _, i := range ifaces {
+		addrs, err := i.Addrs()
+		if err != nil {
+			continue
+		}
+		for _, a := range addrs {
+			if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func hashRouterID(hostname string) string {
+	b := make([]byte, 4)
+	binary.LittleEndian.PutUint32(b, crc32.ChecksumIEEE([]byte(hostname)))
+	return net.IP(b).String()
 }
 
 var failureTimeout = time.Second * 5

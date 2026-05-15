@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -1004,6 +1005,84 @@ func TestLogLevelDebugging(t *testing.T) {
 
 	config := Config{
 		Loglevel: LevelFrom(logging.LevelDebug),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionExplicitRouterID(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN:    65000,
+				RouterID: "10.10.10.1",
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "65001",
+						Addr:     "192.168.1.2",
+						Port:     ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionIPv6OnlyNode(t *testing.T) {
+	testSetup(t)
+	netInterfaces = func() ([]net.Interface, error) {
+		return nil, nil
+	}
+	t.Cleanup(func() { netInterfaces = net.Interfaces })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv6,
+						ASN:      "65001",
+						Addr:     "2001:db8::1",
+						Port:     ptr.To[uint16](179),
+						Outgoing: AllowedOut{
+							PrefixesV6: []string{
+								"2001:db8:1::/64",
+							},
+						},
+					},
+				},
+				IPV6Prefixes: []string{"2001:db8:1::/64"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {
