@@ -206,7 +206,11 @@ func startFRRControllers(ctx context.Context, mgr manager.Manager, params params
 	}
 	setupLog.Info("using BGP debounce timeout", "milliseconds", dbTimeout.Milliseconds())
 
-	frrInstance := frr.NewFRR(ctx, reloadStatus, dbTimeout)
+	frrInstance, err := frr.NewFRR(ctx, reloadStatus, dbTimeout)
+	if err != nil {
+		setupLog.Error(err, "failed to create FRR instance")
+		os.Exit(1)
+	}
 
 	alwaysBlock, err := parseCIDRs(params.alwaysBlockCIDRs)
 	if err != nil {
