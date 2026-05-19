@@ -287,6 +287,11 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 	if neighborHasIPFamily(neighbor, ipfamily.IPv6) {
 		res.PrefixesV6 = sets.List(prefixesForFamily[ipfamily.IPv6])
 	}
+	var err error
+	res.NextHopV4, res.NextHopV6, err = nextHopToFRR(neighbor, toAdvertise.NextHop)
+	if err != nil {
+		return frr.AllowedOut{}, err
+	}
 
 	// map per ip family per local preference
 	localPreferencePrefixLists := map[string]frr.LocalPrefPrefixList{}
@@ -308,6 +313,32 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 	res.CommunityPrefixesModifiers = sortMap(communityPrefixLists)
 
 	return res, nil
+}
+
+func nextHopToFRR(neighbor *frr.NeighborConfig, nextHop v1beta1.NextHop) (string, string, error) {
+	if nextHop.IPv4 != "" {
+		ip := net.ParseIP(nextHop.IPv4)
+		if ip == nil || ip.To4() == nil {
+			return "", "", fmt.Errorf("invalid ipv4 next hop %q for neighbor %s", nextHop.IPv4, neighbor.Name)
+		}
+		if !neighborHasIPFamily(neighbor, ipfamily.IPv4) {
+			return "", "", fmt.Errorf("ipv4 next hop %q set for neighbor %s without an ipv4 address family",
+				nextHop.IPv4, neighbor.Name)
+		}
+	}
+
+	if nextHop.IPv6 != "" {
+		ip := net.ParseIP(nextHop.IPv6)
+		if ip == nil || ip.To4() != nil {
+			return "", "", fmt.Errorf("invalid ipv6 next hop %q for neighbor %s", nextHop.IPv6, neighbor.Name)
+		}
+		if !neighborHasIPFamily(neighbor, ipfamily.IPv6) {
+			return "", "", fmt.Errorf("ipv6 next hop %q set for neighbor %s without an ipv6 address family",
+				nextHop.IPv6, neighbor.Name)
+		}
+	}
+
+	return nextHop.IPv4, nextHop.IPv6, nil
 }
 
 func prefixesWithLocalPrefToFRR(toAdd map[string]frr.LocalPrefPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string]) (map[string]frr.LocalPrefPrefixList, error) {

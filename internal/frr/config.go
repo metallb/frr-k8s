@@ -120,6 +120,8 @@ func (a *AllowedIn) AllPrefixes() []IncomingFilter {
 type AllowedOut struct {
 	PrefixesV4                 []string
 	PrefixesV6                 []string
+	NextHopV4                  string
+	NextHopV6                  string
 	LocalPrefPrefixesModifiers []LocalPrefPrefixList
 	CommunityPrefixesModifiers []CommunityPrefixList
 }

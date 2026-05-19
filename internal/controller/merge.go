@@ -103,6 +103,15 @@ func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
 		PrefixesV4: sets.List(mergedPrefixesV4),
 		PrefixesV6: sets.List(mergedPrefixesV6),
 	}
+	var err error
+	res.NextHopV4, err = mergeNextHop(r.NextHopV4, toMerge.NextHopV4)
+	if err != nil {
+		return frr.AllowedOut{}, fmt.Errorf("ipv4 next hop: %w", err)
+	}
+	res.NextHopV6, err = mergeNextHop(r.NextHopV6, toMerge.NextHopV6)
+	if err != nil {
+		return frr.AllowedOut{}, fmt.Errorf("ipv6 next hop: %w", err)
+	}
 
 	localPrefForPrefix := map[string]uint32{}
 	for _, p := range r.LocalPrefPrefixesModifiers {
@@ -122,6 +131,16 @@ func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
 	res.LocalPrefPrefixesModifiers = mergeLocalPrefPrefixLists(r.LocalPrefPrefixesModifiers, toMerge.LocalPrefPrefixesModifiers)
 
 	return res, nil
+}
+
+func mergeNextHop(curr, toMerge string) (string, error) {
+	if curr == "" {
+		return toMerge, nil
+	}
+	if toMerge == "" || curr == toMerge {
+		return curr, nil
+	}
+	return "", fmt.Errorf("multiple next hops (%s != %s) specified", curr, toMerge)
 }
 
 func mergeLocalPrefPrefixLists(curr, toMerge []frr.LocalPrefPrefixList) []frr.LocalPrefPrefixList {
