@@ -232,6 +232,11 @@ type Advertise struct {
 	// this neighbor. They must match the prefixes defined in the router.
 	Allowed AllowedOutPrefixes `json:"allowed,omitempty"`
 
+	// NextHop sets the BGP next-hop address to advertise with prefixes
+	// sent to this neighbor.
+	// +optional
+	NextHop NextHop `json:"nextHop,omitempty"`
+
 	// PrefixesWithLocalPref is a list of prefixes that are associated to a local
 	// preference when being advertised. The prefixes associated to a given local pref
 	// must be in the prefixes allowed to be advertised.
@@ -243,6 +248,19 @@ type Advertise struct {
 	// must be in the prefixes allowed to be advertised.
 	// +optional
 	PrefixesWithCommunity []CommunityPrefixes `json:"withCommunity,omitempty"`
+}
+
+// NextHop sets the BGP next-hop address for advertised prefixes.
+type NextHop struct {
+	// IPv4 is the next-hop address to advertise with IPv4 prefixes.
+	// +optional
+	// +kubebuilder:validation:Format=ipv4
+	IPv4 string `json:"ipv4,omitempty"`
+
+	// IPv6 is the next-hop address to advertise with IPv6 prefixes.
+	// +optional
+	// +kubebuilder:validation:Format=ipv6
+	IPv6 string `json:"ipv6,omitempty"`
 }
 
 // Receive represents a list of prefixes to receive from the given neighbor.

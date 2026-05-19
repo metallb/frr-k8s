@@ -285,6 +285,39 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				},
 				splitCfg: splitByNeigh,
 			}),
+			ginkgo.Entry("DUALSTACK - Advertise with next hop", params{
+				ipFamily: ipfamily.DualStack,
+				vrf:      "",
+				myAsn:    infra.FRRK8sASN,
+				prefixes: []string{"192.168.200.0/24", "fc00:f853:ccd:e950::/64"},
+				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					for i := range ppV4 {
+						nextHop, found := nextHopPeerIPOnSameNetwork(ppV4, i)
+						if !found {
+							ginkgo.Skip("next-hop e2e requires at least two IPv4 peers on the same network")
+						}
+						ppV4[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV4[i].Neigh.ToAdvertise.NextHop.IPv4 = nextHop
+					}
+					for i := range ppV6 {
+						nextHop, found := nextHopPeerIPOnSameNetwork(ppV6, i)
+						if !found {
+							ginkgo.Skip("next-hop e2e requires at least two IPv6 peers on the same network")
+						}
+						ppV6[i].Neigh.ToAdvertise.Allowed.Mode = frrk8sv1beta1.AllowAll
+						ppV6[i].Neigh.ToAdvertise.NextHop.IPv6 = nextHop
+					}
+				},
+				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, _ []v1.Node) {
+					for _, p := range ppV4 {
+						ValidatePrefixesForNeighborWithNextHop(p.FRR, p.Neigh.ToAdvertise.NextHop.IPv4, "192.168.200.0/24")
+					}
+					for _, p := range ppV6 {
+						ValidatePrefixesForNeighborWithNextHop(p.FRR, p.Neigh.ToAdvertise.NextHop.IPv6, "fc00:f853:ccd:e950::/64")
+					}
+				},
+				splitCfg: splitByNextHop,
+			}),
 			ginkgo.Entry("DUALSTACK - Advertise a subset of ips", params{
 				ipFamily: ipfamily.DualStack,
 				vrf:      "",
@@ -739,3 +772,17 @@ var _ = ginkgo.Describe("Advertisement", func() {
 		)
 	})
 })
+
+func nextHopPeerIPOnSameNetwork(peers []config.Peer, peerIndex int) (string, bool) {
+	for offset := 1; offset < len(peers); offset++ {
+		candidate := peers[(peerIndex+offset)%len(peers)]
+		if candidate.FRR.Network != peers[peerIndex].FRR.Network {
+			continue
+		}
+		if candidate.IP == peers[peerIndex].IP {
+			continue
+		}
+		return candidate.IP, true
+	}
+	return "", false
+}

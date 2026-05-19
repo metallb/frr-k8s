@@ -311,6 +311,22 @@ spec:
                                           type: string
                                         type: array
                                     type: object
+                                  nextHop:
+                                    description: |-
+                                      NextHop sets the BGP next-hop address to advertise with prefixes
+                                      sent to this neighbor.
+                                    properties:
+                                      ipv4:
+                                        description: IPv4 is the next-hop address
+                                          to advertise with IPv4 prefixes.
+                                        format: ipv4
+                                        type: string
+                                      ipv6:
+                                        description: IPv6 is the next-hop address
+                                          to advertise with IPv6 prefixes.
+                                        format: ipv6
+                                        type: string
+                                    type: object
                                   withCommunity:
                                     description: |-
                                       PrefixesWithCommunity is a list of prefixes that are associated to a

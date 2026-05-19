@@ -1023,6 +1023,104 @@ func TestMergeNeighbors(t *testing.T) {
 			err: fmt.Errorf("multiple local prefs specified for prefix %s", "192.0.2.0/24"),
 		},
 		{
+			name: "Multiple next hops for a prefix family",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						NextHopV4:  "192.0.2.1",
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						NextHopV4:  "192.0.2.2",
+					},
+				},
+			},
+			err: fmt.Errorf("ipv4 next hop: multiple next hops (192.0.2.1 != 192.0.2.2) specified"),
+		},
+		{
+			name: "Multiple ipv6 next hops for a prefix family",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV6:  "2001:db8::1",
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV6:  "2001:db8::2",
+					},
+				},
+			},
+			err: fmt.Errorf("ipv6 next hop: multiple next hops (2001:db8::1 != 2001:db8::2) specified"),
+		},
+		{
+			name: "Next hop merged from one config",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						NextHopV4: "192.0.2.1",
+						NextHopV6: "2001:db8::1",
+					},
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV4:  "192.0.2.1",
+						NextHopV6:  "2001:db8::1",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			name: "HoldTime / KeepAlive time, one nil, the other specifies the default",
 			curr: []*frr.NeighborConfig{
 				{
