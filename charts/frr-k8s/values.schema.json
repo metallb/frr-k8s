@@ -240,7 +240,7 @@
             "interval": {
               "anyOf": [
                 {
-                  "type": "integer"
+                  "type": "string"
                 },
                 {
                   "type": "null"
@@ -261,100 +261,6 @@
             }
           }
         }
-      },
-      "frrk8s": {
-        "allOf": [
-          {
-            "$ref": "#/definitions/component"
-          },
-          {
-            "description": "FRR-K8s controller",
-            "type": "object",
-            "properties": {
-              "tolerateMaster": {
-                "type": "boolean"
-              },
-              "updateStrategy": {
-                "type": "object",
-                "properties": {
-                  "type": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "type"
-                ]
-              },
-              "runtimeClassName": {
-                "type": "string"
-              },
-              "secretName": {
-                "type": "string"
-              },
-              "frr": {
-                "description": "The FRR properties in the controller",
-                "type": "object",
-                "properties": {
-                  "image": {
-                    "$ref": "#/definitions/component/properties/image"
-                  },
-                  "metricsPort": {
-                    "type": "integer"
-                  },
-                  "secureMetricsPort": {
-                    "type": "integer"
-                  },
-                  "resources:": {
-                    "type": "object"
-                  }
-                },
-                "required": [
-                  "enabled"
-                ]
-              },
-              "command": {
-                "type": "string"
-              },
-              "reloader": {
-                "type": "object",
-                "properties": {
-                  "resources": {
-                    "type": "object"
-                  }
-                }
-              },
-              "frrMetrics": {
-                "type": "object",
-                "properties": {
-                  "resources": {
-                    "type": "object"
-                  }
-                }
-              }
-            },
-            "required": [
-              "tolerateMaster"
-            ]
-          }
-        ]
-      },
-      "crds": {
-        "description": "CRD configuration",
-        "type": "object",
-        "properties": {
-          "enabled": {
-            "description": "Enable CRDs",
-            "type": "boolean"
-          },
-          "validationFailurePolicy": {
-            "description": "Failure policy to use with validating webhooks",
-            "type": "string",
-            "enum": [
-              "Ignore",
-              "Fail"
-            ]
-          }
-        }
       }
     },
     "frrk8s": {
@@ -363,9 +269,66 @@
           "$ref": "#/definitions/component"
         },
         {
-          "description": "FRRk8s Controller",
+          "description": "FRR-K8s controller",
           "type": "object",
           "properties": {
+            "tolerateMaster": {
+              "type": "boolean"
+            },
+            "updateStrategy": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "type"
+              ]
+            },
+            "runtimeClassName": {
+              "type": "string"
+            },
+            "secretName": {
+              "type": "string"
+            },
+            "frr": {
+              "description": "The FRR properties in the controller",
+              "type": "object",
+              "properties": {
+                "image": {
+                  "$ref": "#/definitions/component/properties/image"
+                },
+                "metricsPort": {
+                  "type": "integer"
+                },
+                "secureMetricsPort": {
+                  "type": "integer"
+                },
+                "resources": {
+                  "type": "object"
+                }
+              }
+            },
+            "command": {
+              "type": "string"
+            },
+            "reloader": {
+              "type": "object",
+              "properties": {
+                "resources": {
+                  "type": "object"
+                }
+              }
+            },
+            "frrMetrics": {
+              "type": "object",
+              "properties": {
+                "resources": {
+                  "type": "object"
+                }
+              }
+            },
             "strategy": {
               "type": "object",
               "properties": {
@@ -377,15 +340,30 @@
                 "type"
               ]
             },
-            "command": {
-              "type": "string"
-            },
             "webhookMode": {
               "type": "string"
             }
           }
         }
       ]
+    },
+    "crds": {
+      "description": "CRD configuration",
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "description": "Enable CRDs",
+          "type": "boolean"
+        },
+        "validationFailurePolicy": {
+          "description": "Failure policy to use with validating webhooks",
+          "type": "string",
+          "enum": [
+            "Ignore",
+            "Fail"
+          ]
+        }
+      }
     }
   },
   "required": [
