@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -89,6 +90,7 @@ type NeighborConfig struct {
 	Outgoing        AllowedOut
 	AlwaysBlock     []IncomingFilter
 	AddressFamilies []string
+	AsPathPrepend   uint32
 }
 
 func (n *NeighborConfig) ID() string {
@@ -310,6 +312,17 @@ func templateConfig(data interface{}) (string, error) {
 				}
 
 				return false
+			},
+			"asPathPrependStatement": func(myASN uint32, count uint32) string {
+				if count == 0 {
+					return ""
+				}
+				asnStr := strconv.FormatUint(uint64(myASN), 10)
+				parts := make([]string, count)
+				for i := uint32(0); i < count; i++ {
+					parts[i] = asnStr
+				}
+				return strings.Join(parts, " ")
 			},
 			"dict": func(values ...interface{}) (map[string]interface{}, error) {
 				if len(values)%2 != 0 {

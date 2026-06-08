@@ -206,6 +206,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 		VRFName:         routerVRF,
 		AlwaysBlock:     alwaysBlock,
 		AddressFamilies: toStringSlice(n.AddressFamilies),
+		AsPathPrepend:   n.AsPathPrepend,
 	}
 
 	res.HoldTime, res.KeepaliveTime, err = parseTimers(n.HoldTime, n.KeepaliveTime)
