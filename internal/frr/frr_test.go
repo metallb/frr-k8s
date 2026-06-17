@@ -1175,6 +1175,222 @@ func TestSingleSessionIPv6OnlyNode(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestEVPNWithL2VNIs(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"unicast", "evpn"},
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					L2VNIs: []L2VNI{
+						{
+							VNI: 1000,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1000",
+								ImportRTs: []string{"65000:1000"},
+								ExportRTs: []string{"65000:1000"},
+							},
+						},
+						{
+							VNI: 2000,
+						},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNWithL3VNI(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				VRF:   "red",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 3000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:3000",
+							ImportRTs: []string{"65000:3000"},
+							ExportRTs: []string{"65000:3000"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNNeighborOnlyEVPN(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"evpn"},
+					},
+				},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					AdvertiseSVI:  true,
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNFull(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"unicast", "evpn"},
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
+						},
+					},
+					{
+						IPFamily:        ipfamily.IPv6,
+						ASN:             "65002",
+						Addr:            "2001:db8::1",
+						EBGPMultiHop:    true,
+						AddressFamilies: []string{"evpn"},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					AdvertiseSVI:  true,
+					L2VNIs: []L2VNI{
+						{
+							VNI: 1000,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1000",
+								ImportRTs: []string{"65000:1000"},
+								ExportRTs: []string{"65000:1000"},
+							},
+						},
+						{
+							VNI: 1001,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1001",
+								ImportRTs: []string{"65000:1001", "65000:1099"},
+								ExportRTs: []string{"65000:1001"},
+							},
+						},
+						{
+							VNI: 1002,
+						},
+					},
+				},
+			},
+			{
+				MyASN: 65000,
+				VRF:   "red",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 3000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:3000",
+							ImportRTs: []string{"65000:3000"},
+							ExportRTs: []string{"65000:3000"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+			{
+				MyASN: 65000,
+				VRF:   "blue",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 4000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:4000",
+							ImportRTs: []string{"65000:4000", "65000:4099"},
+							ExportRTs: []string{"65000:4000", "65000:4099"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func communityPrefixListFor(neigID, comm string, ipFamily string, prefixes ...string) CommunityPrefixList {
 	community, err := community.New(comm)
 	if err != nil {
