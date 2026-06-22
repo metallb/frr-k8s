@@ -25,7 +25,7 @@ jobs:
       GO111MODULE: on
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Run Gosec Security Scanner
         uses: securego/gosec@v2.24.7
         with:
@@ -41,7 +41,7 @@ jobs:
     if: github.actor != 'dependabot[bot]'
     steps:
       - name: Checkout Source
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: actions/setup-go@v6
@@ -73,7 +73,7 @@ jobs:
   commitlint:
     runs-on: ubuntu-22.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - uses: wagoid/commitlint-github-action@v5
@@ -82,7 +82,7 @@ jobs:
     name: lint
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-go@v6
         with:
           go-version-file: "go.mod"
@@ -96,7 +96,7 @@ jobs:
     runs-on: ubuntu-22.04
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -113,7 +113,7 @@ jobs:
       fail-fast: true
     steps:
       - name: Code checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
       - name: Setup docker buildx
         uses: docker/setup-buildx-action@v3
 
@@ -150,7 +150,7 @@ jobs:
           deployment: helm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -207,7 +207,7 @@ jobs:
       - commitlint
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - uses: actions/setup-go@v6
         with:
@@ -245,7 +245,7 @@ jobs:
           mkdir -p /tmp/kind_logs/
 
       - name: Checkout MetalLB
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: metallb/metallb
           path: metallb
