@@ -172,7 +172,7 @@
       "description": "Override chart name",
       "type": "string"
     },
-    "fullNameOverride": {
+    "fullnameOverride": {
       "description": "Override fully qualified app name",
       "type": "string"
     },
