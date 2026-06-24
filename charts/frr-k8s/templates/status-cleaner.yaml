@@ -13,6 +13,11 @@ spec:
   selector:
     matchLabels:
       app.kubernetes.io/component: statuscleaner
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 100%
   template:
     metadata:
       annotations:
