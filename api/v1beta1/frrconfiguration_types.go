@@ -242,7 +242,7 @@ type Neighbor struct {
 	// +optional
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=10
-	AsPathPrepend uint32 `json:"asPathPrepend,omitempty"`
+	AsPathPrepend *uint8 `json:"asPathPrepend,omitempty"`
 }
 
 // Advertise represents a list of prefixes to advertise to the given neighbor.

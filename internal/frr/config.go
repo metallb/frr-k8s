@@ -90,7 +90,7 @@ type NeighborConfig struct {
 	Outgoing        AllowedOut
 	AlwaysBlock     []IncomingFilter
 	AddressFamilies []string
-	AsPathPrepend   uint32
+	AsPathPrepend   *uint8
 }
 
 func (n *NeighborConfig) ID() string {
@@ -313,13 +313,13 @@ func templateConfig(data interface{}) (string, error) {
 
 				return false
 			},
-			"asPathPrependStatement": func(myASN uint32, count uint32) string {
-				if count == 0 {
+			"asPathPrependStatement": func(myASN uint32, count *uint8) string {
+				if count == nil || *count == 0 {
 					return ""
 				}
 				asnStr := strconv.FormatUint(uint64(myASN), 10)
-				parts := make([]string, count)
-				for i := uint32(0); i < count; i++ {
+				parts := make([]string, *count)
+				for i := uint8(0); i < *count; i++ {
 					parts[i] = asnStr
 				}
 				return strings.Join(parts, " ")

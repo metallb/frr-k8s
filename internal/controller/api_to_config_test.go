@@ -176,7 +176,7 @@ func TestConversion(t *testing.T) {
 											ConnectTime: &metav1.Duration{
 												Duration: 3 * time.Second,
 											},
-											AsPathPrepend: 2,
+											AsPathPrepend: ptr.To[uint8](2),
 										},
 									},
 									VRF:      "",
@@ -203,7 +203,7 @@ func TestConversion(t *testing.T) {
 								KeepaliveTime: ptr.To[int64](30),
 								HoldTime:      ptr.To[int64](60),
 								ConnectTime:   ptr.To(int64(3)),
-								AsPathPrepend: 2,
+								AsPathPrepend: ptr.To[uint8](2),
 							},
 						},
 						IPV4Prefixes: []string{"192.0.2.0/24"},

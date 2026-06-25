@@ -238,7 +238,7 @@ func TestSingleSessionWithAsPathPrepend(t *testing.T) {
 						ASN:           "65001",
 						Addr:          "192.168.1.2",
 						Port:          ptr.To[uint16](4567),
-						AsPathPrepend: 3,
+						AsPathPrepend: ptr.To[uint8](3),
 						Outgoing: AllowedOut{
 							PrefixesV4: []string{
 								"192.169.1.0/24",
@@ -278,7 +278,7 @@ func TestSingleSessionWithLocalASNAndAsPathPrepend(t *testing.T) {
 						ASN:           "65001",
 						Addr:          "192.168.1.2",
 						LocalASN:      65410,
-						AsPathPrepend: 2,
+						AsPathPrepend: ptr.To[uint8](2),
 						Outgoing: AllowedOut{
 							PrefixesV4: []string{
 								"192.169.1.0/24",
