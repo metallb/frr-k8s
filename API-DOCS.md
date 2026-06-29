@@ -536,6 +536,7 @@ _Appears in:_
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false | Optional: \{\} <br /> |
 | `localASN` _integer_ | LocalASN allows advertising a different AS number to the peer using BGP's<br />local-as feature. When set, FRR will advertise this ASN to the peer<br />via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding<br />the router-level ASN for this specific session.<br />Note: this field is only applicable to eBGP sessions (where the peer ASN differs<br />from the router ASN). Setting it on an iBGP session is rejected. |  | Format: int64 <br />Maximum: 4.294967295e+09 <br />Minimum: 1 <br />Optional: \{\} <br /> |
 | `addressFamilies` _[AddressFamily](#addressfamily) array_ | AddressFamilies specifies which address families to activate this neighbor for.<br />Supported values: "unicast" (IPv4/IPv6 unicast based on neighbor IP), "evpn" (L2VPN EVPN). | [unicast] | Enum: [unicast evpn] <br />MaxItems: 2 <br />Optional: \{\} <br /> |
+| `asPathPrepend` _integer_ | AsPathPrepend prepends the local AS number to the AS path this many<br />additional times on outgoing updates. Used to artificially lengthen<br />the AS path so external routers prefer other paths (e.g. active/standby). |  | Maximum: 10 <br />Minimum: 0 <br />Optional: \{\} <br /> |
 
 
 #### NextHop
