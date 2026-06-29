@@ -222,6 +222,85 @@ func TestSingleSessionWithNextHopV6(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestSingleSessionWithAsPathPrepend(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:      ipfamily.IPv4,
+						ASN:           "65001",
+						Addr:          "192.168.1.2",
+						Port:          ptr.To[uint16](4567),
+						AsPathPrepend: ptr.To[uint8](3),
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+								"192.170.1.0/22",
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithLocalASNAndAsPathPrepend(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:      ipfamily.IPv4,
+						ASN:           "65001",
+						Addr:          "192.168.1.2",
+						LocalASN:      65410,
+						AsPathPrepend: ptr.To[uint8](2),
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+								"192.170.1.0/22",
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestTwoRoutersTwoNeighbors(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())

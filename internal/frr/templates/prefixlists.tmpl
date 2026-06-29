@@ -35,11 +35,33 @@ route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
   {{- if .neighbor.Outgoing.NextHopV4}}
   set ip next-hop {{.neighbor.Outgoing.NextHopV4}}
   {{- end}}
+  {{- if $.neighbor.AsPathPrepend}}
+    {{- $prependStr := ""}}
+    {{- if gt $.neighbor.LocalASN 0}}
+      {{- $prependStr = asPathPrependStatement $.neighbor.LocalASN $.neighbor.AsPathPrepend}}
+    {{- else}}
+      {{- $prependStr = asPathPrependStatement $.router.MyASN $.neighbor.AsPathPrepend}}
+    {{- end}}
+    {{- if $prependStr}}
+  set as-path prepend {{$prependStr}}
+    {{- end}}
+  {{- end}}
 
 route-map {{$.neighbor.ID}}-out permit {{counter $.neighbor.ID}}
   match ipv6 address prefix-list {{.neighbor.ToAdvertisePrefixListV6}}
   {{- if .neighbor.Outgoing.NextHopV6}}
   set ipv6 next-hop global {{.neighbor.Outgoing.NextHopV6}}
+  {{- end}}
+  {{- if $.neighbor.AsPathPrepend}}
+    {{- $prependStr := ""}}
+    {{- if gt $.neighbor.LocalASN 0}}
+      {{- $prependStr = asPathPrependStatement $.neighbor.LocalASN $.neighbor.AsPathPrepend}}
+    {{- else}}
+      {{- $prependStr = asPathPrependStatement $.router.MyASN $.neighbor.AsPathPrepend}}
+    {{- end}}
+    {{- if $prependStr}}
+  set as-path prepend {{$prependStr}}
+    {{- end}}
   {{- end}}
 
 {{/* filtering incoming prefixes */}}

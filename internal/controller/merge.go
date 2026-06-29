@@ -17,6 +17,7 @@ const (
 	defaultHoldTime      = 180
 	defaultKeepaliveTime = 60
 	defaultConnectTime   = 60
+	defaultAsPathPrepend = 0
 )
 
 // Merges two router configs.
@@ -87,6 +88,11 @@ func mergeIntoNeighbor(dest, src *frr.NeighborConfig) error {
 
 	if dest.BFDProfile == "" {
 		dest.BFDProfile = src.BFDProfile
+	}
+
+	// at this point, src and dest values are either the same or at least one of them is nil
+	if dest.AsPathPrepend == nil {
+		dest.AsPathPrepend = src.AsPathPrepend
 	}
 
 	dest.Outgoing, err = mergeAllowedOut(dest.Outgoing, src.Outgoing)
@@ -222,6 +228,9 @@ func cleanNeighborDefaults(neigh *frr.NeighborConfig) {
 	if neigh.ConnectTime != nil && *neigh.ConnectTime == defaultConnectTime {
 		neigh.ConnectTime = nil
 	}
+	if neigh.AsPathPrepend != nil && *neigh.AsPathPrepend == defaultAsPathPrepend {
+		neigh.AsPathPrepend = nil
+	}
 }
 
 func mergeIncomingFilters(curr, toMerge []frr.IncomingFilter) []frr.IncomingFilter {
@@ -311,6 +320,10 @@ func neighborsAreCompatible(n1, n2 *frr.NeighborConfig) error {
 
 	if n1.LocalASN != n2.LocalASN {
 		return fmt.Errorf("multiple localASNs specified for %s", neighborKey)
+	}
+
+	if n1.AsPathPrepend != nil && n2.AsPathPrepend != nil && !ptrsEqual(n1.AsPathPrepend, n2.AsPathPrepend, defaultAsPathPrepend) {
+		return fmt.Errorf("conflicting asPathPrepend (%d != %d) specified for %s", n1.AsPathPrepend, n2.AsPathPrepend, neighborKey)
 	}
 
 	return nil

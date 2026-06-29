@@ -153,6 +153,66 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "Single Router and Neighbor with AsPathPrepend",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65002,
+											Port:    ptr.To[uint16](178),
+											Address: "192.0.2.2",
+											KeepaliveTime: &metav1.Duration{
+												Duration: 30 * time.Second,
+											},
+											HoldTime: &metav1.Duration{
+												Duration: 60 * time.Second,
+											},
+											ConnectTime: &metav1.Duration{
+												Duration: 3 * time.Second,
+											},
+											AsPathPrepend: ptr.To[uint8](2),
+										},
+									},
+									VRF:      "",
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65001,
+						RouterID: "192.0.2.1",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:      ipfamily.IPv4,
+								Name:          "65002@192.0.2.2",
+								ASN:           "65002",
+								Port:          ptr.To[uint16](178),
+								Addr:          "192.0.2.2",
+								KeepaliveTime: ptr.To[int64](30),
+								HoldTime:      ptr.To[int64](60),
+								ConnectTime:   ptr.To(int64(3)),
+								AsPathPrepend: ptr.To[uint8](2),
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			name: "Multiple Routers and Neighbors",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{

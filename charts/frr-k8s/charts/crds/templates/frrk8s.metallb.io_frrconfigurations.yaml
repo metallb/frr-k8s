@@ -489,6 +489,14 @@ spec:
                                   type: string
                                 maxItems: 2
                                 type: array
+                              asPathPrepend:
+                                description: |-
+                                  AsPathPrepend prepends the local AS number to the AS path this many
+                                  additional times on outgoing updates. Used to artificially lengthen
+                                  the AS path so external routers prefer other paths (e.g. active/standby).
+                                maximum: 10
+                                minimum: 0
+                                type: integer
                               asn:
                                 description: |-
                                   ASN is the AS number to use for the local end of the session.

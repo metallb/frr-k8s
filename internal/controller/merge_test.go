@@ -1121,6 +1121,58 @@ func TestMergeNeighbors(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "AsPathPrepend: different values",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:      ipfamily.IPv4,
+					Name:          "65040@192.0.1.20",
+					ASN:           "65040",
+					Addr:          "192.0.1.20",
+					AsPathPrepend: ptr.To[uint8](3),
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:      ipfamily.IPv4,
+					Name:          "65040@192.0.1.20",
+					ASN:           "65040",
+					Addr:          "192.0.1.20",
+					AsPathPrepend: ptr.To[uint8](0),
+				},
+			},
+			err: fmt.Errorf("conflicting asPathPrepend (%d != %d) specified for %s", 3, 0, "192.0.1.20"),
+		},
+		{
+			name: "AsPathPrepend: one neighbor doesn't specify AsPathPrepend explicitly",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:      ipfamily.IPv4,
+					Name:          "65040@192.0.1.20",
+					ASN:           "65040",
+					Addr:          "192.0.1.20",
+					AsPathPrepend: ptr.To[uint8](1),
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:      ipfamily.IPv4,
+					Name:          "65040@192.0.1.20",
+					ASN:           "65040",
+					Addr:          "192.0.1.20",
+					AsPathPrepend: ptr.To[uint8](1),
+				},
+			},
+			err: nil,
+		},
+		{
 			name: "HoldTime / KeepAlive time, one nil, the other specifies the default",
 			curr: []*frr.NeighborConfig{
 				{
