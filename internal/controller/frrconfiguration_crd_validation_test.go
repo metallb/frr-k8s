@@ -515,6 +515,51 @@ var _ = Describe("CRD validation", func() {
 					},
 				},
 			}),
+			Entry("neighbor with allowAsIn any", &v1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{Name: "test-allowasin-any", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{{
+							ASN: 65000,
+							Neighbors: []v1beta1.Neighbor{{
+								ASN:       65001,
+								Address:   "192.0.2.1",
+								AllowAsIn: v1beta1.AllowAsInAny,
+							}},
+						}},
+					},
+				},
+			}),
+			Entry("neighbor with allowAsIn origin", &v1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{Name: "test-allowasin-origin", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{{
+							ASN: 65000,
+							Neighbors: []v1beta1.Neighbor{{
+								ASN:       65001,
+								Address:   "192.0.2.1",
+								AllowAsIn: v1beta1.AllowAsInOrigin,
+							}},
+						}},
+					},
+				},
+			}),
+			Entry("neighbor with allowAsIn none", &v1beta1.FRRConfiguration{
+				ObjectMeta: ctrl.ObjectMeta{Name: "test-allowasin-none", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{
+					BGP: v1beta1.BGPConfig{
+						Routers: []v1beta1.Router{{
+							ASN: 65000,
+							Neighbors: []v1beta1.Neighbor{{
+								ASN:       65001,
+								Address:   "192.0.2.1",
+								AllowAsIn: v1beta1.AllowAsInNone,
+							}},
+						}},
+					},
+				},
+			}),
 		)
 	})
 })

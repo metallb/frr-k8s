@@ -70,6 +70,25 @@ _Appears in:_
 | `unicast` |  |
 
 
+#### AllowAsInMode
+
+_Underlying type:_ _string_
+
+AllowAsInMode specifies whether routes with the local AS in the path are accepted from a neighbor.
+
+_Validation:_
+- Enum: [ none any origin]
+
+_Appears in:_
+- [Neighbor](#neighbor)
+
+| Field | Description |
+| --- | --- |
+| `none` |  |
+| `any` |  |
+| `origin` |  |
+
+
 #### AllowedInPrefixes
 
 
@@ -535,6 +554,7 @@ _Appears in:_
 | `disableMP` _boolean_ | DisableMP is no longer used and has no effect.<br />Use DualStackAddressFamily instead to enable the neighbor for both IPv4 and IPv6 address families.<br />Deprecated: This field is ignored. Use DualStackAddressFamily instead. | false | Optional: \{\} <br /> |
 | `dualStackAddressFamily` _boolean_ | To set if we want to enable the neighbor not only for the ipfamily related to its session,<br />but also the other one. This allows to advertise/receive IPv4 prefixes over IPv6 sessions and vice versa. | false | Optional: \{\} <br /> |
 | `localASN` _integer_ | LocalASN allows advertising a different AS number to the peer using BGP's<br />local-as feature. When set, FRR will advertise this ASN to the peer<br />via "neighbor <peer> local-as <ASN> no-prepend replace-as", overriding<br />the router-level ASN for this specific session.<br />Note: this field is only applicable to eBGP sessions (where the peer ASN differs<br />from the router ASN). Setting it on an iBGP session is rejected. |  | Format: int64 <br />Maximum: 4.294967295e+09 <br />Minimum: 1 <br />Optional: \{\} <br /> |
+| `allowAsIn` _[AllowAsInMode](#allowasinmode)_ | AllowAsIn controls whether routes with the local AS number in the AS path<br />are accepted from this neighbor for the enabled address families.<br />This is useful in hub-and-spoke or route-leaking topologies where the<br />same AS number may appear multiple times in the path.<br />Possible values:<br />- "" (empty, default) or "none": routes with the local AS in the path are rejected.<br />- "origin": routes are accepted only if the local AS appears as the origin (last AS in the path).<br />- "any": routes are accepted regardless of how many times the local AS appears in the path.<br />When multiple configurations target the same neighbor, "none" explicitly prevents<br />any other configuration from enabling allowas-in. Any other combination of values<br />resolves to the least restrictive. |  | Enum: [ none any origin] <br />Optional: \{\} <br /> |
 | `addressFamilies` _[AddressFamily](#addressfamily) array_ | AddressFamilies specifies which address families to activate this neighbor for.<br />Supported values: "unicast" (IPv4/IPv6 unicast based on neighbor IP), "evpn" (L2VPN EVPN). | [unicast] | Enum: [unicast evpn] <br />MaxItems: 2 <br />Optional: \{\} <br /> |
 
 
