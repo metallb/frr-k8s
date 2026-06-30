@@ -95,6 +95,10 @@ func mergeIntoNeighbor(dest, src *frr.NeighborConfig) error {
 	}
 	dest.Incoming = mergeAllowedIn(dest.Incoming, src.Incoming)
 	dest.AddressFamilies = sets.List(sets.New(append(dest.AddressFamilies, src.AddressFamilies...)...))
+	dest.AllowAsIn, err = mergeAllowAsIn(dest.AllowAsIn, src.AllowAsIn)
+	if err != nil {
+		return fmt.Errorf("could not merge allowAsIn for neighbor %s vrf %s, err: %w", src.Addr, src.VRFName, err)
+	}
 
 	cleanNeighborDefaults(dest)
 
@@ -150,6 +154,26 @@ func mergeNextHop(curr, toMerge string) (string, error) {
 		return curr, nil
 	}
 	return "", fmt.Errorf("multiple next hops (%s != %s) specified", curr, toMerge)
+}
+
+// mergeAllowAsIn merges two AllowAsIn values for the same neighbor.
+// Empty values yield to the other. "none" explicitly prevents any other
+// non-empty value from enabling allowas-in. Any other combination of
+// values resolves to the least restrictive ("any").
+func mergeAllowAsIn(a, b string) (string, error) {
+	if a == "" {
+		return b, nil
+	}
+	if b == "" {
+		return a, nil
+	}
+	if a == b {
+		return a, nil
+	}
+	if a == string(v1beta1.AllowAsInNone) || b == string(v1beta1.AllowAsInNone) {
+		return "", fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", a, b)
+	}
+	return string(v1beta1.AllowAsInAny), nil
 }
 
 func mergeLocalPrefPrefixLists(curr, toMerge []frr.LocalPrefPrefixList) []frr.LocalPrefPrefixList {

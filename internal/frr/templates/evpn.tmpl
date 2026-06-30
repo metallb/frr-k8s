@@ -9,6 +9,11 @@
   {{- $peer = .Iface }}
 {{- end }}
     neighbor {{$peer}} activate
+{{- if eq .AllowAsIn "any" }}
+    neighbor {{$peer}} allowas-in
+{{- else if eq .AllowAsIn "origin" }}
+    neighbor {{$peer}} allowas-in origin
+{{- end }}
 {{- end }}
 {{- end }}
 

@@ -1476,6 +1476,208 @@ func TestMergeNeighbors(t *testing.T) {
 			},
 			err: fmt.Errorf("multiple localASNs specified for %s", "65040@192.0.1.20"),
 		},
+		{
+			name: "AllowAsIn: empty merges with any",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: both any",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: any and origin merge to any",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "origin",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: none merges with empty",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: both none",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: none and any are incompatible",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "any",
+				},
+			},
+			err: fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", "none", "any"),
+		},
+		{
+			name: "AllowAsIn: none and origin are incompatible",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "origin",
+				},
+			},
+			err: fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", "none", "origin"),
+		},
 	}
 
 	for _, test := range tests {
