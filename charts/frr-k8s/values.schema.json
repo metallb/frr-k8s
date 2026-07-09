@@ -329,6 +329,43 @@
                 }
               }
             },
+            "initContainers": {
+              "type": "object",
+              "properties": {
+                "cpFrrFiles": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "cpReloader": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "cpMetrics": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "object"
+                    }
+                  }
+                },
+                "cpFrrStatus": {
+                  "type": "object",
+                  "properties": {
+                    "resources": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            },
             "strategy": {
               "type": "object",
               "properties": {

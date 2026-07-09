@@ -118,6 +118,19 @@ frrk8s:
     # limits:
       # cpu: 100m
       # memory: 100Mi
+  initContainers:
+    cpFrrFiles:
+      # -- Resource limits and requests for the cp-frr-files init container.
+      resources: {}
+    cpReloader:
+      # -- Resource limits and requests for the cp-reloader init container.
+      resources: {}
+    cpMetrics:
+      # -- Resource limits and requests for the cp-metrics init container.
+      resources: {}
+    cpFrrStatus:
+      # -- Resource limits and requests for the cp-frr-status init container.
+      resources: {}
   # -- Node selector for pod assignment.
   nodeSelector: {}
   # -- Tolerations for pod assignment.

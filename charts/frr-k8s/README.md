@@ -42,6 +42,10 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.image.pullPolicy | string | `nil` | The frr-k8s image pull policy. |
 | frrk8s.image.repository | string | `"quay.io/metallb/frr-k8s"` | The frr-k8s image repository. |
 | frrk8s.image.tag | string | `nil` | The frr-k8s image tag. If not set, defaults to the chart appVersion. |
+| frrk8s.initContainers.cpFrrFiles.resources | object | `{}` | Resource limits and requests for the cp-frr-files init container. |
+| frrk8s.initContainers.cpFrrStatus.resources | object | `{}` | Resource limits and requests for the cp-frr-status init container. |
+| frrk8s.initContainers.cpMetrics.resources | object | `{}` | Resource limits and requests for the cp-metrics init container. |
+| frrk8s.initContainers.cpReloader.resources | object | `{}` | Resource limits and requests for the cp-reloader init container. |
 | frrk8s.labels | object | `{"app":"frr-k8s"}` | Additional labels to add to the pod. |
 | frrk8s.livenessProbe.enabled | bool | `true` | Enable liveness probe. |
 | frrk8s.livenessProbe.failureThreshold | int | `3` | Number of failures before the probe is considered failed. |
