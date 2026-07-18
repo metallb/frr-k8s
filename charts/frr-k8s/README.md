@@ -29,6 +29,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.bgpDebounceTimeout | integer | `nil` | BGP debounce timeout for FRR configuration reloads, in milliseconds. Default (when unset) is 3000 ms.This feature is experimental |
 | frrk8s.disableCertRotation | bool | `false` | Specifies whether the cert rotator works as part of the webhook. |
 | frrk8s.frr.acceptIncomingBGPConnections | bool | `false` | Allow FRR to accept incoming BGP connections. |
+| frrk8s.frr.dockerStartPath | string | `"/usr/lib/frr/docker-start"` | Path to the docker-start script inside the FRR container. Override this when using an FRR image (e.g. Docker Hardened Images) that places docker-start at a different location. |
 | frrk8s.frr.image.pullPolicy | string | `nil` | The FRR image pull policy. |
 | frrk8s.frr.image.repository | string | `"quay.io/frrouting/frr"` | The FRR image repository. |
 | frrk8s.frr.image.tag | string | `"10.4.3"` | The FRR image tag. |
@@ -36,6 +37,8 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.frr.metricsPort | int | `7573` | Port for FRR metrics. |
 | frrk8s.frr.resources | object | `{}` | Resource limits and requests for the FRR container. |
 | frrk8s.frr.secureMetricsPort | int | `9141` | Secure metrics port for FRR. |
+| frrk8s.frr.securityContext | object | `{"allowPrivilegeEscalation":false,"capabilities":{"add":["NET_ADMIN","NET_RAW","SYS_ADMIN","NET_BIND_SERVICE"]},"readOnlyRootFilesystem":true}` | Security context for the FRR container. |
+| frrk8s.frr.tiniPath | string | `"/sbin/tini"` | Path to the tini binary inside the FRR container. Override this when using an FRR image (e.g. Docker Hardened Images) that places tini at a different location. |
 | frrk8s.frrMetrics.resources | object | `{}` | Resource limits and requests for the FRR metrics container. |
 | frrk8s.frrStatus.pollInterval | string | `"2m"` | Polling interval for FRR status updates. |
 | frrk8s.frrStatus.resources | object | `{}` | Resource limits and requests for the FRR status container. |

@@ -306,15 +306,10 @@ spec:
             readOnly: true
           {{- end }}
       - name: frr
+        {{- if .Values.frrk8s.frr.securityContext }}
         securityContext:
-          allowPrivilegeEscalation: false
-          readOnlyRootFilesystem: true
-          capabilities:
-            add:
-            - NET_ADMIN
-            - NET_RAW
-            - SYS_ADMIN
-            - NET_BIND_SERVICE
+          {{- toYaml .Values.frrk8s.frr.securityContext | nindent 10 }}
+        {{- end }}
         image: {{ .Values.frrk8s.frr.image.repository }}:{{ .Values.frrk8s.frr.image.tag | default .Chart.AppVersion }}
         {{- if .Values.frrk8s.frr.image.pullPolicy }}
         imagePullPolicy: {{ .Values.frrk8s.frr.image.pullPolicy }}
@@ -332,9 +327,9 @@ spec:
           - name: frr-tmp
             mountPath: /var/tmp/frr
         command:
-          - /bin/sh
-          - -c
-          - /sbin/tini -- /usr/lib/frr/docker-start
+          - {{ .Values.frrk8s.frr.tiniPath | quote }}
+          - --
+          - {{ .Values.frrk8s.frr.dockerStartPath | quote }}
         {{- with .Values.frrk8s.frr.resources }}
         resources:
           {{- toYaml . | nindent 12 }}
