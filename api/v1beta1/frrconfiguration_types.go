@@ -229,6 +229,23 @@ type Neighbor struct {
 	// +kubebuilder:validation:Format=int64
 	LocalASN uint32 `json:"localASN,omitempty"`
 
+	// AllowAsIn controls whether routes with the local AS number in the AS path
+	// are accepted from this neighbor for the enabled address families.
+	// This is useful in hub-and-spoke or route-leaking topologies where the
+	// same AS number may appear multiple times in the path.
+	// Possible values:
+	// - "" (empty, default): routes with the local AS in the path are rejected.
+	//   Does not reject other AllowAsIn values targeting the same neighbor.
+	// - "none": routes with the local AS in the path are rejected.
+	//   Rejects other AllowAsIn values targeting the same neighbor.
+	// - "origin": routes are accepted only if the local AS appears as the origin (last AS in the path).
+	// - "1"-"10": routes are accepted with up to this many occurrences of the local AS in the path.
+	// When multiple configurations target the same neighbor, any combination of
+	// values resolves to the least restrictive, except "none" which rejects
+	// all other values.
+	// +optional
+	AllowAsIn AllowAsInMode `json:"allowAsIn,omitempty"`
+
 	// AddressFamilies specifies which address families to activate this neighbor for.
 	// Supported values: "unicast" (IPv4/IPv6 unicast based on neighbor IP), "evpn" (L2VPN EVPN).
 	// +optional
@@ -466,6 +483,15 @@ type AddressFamily string
 const (
 	AddressFamilyUnicast AddressFamily = "unicast"
 	AddressFamilyEVPN    AddressFamily = "evpn"
+)
+
+// AllowAsInMode specifies whether routes with the local AS in the path are accepted from a neighbor.
+// +kubebuilder:validation:Enum="";none;origin;"1";"2";"3";"4";"5";"6";"7";"8";"9";"10"
+type AllowAsInMode string
+
+const (
+	AllowAsInNone   AllowAsInMode = "none"
+	AllowAsInOrigin AllowAsInMode = "origin"
 )
 
 // AdvertisePrefixType specifies a prefix type to advertise as EVPN type-5 routes.

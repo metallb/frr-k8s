@@ -114,6 +114,30 @@ func EnableReceiveAllowAll(pc *PeersConfig) {
 	}
 }
 
+func EnableAllowAsIn(mode frrk8sv1beta1.AllowAsInMode) func(*PeersConfig) {
+	return func(pc *PeersConfig) {
+		t := pc.PeersV4
+		for i := 0; i < len(t); i++ {
+			t[i].Neigh.AllowAsIn = mode
+		}
+		t = pc.PeersV6
+		for i := 0; i < len(t); i++ {
+			t[i].Neigh.AllowAsIn = mode
+		}
+	}
+}
+
+func EnableDualStackAddressFamily(pc *PeersConfig) {
+	t := pc.PeersV4
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.DualStackAddressFamily = true
+	}
+	t = pc.PeersV6
+	for i := 0; i < len(t); i++ {
+		t[i].Neigh.DualStackAddressFamily = true
+	}
+}
+
 func EnableAllowAll(pc *PeersConfig) {
 	t := pc.PeersV4
 	for i := 0; i < len(t); i++ {

@@ -10,6 +10,9 @@
     neighbor {{$peer}} activate
     neighbor {{$peer}} route-map {{.ID}}-in in
     neighbor {{$peer}} route-map {{.ID}}-out out
+{{- if and (ne .AllowAsIn "") (ne .AllowAsIn "none") }}
+    neighbor {{$peer}} allowas-in {{.AllowAsIn}}
+{{- end }}
   exit-address-family
 {{- end -}}
 {{if activateNeighborFor "ipv6" .IPFamily .AddressFamilies }}
@@ -17,6 +20,9 @@
     neighbor {{$peer}} activate
     neighbor {{$peer}} route-map {{.ID}}-in in
     neighbor {{$peer}} route-map {{.ID}}-out out
+{{- if and (ne .AllowAsIn "") (ne .AllowAsIn "none") }}
+    neighbor {{$peer}} allowas-in {{.AllowAsIn}}
+{{- end }}
   exit-address-family
 {{- end -}}
 {{- end -}}

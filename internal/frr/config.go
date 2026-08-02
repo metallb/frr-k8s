@@ -89,6 +89,7 @@ type NeighborConfig struct {
 	Outgoing        AllowedOut
 	AlwaysBlock     []IncomingFilter
 	AddressFamilies []string
+	AllowAsIn       string
 }
 
 func (n *NeighborConfig) ID() string {

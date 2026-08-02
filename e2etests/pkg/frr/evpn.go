@@ -24,6 +24,7 @@ type EVPNConfig struct {
 	L3VNI           uint32
 	L3VRF           string
 	AdvertiseFamily ipfamily.Family
+	PrependASN      uint32
 }
 
 // PairWithNodesForEVPN generates a BGP configuration with EVPN support for all
@@ -45,8 +46,9 @@ func PairWithNodesForEVPN(c *frrcontainer.FRR, cs clientset.Interface, cfg EVPNC
 	}
 
 	data := evpnTemplateData{
-		RouterASN: c.RouterConfig.ASN,
-		Neighbors: neighbors,
+		RouterASN:  c.RouterConfig.ASN,
+		Neighbors:  neighbors,
+		PrependASN: cfg.PrependASN,
 	}
 
 	if cfg.L2VNI > 0 {
@@ -83,6 +85,7 @@ func PairWithNodesForEVPN(c *frrcontainer.FRR, cs clientset.Interface, cfg EVPNC
 	}
 
 	fullConfig := insertBeforeRouterBGP(baseConfig, vrfPreamble) + evpnConfig
+
 	if err := c.UpdateConfigFile(fullConfig); err != nil {
 		return fmt.Errorf("writing BGP config: %w", err)
 	}
@@ -91,10 +94,11 @@ func PairWithNodesForEVPN(c *frrcontainer.FRR, cs clientset.Interface, cfg EVPNC
 }
 
 type evpnTemplateData struct {
-	RouterASN uint32
-	Neighbors []string
-	L2VNI     *evpnL2VNIData
-	L3VNI     *evpnL3VNIData
+	RouterASN  uint32
+	Neighbors  []string
+	L2VNI      *evpnL2VNIData
+	L3VNI      *evpnL3VNIData
+	PrependASN uint32
 }
 
 type evpnL2VNIData struct {
@@ -120,10 +124,20 @@ type evpnL3VNIData struct {
 // to the base BGP config. The VRF definition is handled separately by
 // evpnVRFTemplate because vtysh --mark requires it before any router bgp block.
 const evpnConfigTemplate = `
+{{- if gt .PrependASN 0 }}
+route-map PREPEND-ASN permit 10
+  set as-path prepend {{ .PrependASN }}
+!
+{{- end }}
 router bgp {{ .RouterASN }}
   address-family l2vpn evpn
   {{- range .Neighbors }}
     neighbor {{ . }} activate
+  {{- end }}
+  {{- if gt .PrependASN 0 }}
+  {{- range .Neighbors }}
+    neighbor {{ . }} route-map PREPEND-ASN out
+  {{- end }}
   {{- end }}
     advertise-all-vni
   {{- if .L2VNI }}

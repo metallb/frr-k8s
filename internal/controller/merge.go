@@ -5,6 +5,7 @@ package controller
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
@@ -95,6 +96,10 @@ func mergeIntoNeighbor(dest, src *frr.NeighborConfig) error {
 	}
 	dest.Incoming = mergeAllowedIn(dest.Incoming, src.Incoming)
 	dest.AddressFamilies = sets.List(sets.New(append(dest.AddressFamilies, src.AddressFamilies...)...))
+	dest.AllowAsIn, err = mergeAllowAsIn(dest.AllowAsIn, src.AllowAsIn)
+	if err != nil {
+		return fmt.Errorf("could not merge allowAsIn for neighbor %s vrf %s, err: %w", src.Addr, src.VRFName, err)
+	}
 
 	cleanNeighborDefaults(dest)
 
@@ -150,6 +155,45 @@ func mergeNextHop(curr, toMerge string) (string, error) {
 		return curr, nil
 	}
 	return "", fmt.Errorf("multiple next hops (%s != %s) specified", curr, toMerge)
+}
+
+// mergeAllowAsIn merges two AllowAsIn values for the same neighbor.
+// Empty values yield to the other. "none" explicitly prevents any other
+// non-empty value from enabling allowas-in. Any other combination of
+// values resolves to the least restrictive.
+// Restrictiveness order: none, "", origin, 1, 2, ..., 10.
+func mergeAllowAsIn(a, b string) (string, error) {
+	if a == "" {
+		return b, nil
+	}
+	if b == "" {
+		return a, nil
+	}
+	if a == b {
+		return a, nil
+	}
+	if a == string(v1beta1.AllowAsInNone) || b == string(v1beta1.AllowAsInNone) {
+		return "", fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", a, b)
+	}
+	return leastRestrictiveAllowAsIn(a, b), nil
+}
+
+// leastRestrictiveAllowAsIn returns the least restrictive of two non-empty,
+// non-none AllowAsIn values. "origin" is more restrictive than any numeric value;
+// between two numeric values the higher one wins.
+func leastRestrictiveAllowAsIn(a, b string) string {
+	aNum, aIsNum := strconv.Atoi(a)
+	bNum, bIsNum := strconv.Atoi(b)
+	if aIsNum != nil {
+		return b // a is "origin", b is numeric (less restrictive)
+	}
+	if bIsNum != nil {
+		return a // b is "origin", a is numeric (less restrictive)
+	}
+	if aNum >= bNum {
+		return a
+	}
+	return b
 }
 
 func mergeLocalPrefPrefixLists(curr, toMerge []frr.LocalPrefPrefixList) []frr.LocalPrefPrefixList {
