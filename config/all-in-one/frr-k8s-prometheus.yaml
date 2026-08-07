@@ -1575,7 +1575,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: quay.io/metallb/frr-k8s:v0.0.25
+        image: quay.io/metallb/frr-k8s:v0.0.26
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1691,7 +1691,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        image: quay.io/metallb/frr-k8s:v0.0.25
+        image: quay.io/metallb/frr-k8s:v0.0.26
         imagePullPolicy: IfNotPresent
         livenessProbe:
           httpGet:
@@ -1849,7 +1849,7 @@ spec:
         - /bin/sh
         - -c
         - cp -f /frr-reloader.sh /etc/frr_reloader/
-        image: quay.io/metallb/frr-k8s:v0.0.25
+        image: quay.io/metallb/frr-k8s:v0.0.26
         name: cp-reloader
         volumeMounts:
         - mountPath: /etc/frr_reloader
@@ -1858,7 +1858,7 @@ spec:
         - /bin/sh
         - -c
         - cp -f /frr-metrics /etc/frr_metrics/
-        image: quay.io/metallb/frr-k8s:v0.0.25
+        image: quay.io/metallb/frr-k8s:v0.0.26
         name: cp-metrics
         volumeMounts:
         - mountPath: /etc/frr_metrics
@@ -1867,7 +1867,7 @@ spec:
         - /bin/sh
         - -c
         - cp -f /frr-status /etc/frr_status/
-        image: quay.io/metallb/frr-k8s:v0.0.25
+        image: quay.io/metallb/frr-k8s:v0.0.26
         name: cp-frr-status
         volumeMounts:
         - mountPath: /etc/frr_status
