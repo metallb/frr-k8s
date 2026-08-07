@@ -43,7 +43,7 @@ var _ = ginkgo.Describe("Leaked routes with import vrfs should work", func() {
 		ginkgo.By("Clearing any previous configuration")
 
 		for _, c := range infra.FRRContainers {
-			err := c.UpdateBGPConfigFile(frrconfig.Empty)
+			err := c.UpdateConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		reporter = dump.NewK8sReporter(k8s.FRRK8sNamespace)

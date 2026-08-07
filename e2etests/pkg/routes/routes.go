@@ -53,6 +53,37 @@ func CheckNeighborHasPrefix(neighbor frrcontainer.FRR, vrf, prefix string, nodes
 	return nil
 }
 
+// CheckNeighborHasPrefixWithNextHop tells if the given frr container has a route toward
+// the given prefix via the expected next-hop.
+func CheckNeighborHasPrefixWithNextHop(neighbor frrcontainer.FRR, prefix, nextHop string) error {
+	routesV4, routesV6, err := frr.Routes(neighbor)
+	if err != nil {
+		return err
+	}
+
+	_, cidr, err := net.ParseCIDR(prefix)
+	if err != nil {
+		return err
+	}
+
+	route, err := routeForCIDR(cidr, routesV4, routesV6)
+	if err != nil {
+		return err
+	}
+
+	expected := net.ParseIP(nextHop)
+	if expected == nil {
+		return fmt.Errorf("invalid next hop %q", nextHop)
+	}
+	if len(route.NextHops) != 1 {
+		return fmt.Errorf("expected only next hop %s for prefix %s, got %v", nextHop, prefix, route.NextHops)
+	}
+	if !route.NextHops[0].Equal(expected) {
+		return fmt.Errorf("expected next hop %s for prefix %s, got %s", nextHop, prefix, route.NextHops[0])
+	}
+	return nil
+}
+
 func cidrsAreEqual(a, b *net.IPNet) bool {
 	return a.IP.Equal(b.IP) && bytes.Equal(a.Mask, b.Mask)
 }

@@ -61,6 +61,19 @@ func ValidatePrefixesForNeighborVRF(neigh frrcontainer.FRR, nodes []v1.Node, vrf
 	}, time.Minute, time.Second).ShouldNot(HaveOccurred())
 }
 
+func ValidatePrefixesForNeighborWithNextHop(neigh frrcontainer.FRR, nextHop string, prefixes ...string) {
+	ginkgo.By(fmt.Sprintf("checking prefixes %v for %s with next hop %s", prefixes, neigh.Name, nextHop))
+	Eventually(func() error {
+		for _, prefix := range prefixes {
+			err := routes.CheckNeighborHasPrefixWithNextHop(neigh, prefix, nextHop)
+			if err != nil {
+				return fmt.Errorf("neigh %s does not have prefix %s with next hop %s: %w", neigh.Name, prefix, nextHop, err)
+			}
+		}
+		return nil
+	}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+}
+
 func ValidateNeighborNoPrefixes(neigh frrcontainer.FRR, nodes []v1.Node, prefixes ...string) {
 	ValidateNeighborNoPrefixesVRF(neigh, nodes, neigh.RouterConfig.VRF, prefixes...)
 }

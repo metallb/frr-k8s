@@ -519,7 +519,8 @@ func multiHopTearDown(nextHop nextHopSettings, routes map[string]container.Netwo
 	for _, node := range nodes.Items {
 		nodeExec := executor.ForContainer(node.Name)
 		err = container.DeleteMultiHop(nodeExec, nextHop.nodeNetwork, nextHop.multiHopNetwork, nextHop.nodeRoutingTable, routes)
-		if err != nil {
+
+		if err != nil && !strings.Contains(strings.ToLower(err.Error()), "no such process") {
 			return errors.Join(err, fmt.Errorf("failed to delete multihop routes for pod %s", node.Name))
 		}
 	}
@@ -610,4 +611,13 @@ func addContainerToNetwork(containerName, network string) error {
 
 func isVRFContainer(c *frrcontainer.FRR) bool {
 	return strings.Contains(c.Name, "vrf")
+}
+
+func FindContainer(name string) *frrcontainer.FRR {
+	for _, c := range FRRContainers {
+		if c.Name == name {
+			return c
+		}
+	}
+	return nil
 }

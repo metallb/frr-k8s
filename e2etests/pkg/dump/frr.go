@@ -33,7 +33,7 @@ func BGPInfo(testName string, FRRContainers []*frrcontainer.FRR, cs clientset.In
 	}
 
 	for _, c := range FRRContainers {
-		dump, err := frr.RawDump(c, "/etc/frr/bgpd.conf", "/tmp/frr.log", "/etc/frr/daemons")
+		dump, err := frr.RawDump(c, "/etc/frr/frr.conf", "/tmp/frr.log", "/etc/frr/daemons")
 		if err != nil {
 			ginkgo.GinkgoWriter.Printf("External frr dump for container %s failed %v", c.Name, err)
 			continue

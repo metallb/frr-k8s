@@ -68,7 +68,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 
 		ginkgo.By("Clearing any previous configuration")
 		for _, c := range infra.FRRContainers {
-			err := c.UpdateBGPConfigFile(frrconfig.Empty)
+			err := c.UpdateConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		err = updater.Clean()
@@ -370,7 +370,7 @@ var _ = ginkgo.Describe("BGPSessionState", func() {
 			}, time.Minute, 2*time.Second).ShouldNot(HaveOccurred())
 
 			ginkgo.By("Resetting the FRR configuration on the first external container")
-			err = frrs[0].UpdateBGPConfigFile(frrconfig.Empty)
+			err = frrs[0].UpdateConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 			frr0Addresses := sets.New(frrs[0].AddressesForFamily(p.ipFamily)...)
 			frr0Neighbors := []frrk8sv1beta1.Neighbor{}

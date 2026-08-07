@@ -80,7 +80,7 @@ var _ = ginkgo.Describe("Unnumbered", func() {
 		ginkgo.By(fmt.Sprintf("updating frrconfig to %s", externalP2PContainer.Name))
 		c, err := rc.Config()
 		Expect(err).NotTo(HaveOccurred())
-		err = externalP2PContainer.UpdateBGPConfigFile(c)
+		err = externalP2PContainer.UpdateConfigFile(c)
 		Expect(err).NotTo(HaveOccurred())
 
 		ginkgo.By(fmt.Sprintf("peering node %s with its p2p container %s", nodeWithP2PConnection.Name, externalP2PContainer.Name))
@@ -149,6 +149,7 @@ var _ = ginkgo.Describe("Unnumbered", func() {
 			RouterID:      "1.1.1.1",
 			ToAdvertiseV4: []string{"1.1.1.0/24"},
 			ToAdvertiseV6: []string{"1111::/64"},
+			BFD:           true,
 		}),
 		ginkgo.Entry("eBGP", frrconfig.RouterConfigUnnumbered{
 			ASNLocal:      4200000000,
@@ -158,6 +159,7 @@ var _ = ginkgo.Describe("Unnumbered", func() {
 			RouterID:      "2.2.2.2",
 			ToAdvertiseV4: []string{"2.2.2.0/24"},
 			ToAdvertiseV6: []string{"2222::/64"},
+			BFD:           true,
 		}),
 	)
 

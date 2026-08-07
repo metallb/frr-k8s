@@ -1,5 +1,23 @@
 # FRRK8s Release Notes
 
+## Release v0.0.26
+
+### New Features
+- Add basic EVPN support to FRRConfiguration. Users can now configure BGP neighbors for the L2VPN EVPN address family and  
+    advertise Layer 2 VNIs (type-2/type-3 routes) and Layer 3 VNIs (type-5 prefix routes) with configurable route            
+    distinguishers and route targets. (#419, @jcaamano)
+- FRRConfiguration now supports setting IPv4 and IPv6 BGP next-hop addresses for advertised prefixes via `toAdvertise.nextHop`. (#446, @trozet)
+- Helm chart: allow setting resources for frr-k8s init containers (#466, @siutsin)
+- The tini binary path and docker-start script path for the FRR sidecar
+  container are now configurable via speaker.frr.tiniPath and
+  speaker.frr.dockerStartPath Helm values, enabling use of alternative
+  FRR images such as Docker Hardened Images. (#471, @benispeti)
+
+### Bug fixes
+- Fixed four bugs in the frr-k8s Helm chart values.schema.json: removed a trailing-colon typo on `frrk8s.frr.resources`; widened `prometheus.serviceMonitor.interval` to accept duration strings (matches Prometheus convention and the chart README); moved the `crds` block from under `prometheus` to top-level so `crds.enabled` and `crds.validationFailurePolicy` are now validated; merged the large `frrk8s` block (`tolerateMaster`, `updateStrategy`, `frr.*`, `reloader`, `frrMetrics`, etc.) into the top-level `frrk8s` schema so those fields are now validated as well. (#447, @lexfrei)
+- Helm chart metrics Service annotations now honor prometheus.scrapeAnnotations, avoiding duplicate scrapes when ServiceMonitor is enabled. (#464, @Soli0222)
+- When no explicit BGP router-id is configured, frr-k8s now derives a deterministic router-id from the node hostname, fixing BGP session establishment failures on IPv6 single-stack clusters where FRR would default to the invalid 0.0.0.0 identifier. (#445, @cgoncalves)
+
 ## Release v0.0.25
 
 ### Bug fixes

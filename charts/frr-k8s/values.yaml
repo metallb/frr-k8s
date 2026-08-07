@@ -23,14 +23,14 @@ rbac:
 
 prometheus:
   # scrape annotations specifies whether to add Prometheus metric
-  # auto-collection annotations to pods. See
+  # auto-collection annotations to the metrics Service. See
   # https://github.com/prometheus/prometheus/blob/release-2.1/documentation/examples/prometheus-kubernetes.yml
   # for a corresponding Prometheus configuration. Alternatively, you
   # may want to use the Prometheus Operator
   # (https://github.com/coreos/prometheus-operator) for more powerful
   # monitoring configuration. If you use the Prometheus operator, this
   # can be left at false.
-  # -- Add Prometheus metric auto-collection annotations to pods.
+  # -- Add Prometheus metric auto-collection annotations to the metrics Service.
   scrapeAnnotations: false
 
   # -- Port frr-k8s will listen on for secure metrics.
@@ -118,6 +118,19 @@ frrk8s:
     # limits:
       # cpu: 100m
       # memory: 100Mi
+  initContainers:
+    cpFrrFiles:
+      # -- Resource limits and requests for the cp-frr-files init container.
+      resources: {}
+    cpReloader:
+      # -- Resource limits and requests for the cp-reloader init container.
+      resources: {}
+    cpMetrics:
+      # -- Resource limits and requests for the cp-metrics init container.
+      resources: {}
+    cpFrrStatus:
+      # -- Resource limits and requests for the cp-frr-status init container.
+      resources: {}
   # -- Node selector for pod assignment.
   nodeSelector: {}
   # -- Tolerations for pod assignment.
@@ -195,6 +208,24 @@ frrk8s:
     resources: {}
     # -- Secure metrics port for FRR.
     secureMetricsPort: 9141
+    # -- Path to the tini binary inside the FRR container. Override this
+    # when using an FRR image (e.g. Docker Hardened Images) that places
+    # tini at a different location.
+    tiniPath: /sbin/tini
+    # -- Path to the docker-start script inside the FRR container. Override
+    # this when using an FRR image (e.g. Docker Hardened Images) that places
+    # docker-start at a different location.
+    dockerStartPath: /usr/lib/frr/docker-start
+    # -- Security context for the FRR container.
+    securityContext:
+      readOnlyRootFilesystem: true
+      allowPrivilegeEscalation: false
+      capabilities:
+        add:
+        - NET_ADMIN
+        - NET_RAW
+        - SYS_ADMIN
+        - NET_BIND_SERVICE
     # -- Allow FRR to accept incoming BGP connections.
     acceptIncomingBGPConnections: false
   reloader:

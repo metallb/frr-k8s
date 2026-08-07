@@ -160,10 +160,11 @@ func TestOptFor(t *testing.T) {
 			wantMinVersion:       tls.VersionTLS13,
 		},
 		{
-			name:         "rejects cipher suites with TLS 1.3",
-			cipherSuites: "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
-			minVersion:   "VersionTLS13",
-			wantErrMsg:   "cipher suites cannot be configured with TLS 1.3",
+			name:             "cipher suites with TLS 1.3 accepted (Go ignores them)",
+			cipherSuites:     "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256",
+			minVersion:       "VersionTLS13",
+			wantCipherSuites: []uint16{tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256},
+			wantMinVersion:   tls.VersionTLS13,
 		},
 		{
 			name:         "invalid cipher returns error",

@@ -38,7 +38,7 @@ var _ = ginkgo.Describe("Webhooks", func() {
 		ginkgo.By("Clearing any previous configuration")
 
 		for _, c := range infra.FRRContainers {
-			err := c.UpdateBGPConfigFile(frrconfig.Empty)
+			err := c.UpdateConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()
@@ -96,6 +96,56 @@ var _ = ginkgo.Describe("Webhooks", func() {
 					}
 				},
 				"failed to find ipfamily for",
+			),
+			ginkgo.Entry("ipv4 neighbor with ipv6 next hop",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							ASN:      100,
+							Prefixes: []string{"192.0.2.0/24"},
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:     100,
+									Address: "1.2.3.4",
+									ToAdvertise: frrk8sv1beta1.Advertise{
+										Allowed: frrk8sv1beta1.AllowedOutPrefixes{
+											Mode: frrk8sv1beta1.AllowAll,
+										},
+										NextHop: frrk8sv1beta1.NextHop{
+											IPv6: "2001:db8::1",
+										},
+									},
+								},
+							},
+						},
+					}
+				},
+				"without an ipv6 address family",
+			),
+			ginkgo.Entry("ipv6 neighbor with ipv4 next hop",
+				func(cfg *frrk8sv1beta1.FRRConfiguration) {
+					cfg.Spec.BGP.Routers = []frrk8sv1beta1.Router{
+						{
+							ASN:      100,
+							Prefixes: []string{"2001:db8::/64"},
+							Neighbors: []frrk8sv1beta1.Neighbor{
+								{
+									ASN:     100,
+									Address: "2001:db8::4",
+									ToAdvertise: frrk8sv1beta1.Advertise{
+										Allowed: frrk8sv1beta1.AllowedOutPrefixes{
+											Mode: frrk8sv1beta1.AllowAll,
+										},
+										NextHop: frrk8sv1beta1.NextHop{
+											IPv4: "192.0.2.1",
+										},
+									},
+								},
+							},
+						},
+					}
+				},
+				"without an ipv4 address family",
 			),
 			ginkgo.Entry("localpref on non-existing prefix",
 				func(cfg *frrk8sv1beta1.FRRConfiguration) {

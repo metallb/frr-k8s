@@ -1023,6 +1023,104 @@ func TestMergeNeighbors(t *testing.T) {
 			err: fmt.Errorf("multiple local prefs specified for prefix %s", "192.0.2.0/24"),
 		},
 		{
+			name: "Multiple next hops for a prefix family",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						NextHopV4:  "192.0.2.1",
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						NextHopV4:  "192.0.2.2",
+					},
+				},
+			},
+			err: fmt.Errorf("ipv4 next hop: multiple next hops (192.0.2.1 != 192.0.2.2) specified"),
+		},
+		{
+			name: "Multiple ipv6 next hops for a prefix family",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV6:  "2001:db8::1",
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV6:  "2001:db8::2",
+					},
+				},
+			},
+			err: fmt.Errorf("ipv6 next hop: multiple next hops (2001:db8::1 != 2001:db8::2) specified"),
+		},
+		{
+			name: "Next hop merged from one config",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						NextHopV4: "192.0.2.1",
+						NextHopV6: "2001:db8::1",
+					},
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4: []string{"192.0.2.0/24"},
+						PrefixesV6: []string{"2001:db8::/64"},
+						NextHopV4:  "192.0.2.1",
+						NextHopV6:  "2001:db8::1",
+					},
+				},
+			},
+			err: nil,
+		},
+		{
 			name: "HoldTime / KeepAlive time, one nil, the other specifies the default",
 			curr: []*frr.NeighborConfig{
 				{
@@ -1049,6 +1147,90 @@ func TestMergeNeighbors(t *testing.T) {
 					Name:     "65040@192.0.1.20",
 					ASN:      "65040",
 					Addr:     "192.0.1.20",
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+					},
+					Incoming: frr.AllowedIn{
+						All:        false,
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "AddressFamilies: merge unicast and evpn",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"unicast"},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"evpn"},
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"evpn", "unicast"},
+					Outgoing: frr.AllowedOut{
+						PrefixesV4:                 []string{},
+						PrefixesV6:                 []string{},
+						CommunityPrefixesModifiers: []frr.CommunityPrefixList{},
+						LocalPrefPrefixesModifiers: []frr.LocalPrefPrefixList{},
+					},
+					Incoming: frr.AllowedIn{
+						All:        false,
+						PrefixesV4: []frr.IncomingFilter{},
+						PrefixesV6: []frr.IncomingFilter{},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "AddressFamilies: both have same families, no duplicates",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"unicast", "evpn"},
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"unicast", "evpn"},
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:        ipfamily.IPv4,
+					Name:            "65040@192.0.1.20",
+					ASN:             "65040",
+					Addr:            "192.0.1.20",
+					AddressFamilies: []string{"evpn", "unicast"},
 					Outgoing: frr.AllowedOut{
 						PrefixesV4:                 []string{},
 						PrefixesV6:                 []string{},
@@ -1294,6 +1476,240 @@ func TestMergeNeighbors(t *testing.T) {
 			},
 			err: fmt.Errorf("multiple localASNs specified for %s", "65040@192.0.1.20"),
 		},
+		{
+			name: "AllowAsIn: empty merges with numeric",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: both same numeric",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: different numerics merge to least restrictive",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "7",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "7",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: origin and numeric merge to numeric",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "origin",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: none merges with empty",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily: ipfamily.IPv4,
+					Name:     "65040@192.0.1.20",
+					ASN:      "65040",
+					Addr:     "192.0.1.20",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: both none",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			expected: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+					Outgoing:  frr.AllowedOut{},
+					Incoming:  frr.AllowedIn{},
+				},
+			},
+		},
+		{
+			name: "AllowAsIn: none and numeric are incompatible",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "3",
+				},
+			},
+			err: fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", "none", "3"),
+		},
+		{
+			name: "AllowAsIn: none and origin are incompatible",
+			curr: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "none",
+				},
+			},
+			toMerge: []*frr.NeighborConfig{
+				{
+					IPFamily:  ipfamily.IPv4,
+					Name:      "65040@192.0.1.20",
+					ASN:       "65040",
+					Addr:      "192.0.1.20",
+					AllowAsIn: "origin",
+				},
+			},
+			err: fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", "none", "origin"),
+		},
 	}
 
 	for _, test := range tests {
@@ -1311,6 +1727,244 @@ func TestMergeNeighbors(t *testing.T) {
 				cmpopts.SortSlices(localPrefPrefixListSorter),
 			); diff != "" {
 				t.Fatalf("config different from expected: %s", diff)
+			}
+		})
+	}
+}
+
+func TestMergeEVPNConfigs(t *testing.T) {
+	tests := []struct {
+		name     string
+		a        *frr.EVPNConfig
+		b        *frr.EVPNConfig
+		expected *frr.EVPNConfig
+		err      error
+	}{
+		{
+			name:     "Both nil",
+			a:        nil,
+			b:        nil,
+			expected: nil,
+		},
+		{
+			name: "First nil, second non-nil",
+			a:    nil,
+			b: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			expected: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+		},
+		{
+			name: "First non-nil, second nil",
+			a: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			b: nil,
+			expected: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+		},
+		{
+			name: "Same advertiseVNIs",
+			a: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			b: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			expected: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+		},
+		{
+			name: "One sets advertiseVNIs to Disabled explicitly, other leaves nil",
+			a: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("Disabled"),
+			},
+			b:        &frr.EVPNConfig{},
+			expected: &frr.EVPNConfig{AdvertiseVNIs: ptr.To("Disabled")},
+		},
+		{
+			name: "One sets advertiseVNIs to All, other leaves nil - conflict",
+			a: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			b:   &frr.EVPNConfig{},
+			err: fmt.Errorf("different advertiseVNIs"),
+		},
+		{
+			name: "Conflicting advertiseVNIs",
+			a: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("All"),
+			},
+			b: &frr.EVPNConfig{
+				AdvertiseVNIs: ptr.To("Disabled"),
+			},
+			err: fmt.Errorf("different advertiseVNIs"),
+		},
+		{
+			name: "Conflicting advertiseSVI",
+			a: &frr.EVPNConfig{
+				AdvertiseSVI: true,
+			},
+			b: &frr.EVPNConfig{
+				AdvertiseSVI: false,
+			},
+			err: fmt.Errorf("different advertiseSVI"),
+		},
+		{
+			name: "Merge L2VNIs - disjoint",
+			a: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 200, VNIProperties: frr.VNIProperties{RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
+				},
+			},
+			expected: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ExportRTs: []string{"65000:100"}, ImportRTs: []string{"65000:100"}}},
+					{VNI: 200, VNIProperties: frr.VNIProperties{RD: "65000:200", ExportRTs: []string{"65000:200"}, ImportRTs: []string{"65000:200"}}},
+				},
+			},
+		},
+		{
+			name: "Merge L2VNIs - same VNI, merge RTs",
+			a: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+				},
+			},
+			expected: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
+				},
+			},
+		},
+		{
+			name: "Merge L2VNIs - same VNI, one omits RD",
+			a: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100"}, ExportRTs: []string{"65000:100"}}},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+				},
+			},
+			expected: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100", ImportRTs: []string{"65000:100", "65001:100"}, ExportRTs: []string{"65000:100", "65001:100"}}},
+				},
+			},
+		},
+		{
+			name: "Merge L2VNIs - same VNI, conflicting RD",
+			a: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65000:100"}},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65001:100"}},
+				},
+			},
+			err: fmt.Errorf("conflicting RD"),
+		},
+		{
+			name: "Merge L2VNIs - same VNI, mixing implicit and explicit import RTs",
+			a: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100, VNIProperties: frr.VNIProperties{ImportRTs: []string{"65000:100"}}},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L2VNIs: []frr.L2VNI{
+					{VNI: 100},
+				},
+			},
+			err: fmt.Errorf("conflicting import route targets"),
+		},
+		{
+			name: "Merge L3VNIs - one nil",
+			a: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500"},
+					AdvertisePrefixes: []string{"unicast"},
+				},
+			},
+			b: &frr.EVPNConfig{},
+			expected: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500"},
+					AdvertisePrefixes: []string{"unicast"},
+				},
+			},
+		},
+		{
+			name: "Merge L3VNIs - same VNI, merge RTs",
+			a: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500", ImportRTs: []string{"65000:500"}, ExportRTs: []string{"65000:500"}},
+					AdvertisePrefixes: []string{"unicast"},
+				},
+			},
+			b: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
+					AdvertisePrefixes: []string{"unicast"},
+				},
+			},
+			expected: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{
+					VNI:               500,
+					VNIProperties:     frr.VNIProperties{RD: "65000:500", ImportRTs: []string{"65000:500", "65001:500"}, ExportRTs: []string{"65000:500", "65001:500"}},
+					AdvertisePrefixes: []string{"unicast"},
+				},
+			},
+		},
+		{
+			name: "Merge L3VNIs - different VNI numbers",
+			a: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{VNI: 500, AdvertisePrefixes: []string{"unicast"}},
+			},
+			b: &frr.EVPNConfig{
+				L3VNI: &frr.L3VNI{VNI: 600, AdvertisePrefixes: []string{"unicast"}},
+			},
+			err: fmt.Errorf("different l3vni numbers"),
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			merged, err := mergeEVPNConfigs(test.a, test.b)
+			if test.err != nil && err == nil {
+				t.Fatalf("expected error, got nil")
+			}
+			if test.err != nil && err != nil {
+				return
+			}
+			if test.err == nil && err != nil {
+				t.Fatalf("expected no error, got %v", err)
+			}
+			if diff := cmp.Diff(merged, test.expected); diff != "" {
+				t.Fatalf("result different from expected: %s", diff)
 			}
 		})
 	}

@@ -1,0 +1,1 @@
+../e2etests/pkg/infra/data/evpn-node-setup.sh

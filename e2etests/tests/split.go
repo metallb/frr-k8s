@@ -183,6 +183,70 @@ func splitByLocalPrefAndCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8
 	return configs, nil
 }
 
+func splitByNextHop(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+	if len(cfg.Spec.BGP.Routers) != 1 {
+		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
+	}
+
+	withoutNextHop := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+		res := n.DeepCopy()
+		res.ToAdvertise.NextHop = frrk8sv1beta1.NextHop{}
+		return *res
+	}
+
+	onlyNextHop := func(n frrk8sv1beta1.Neighbor) frrk8sv1beta1.Neighbor {
+		res := n.DeepCopy()
+		res.ToAdvertise = frrk8sv1beta1.Advertise{
+			NextHop: res.ToAdvertise.NextHop,
+		}
+		return *res
+	}
+
+	router := cfg.Spec.BGP.Routers[0]
+	configs := []frrk8sv1beta1.FRRConfiguration{}
+	for i, n := range router.Neighbors {
+		configs = append(configs,
+			frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d-without-nexthop", cfg.Name, i),
+					Namespace: cfg.Namespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       router.ASN,
+								VRF:       router.VRF,
+								Neighbors: []frrk8sv1beta1.Neighbor{withoutNextHop(n)},
+								Prefixes:  router.Prefixes,
+							},
+						},
+					},
+				},
+			},
+			frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d-only-nexthop", cfg.Name, i),
+					Namespace: cfg.Namespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       router.ASN,
+								VRF:       router.VRF,
+								Neighbors: []frrk8sv1beta1.Neighbor{onlyNextHop(n)},
+							},
+						},
+					},
+				},
+			},
+		)
+	}
+
+	return configs, nil
+}
+
 func duplicateNeighsWithReceiveAll(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)

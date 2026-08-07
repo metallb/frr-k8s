@@ -351,6 +351,9 @@ func TestConversion(t *testing.T) {
 													Prefixes: []string{"192.0.2.0/24"},
 													Mode:     v1beta1.AllowRestricted,
 												},
+												NextHop: v1beta1.NextHop{
+													IPv4: "192.0.2.1",
+												},
 											},
 										},
 									},
@@ -375,6 +378,7 @@ func TestConversion(t *testing.T) {
 								Addr:     "192.0.2.21",
 								Outgoing: frr.AllowedOut{
 									PrefixesV4: []string{"192.0.2.0/24"},
+									NextHopV4:  "192.0.2.1",
 								},
 							},
 						},
@@ -383,6 +387,258 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			name: "IPv6 neighbor with ToAdvertise next hop",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "2001:db8::20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "2001:db8::21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"2001:db8::/64"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv6: "2001:db8::1",
+												},
+											},
+										},
+									},
+									Prefixes: []string{"2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "2001:db8::20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv6,
+								Name:     "65041@2001:db8::21",
+								ASN:      "65041",
+								Addr:     "2001:db8::21",
+								Outgoing: frr.AllowedOut{
+									PrefixesV6: []string{"2001:db8::/64"},
+									NextHopV6:  "2001:db8::1",
+								},
+							},
+						},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Dual stack neighbor with ToAdvertise next hops",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv4: "192.0.2.1",
+													IPv6: "2001:db8::1",
+												},
+											},
+											DualStackAddressFamily: true,
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.DualStack,
+								Name:     "65041@192.0.2.21",
+								ASN:      "65041",
+								Addr:     "192.0.2.21",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+									PrefixesV6: []string{"2001:db8::/64"},
+									NextHopV4:  "192.0.2.1",
+									NextHopV6:  "2001:db8::1",
+								},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						IPV6Prefixes: []string{"2001:db8::/64"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Invalid ipv4 next hop",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv4: "2001:db8::1",
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "Invalid ipv6 next hop",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "2001:db8::20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "2001:db8::21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv6: "192.0.2.1",
+												},
+											},
+										},
+									},
+									Prefixes: []string{"2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "IPv4 neighbor with ipv6 next hop",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv6: "2001:db8::1",
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
+		},
+		{
+			name: "IPv6 neighbor with ipv4 next hop",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "2001:db8::20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "2001:db8::21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Mode: v1beta1.AllowAll,
+												},
+												NextHop: v1beta1.NextHop{
+													IPv4: "192.0.2.1",
+												},
+											},
+										},
+									},
+									Prefixes: []string{"2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     errors.New("a not nil error"),
 		},
 		{
 			name: "Two Neighbor with ToAdvertise, one advertise all",
@@ -3156,6 +3412,366 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			err: nil,
+		},
+		{
+			name: "EVPN: router with EVPN neighbor and L2VNIs",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									ID:  "192.0.2.1",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast", "evpn"},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+										AdvertiseSVI:  true,
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: 100, VNIProperties: v1beta1.VNIProperties{RD: "65001:100", ImportRTs: []v1beta1.ImportRouteTarget{"65001:100"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:100"}}},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65001,
+						RouterID: "192.0.2.1",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"evpn", "unicast"},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("All"),
+							AdvertiseSVI:  true,
+							L2VNIs: []frr.L2VNI{
+								{VNI: 100, VNIProperties: frr.VNIProperties{RD: "65001:100", ImportRTs: []string{"65001:100"}, ExportRTs: []string{"65001:100"}}},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: router with L3VNI and no neighbors",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN:      65001,
+									ID:       "192.0.2.1",
+									VRF:      "tenant",
+									Prefixes: []string{"10.0.0.0/24"},
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               500,
+											VNIProperties:     v1beta1.VNIProperties{RD: "65001:500", ImportRTs: []v1beta1.ImportRouteTarget{"65001:500"}, ExportRTs: []v1beta1.ExportRouteTarget{"65001:500"}},
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65001,
+						RouterID:     "192.0.2.1",
+						VRF:          "tenant",
+						IPV4Prefixes: []string{"10.0.0.0/24"},
+						EVPN: &frr.EVPNConfig{
+							L3VNI: &frr.L3VNI{
+								VNI:               500,
+								VNIProperties:     frr.VNIProperties{RD: "65001:500", ImportRTs: []string{"65001:500"}, ExportRTs: []string{"65001:500"}},
+								AdvertisePrefixes: []string{"unicast"},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: advertiseVNIs without EVPN neighbor fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("advertiseVNIs=All, advertiseSVI and l2vnis require at least one neighbor with evpn address family"),
+		},
+		{
+			name: "EVPN: advertiseVNIs=Disabled without EVPN neighbor succeeds",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"unicast"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementDisabled),
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN: 65001,
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"unicast"},
+							},
+						},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("Disabled"),
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: L3VNI with neighbors fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               500,
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("l3vni can only be configured on routers with no neighbors"),
+		},
+		{
+			name: "EVPN: two configs, one adds EVPN neighbor, other adds L2VNIs - valid after merge",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									EVPN: &v1beta1.EVPNConfig{
+										AdvertiseVNIs: ptr.To(v1beta1.VNIAdvertisementAll),
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: 100},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN: 65001,
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily:        ipfamily.IPv4,
+								Name:            "65002@192.0.2.2",
+								ASN:             "65002",
+								Addr:            "192.0.2.2",
+								AddressFamilies: []string{"evpn"},
+							},
+						},
+						EVPN: &frr.EVPNConfig{
+							AdvertiseVNIs: ptr.To("All"),
+							L2VNIs: []frr.L2VNI{
+								{VNI: 100},
+							},
+						},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "EVPN: duplicate L2VNI across VRFs fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: 100},
+										},
+									},
+								},
+								{
+									ASN: 65001,
+									VRF: "red",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.3",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: 100},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("duplicate VNI 100"),
+		},
+		{
+			name: "EVPN: L2VNI and L3VNI with same number across VRFs fails",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65001,
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:             65002,
+											Address:         "192.0.2.2",
+											AddressFamilies: []v1beta1.AddressFamily{"evpn"},
+										},
+									},
+									EVPN: &v1beta1.EVPNConfig{
+										L2VNIs: []v1beta1.L2VNI{
+											{VNI: 500},
+										},
+									},
+								},
+								{
+									ASN: 65001,
+									VRF: "red",
+									EVPN: &v1beta1.EVPNConfig{
+										L3VNI: &v1beta1.L3VNI{
+											VNI:               500,
+											AdvertisePrefixes: []v1beta1.AdvertisePrefixType{"unicast"},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			err:     fmt.Errorf("duplicate VNI 500"),
 		},
 	}
 

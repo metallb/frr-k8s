@@ -39,7 +39,7 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 
 	cleanup := func(u *config.Updater) error {
 		for _, c := range infra.FRRContainers {
-			if err := c.UpdateBGPConfigFile(frrconfig.Empty); err != nil {
+			if err := c.UpdateConfigFile(frrconfig.Empty); err != nil {
 				return fmt.Errorf("clear config in the infra container failed: %w", err)
 			}
 		}

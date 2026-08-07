@@ -5,9 +5,12 @@ package controller
 import (
 	"fmt"
 	"slices"
+	"strconv"
 
+	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"k8s.io/apimachinery/pkg/util/sets"
+	"k8s.io/utils/ptr"
 )
 
 const (
@@ -37,10 +40,16 @@ func mergeRouterConfigs(r, toMerge *frr.RouterConfig) (*frr.RouterConfig, error)
 		return nil, err
 	}
 
+	mergedEVPN, err := mergeEVPNConfigs(r.EVPN, toMerge.EVPN)
+	if err != nil {
+		return nil, fmt.Errorf("could not merge EVPN configuration for vrf %q, err: %w", r.VRF, err)
+	}
+
 	r.IPV4Prefixes = sets.List(v4Prefixes)
 	r.IPV6Prefixes = sets.List(v6Prefixes)
 	r.ImportVRFs = sets.List(importVRFs)
 	r.Neighbors = mergedNeighbors
+	r.EVPN = mergedEVPN
 
 	return r, nil
 }
@@ -86,6 +95,11 @@ func mergeIntoNeighbor(dest, src *frr.NeighborConfig) error {
 		return fmt.Errorf("could not merge outgoing for neighbor %s vrf %s, err: %w", src.Addr, src.VRFName, err)
 	}
 	dest.Incoming = mergeAllowedIn(dest.Incoming, src.Incoming)
+	dest.AddressFamilies = sets.List(sets.New(append(dest.AddressFamilies, src.AddressFamilies...)...))
+	dest.AllowAsIn, err = mergeAllowAsIn(dest.AllowAsIn, src.AllowAsIn)
+	if err != nil {
+		return fmt.Errorf("could not merge allowAsIn for neighbor %s vrf %s, err: %w", src.Addr, src.VRFName, err)
+	}
 
 	cleanNeighborDefaults(dest)
 
@@ -102,6 +116,15 @@ func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
 	res := frr.AllowedOut{
 		PrefixesV4: sets.List(mergedPrefixesV4),
 		PrefixesV6: sets.List(mergedPrefixesV6),
+	}
+	var err error
+	res.NextHopV4, err = mergeNextHop(r.NextHopV4, toMerge.NextHopV4)
+	if err != nil {
+		return frr.AllowedOut{}, fmt.Errorf("ipv4 next hop: %w", err)
+	}
+	res.NextHopV6, err = mergeNextHop(r.NextHopV6, toMerge.NextHopV6)
+	if err != nil {
+		return frr.AllowedOut{}, fmt.Errorf("ipv6 next hop: %w", err)
 	}
 
 	localPrefForPrefix := map[string]uint32{}
@@ -122,6 +145,55 @@ func mergeAllowedOut(r, toMerge frr.AllowedOut) (frr.AllowedOut, error) {
 	res.LocalPrefPrefixesModifiers = mergeLocalPrefPrefixLists(r.LocalPrefPrefixesModifiers, toMerge.LocalPrefPrefixesModifiers)
 
 	return res, nil
+}
+
+func mergeNextHop(curr, toMerge string) (string, error) {
+	if curr == "" {
+		return toMerge, nil
+	}
+	if toMerge == "" || curr == toMerge {
+		return curr, nil
+	}
+	return "", fmt.Errorf("multiple next hops (%s != %s) specified", curr, toMerge)
+}
+
+// mergeAllowAsIn merges two AllowAsIn values for the same neighbor.
+// Empty values yield to the other. "none" explicitly prevents any other
+// non-empty value from enabling allowas-in. Any other combination of
+// values resolves to the least restrictive.
+// Restrictiveness order: none, "", origin, 1, 2, ..., 10.
+func mergeAllowAsIn(a, b string) (string, error) {
+	if a == "" {
+		return b, nil
+	}
+	if b == "" {
+		return a, nil
+	}
+	if a == b {
+		return a, nil
+	}
+	if a == string(v1beta1.AllowAsInNone) || b == string(v1beta1.AllowAsInNone) {
+		return "", fmt.Errorf("conflicting allowAsIn values: %q and %q are incompatible", a, b)
+	}
+	return leastRestrictiveAllowAsIn(a, b), nil
+}
+
+// leastRestrictiveAllowAsIn returns the least restrictive of two non-empty,
+// non-none AllowAsIn values. "origin" is more restrictive than any numeric value;
+// between two numeric values the higher one wins.
+func leastRestrictiveAllowAsIn(a, b string) string {
+	aNum, aIsNum := strconv.Atoi(a)
+	bNum, bIsNum := strconv.Atoi(b)
+	if aIsNum != nil {
+		return b // a is "origin", b is numeric (less restrictive)
+	}
+	if bIsNum != nil {
+		return a // b is "origin", a is numeric (less restrictive)
+	}
+	if aNum >= bNum {
+		return a
+	}
+	return b
 }
 
 func mergeLocalPrefPrefixLists(curr, toMerge []frr.LocalPrefPrefixList) []frr.LocalPrefPrefixList {
@@ -302,4 +374,145 @@ func ptrsEqual[T comparable](p1, p2 *T, def T) bool {
 	}
 
 	return *p1 == *p2
+}
+
+func mergeEVPNConfigs(a, b *frr.EVPNConfig) (*frr.EVPNConfig, error) {
+	if a == nil && b == nil {
+		return nil, nil
+	}
+	if a == nil {
+		return b, nil
+	}
+	if b == nil {
+		return a, nil
+	}
+
+	if !ptrsEqual(a.AdvertiseVNIs, b.AdvertiseVNIs, string(v1beta1.VNIAdvertisementDisabled)) {
+		return nil, fmt.Errorf("different advertiseVNIs (%q != %q)", ptr.Deref(a.AdvertiseVNIs, string(v1beta1.VNIAdvertisementDisabled)), ptr.Deref(b.AdvertiseVNIs, string(v1beta1.VNIAdvertisementDisabled)))
+	}
+	if a.AdvertiseSVI != b.AdvertiseSVI {
+		return nil, fmt.Errorf("different advertiseSVI (%t != %t)", a.AdvertiseSVI, b.AdvertiseSVI)
+	}
+
+	mergedL2VNIs, err := mergeL2VNIs(a.L2VNIs, b.L2VNIs)
+	if err != nil {
+		return nil, err
+	}
+
+	mergedL3VNI, err := mergeL3VNIs(a.L3VNI, b.L3VNI)
+	if err != nil {
+		return nil, err
+	}
+
+	res := &frr.EVPNConfig{
+		AdvertiseVNIs: a.AdvertiseVNIs,
+		AdvertiseSVI:  a.AdvertiseSVI,
+		L2VNIs:        mergedL2VNIs,
+		L3VNI:         mergedL3VNI,
+	}
+	if res.AdvertiseVNIs == nil {
+		res.AdvertiseVNIs = b.AdvertiseVNIs
+	}
+
+	return res, nil
+}
+
+func mergeL2VNIs(a, b []frr.L2VNI) ([]frr.L2VNI, error) {
+	if len(a) == 0 && len(b) == 0 {
+		return nil, nil
+	}
+	if len(a) == 0 {
+		return b, nil
+	}
+	if len(b) == 0 {
+		return a, nil
+	}
+
+	byVNI := map[uint32]frr.L2VNI{}
+	for _, v := range a {
+		byVNI[v.VNI] = v
+	}
+	for _, v := range b {
+		existing, found := byVNI[v.VNI]
+		if !found {
+			byVNI[v.VNI] = v
+			continue
+		}
+		merged, err := mergeVNIProperties(existing.VNIProperties, v.VNIProperties)
+		if err != nil {
+			return nil, fmt.Errorf("could not merge l2vni %d, err: %w", existing.VNI, err)
+		}
+		byVNI[v.VNI] = frr.L2VNI{VNI: existing.VNI, VNIProperties: merged}
+	}
+
+	return sortMap(byVNI), nil
+}
+
+func mergeL3VNIs(a, b *frr.L3VNI) (*frr.L3VNI, error) {
+	if a == nil {
+		return b, nil
+	}
+	if b == nil {
+		return a, nil
+	}
+	if a.VNI != b.VNI {
+		return nil, fmt.Errorf("different l3vni numbers (%d != %d)", a.VNI, b.VNI)
+	}
+
+	merged, err := mergeVNIProperties(a.VNIProperties, b.VNIProperties)
+	if err != nil {
+		return nil, err
+	}
+
+	advertisePrefixes := sets.New(append(a.AdvertisePrefixes, b.AdvertisePrefixes...)...)
+	return &frr.L3VNI{
+		VNI:               a.VNI,
+		VNIProperties:     merged,
+		AdvertisePrefixes: sets.List(advertisePrefixes),
+	}, nil
+}
+
+// mergeVNIProperties merges the common VNI properties (RD, ImportRTs, ExportRTs).
+// RD must be equal or one must be empty. Route targets are merged, but if one
+// side omits them (relying on FRR auto) while the other specifies them, that's
+// a conflict.
+func mergeVNIProperties(a, b frr.VNIProperties) (frr.VNIProperties, error) {
+	if a.RD != "" && b.RD != "" && a.RD != b.RD {
+		return frr.VNIProperties{}, fmt.Errorf("different RD values (%s != %s)", a.RD, b.RD)
+	}
+
+	if (len(a.ImportRTs) == 0) != (len(b.ImportRTs) == 0) {
+		return frr.VNIProperties{}, fmt.Errorf("conflicting import route targets: mixing implicit and explicit route targets")
+	}
+	if (len(a.ExportRTs) == 0) != (len(b.ExportRTs) == 0) {
+		return frr.VNIProperties{}, fmt.Errorf("conflicting export route targets: mixing implicit and explicit route targets")
+	}
+
+	rd := a.RD
+	if rd == "" {
+		rd = b.RD
+	}
+
+	importRTs := mergeRTs(a.ImportRTs, b.ImportRTs)
+	exportRTs := mergeRTs(a.ExportRTs, b.ExportRTs)
+
+	return frr.VNIProperties{
+		RD:        rd,
+		ImportRTs: importRTs,
+		ExportRTs: exportRTs,
+	}, nil
+}
+
+func mergeRTs(a, b []string) []string {
+	if len(a) == 0 && len(b) == 0 {
+		return nil
+	}
+	if len(a) == 0 {
+		return b
+	}
+	if len(b) == 0 {
+		return a
+	}
+	merged := sets.New(append(a, b...)...)
+	return sets.List(merged)
 }

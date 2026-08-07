@@ -49,7 +49,7 @@ var _ = ginkgo.Describe("BFD", func() {
 		ginkgo.By("Clearing any previous configuration")
 
 		for _, c := range infra.FRRContainers {
-			err := c.UpdateBGPConfigFile(frrconfig.Empty)
+			err := c.UpdateConfigFile(frrconfig.Empty)
 			Expect(err).NotTo(HaveOccurred())
 		}
 		err := updater.Clean()

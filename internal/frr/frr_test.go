@@ -6,6 +6,7 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -82,6 +83,15 @@ func testSetup(t *testing.T) {
 	osHostname = testOsHostname
 }
 
+func testNewFRR(t *testing.T, ctx context.Context) *FRR {
+	t.Helper()
+	frr, err := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	if err != nil {
+		t.Fatalf("Failed to create FRR instance: %s", err)
+	}
+	return frr
+}
+
 func testCheckConfigFile(t *testing.T) {
 	configFile, goldenFile := testGenerateFileNames(t)
 
@@ -104,7 +114,7 @@ var emptyCB = func() {}
 func TestSingleSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -138,10 +148,84 @@ func TestSingleSession(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestSingleSessionWithNextHopV4(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "65001",
+						Addr:     "192.168.1.2",
+						Port:     ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+								"192.170.1.0/22",
+							},
+							NextHopV4: "192.168.1.1",
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24", "192.170.1.0/22"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithNextHopV6(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv6,
+						ASN:      "65001",
+						Addr:     "2001:db8::1",
+						Outgoing: AllowedOut{
+							PrefixesV6: []string{
+								"2001:db8:abcd::/48",
+							},
+							NextHopV6: "2001:db8::2",
+						},
+					},
+				},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestTwoRoutersTwoNeighbors(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -207,7 +291,7 @@ func TestTwoRoutersTwoNeighbors(t *testing.T) {
 func TestTwoSessionsAcceptAll(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -246,7 +330,7 @@ func TestTwoSessionsAcceptAll(t *testing.T) {
 func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -299,7 +383,7 @@ func TestTwoSessionsAcceptSomeV4(t *testing.T) {
 func TestTwoSessionsAcceptV4AndV6(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -419,7 +503,7 @@ func TestSingleSessionWithEBGPMultihop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -457,7 +541,7 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -495,7 +579,7 @@ func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -544,7 +628,7 @@ func TestMultipleNeighborsOneV4AndOneV6DualStackIPFamily(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -592,7 +676,7 @@ func TestMultipleRoutersMultipleNeighs(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -668,7 +752,7 @@ func TestSingleSessionWithEBGPMultihopAndExtras(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -707,7 +791,7 @@ func TestSingleSessionWithAlwaysBlock(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -779,7 +863,7 @@ func TestSingleSessionWithGracefulRestart(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -812,7 +896,7 @@ func TestSingleSessionWithLocalASN(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -839,13 +923,184 @@ func TestSingleSessionWithLocalASN(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestSingleSessionWithAllowAsIn3(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:  ipfamily.IPv4,
+						ASN:       "65001",
+						Addr:      "192.168.1.2",
+						AllowAsIn: "3",
+					},
+				},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithAllowAsInOrigin(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:  ipfamily.IPv4,
+						ASN:       "65001",
+						Addr:      "192.168.1.2",
+						AllowAsIn: "origin",
+					},
+				},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionWithAllowAsInNone(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:  ipfamily.IPv4,
+						ASN:       "65001",
+						Addr:      "192.168.1.2",
+						AllowAsIn: "none",
+					},
+				},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionDualStackWithAllowAsIn(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:  ipfamily.DualStack,
+						ASN:       "65001",
+						Addr:      "192.168.1.2",
+						AllowAsIn: "3",
+					},
+				},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNWithAllowAsIn(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"unicast", "evpn"},
+						AllowAsIn:       "3",
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestMultipleRoutersImportVRFs(t *testing.T) {
 	testSetup(t)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 
 	config := Config{
 		Routers: []*RouterConfig{
@@ -890,7 +1145,7 @@ func TestMultipleRoutersImportVRFs(t *testing.T) {
 func TestSingleSessionWithInternalASN(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -925,7 +1180,7 @@ func TestSingleSessionWithInternalASN(t *testing.T) {
 func TestSingleSessionWithExternalASN(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -959,7 +1214,7 @@ func TestSingleSessionWithExternalASN(t *testing.T) {
 func TestSingleUnnumberedSession(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
@@ -999,11 +1254,305 @@ func TestSingleUnnumberedSession(t *testing.T) {
 func TestLogLevelDebugging(t *testing.T) {
 	testSetup(t)
 	ctx, cancel := context.WithCancel(context.Background())
-	frr := NewFRR(ctx, emptyCB, testDebounceTimeout)
+	frr := testNewFRR(t, ctx)
 	defer cancel()
 
 	config := Config{
 		Loglevel: LevelFrom(logging.LevelDebug),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionExplicitRouterID(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN:    65000,
+				RouterID: "10.10.10.1",
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv4,
+						ASN:      "65001",
+						Addr:     "192.168.1.2",
+						Port:     ptr.To[uint16](4567),
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{
+								"192.169.1.0/24",
+							},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestSingleSessionIPv6OnlyNode(t *testing.T) {
+	testSetup(t)
+	netInterfaceAddrs = func() ([]net.Addr, error) {
+		return nil, nil
+	}
+	t.Cleanup(func() { netInterfaceAddrs = net.InterfaceAddrs })
+
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily: ipfamily.IPv6,
+						ASN:      "65001",
+						Addr:     "2001:db8::1",
+						Port:     ptr.To[uint16](179),
+						Outgoing: AllowedOut{
+							PrefixesV6: []string{
+								"2001:db8:1::/64",
+							},
+						},
+					},
+				},
+				IPV6Prefixes: []string{"2001:db8:1::/64"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNWithL2VNIs(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"unicast", "evpn"},
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
+						},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					L2VNIs: []L2VNI{
+						{
+							VNI: 1000,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1000",
+								ImportRTs: []string{"65000:1000"},
+								ExportRTs: []string{"65000:1000"},
+							},
+						},
+						{
+							VNI: 2000,
+						},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNWithL3VNI(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				VRF:   "red",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 3000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:3000",
+							ImportRTs: []string{"65000:3000"},
+							ExportRTs: []string{"65000:3000"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNNeighborOnlyEVPN(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"evpn"},
+					},
+				},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					AdvertiseSVI:  true,
+				},
+			},
+		},
+	}
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
+func TestEVPNFull(t *testing.T) {
+	testSetup(t)
+	ctx, cancel := context.WithCancel(context.Background())
+	frr := testNewFRR(t, ctx)
+	defer cancel()
+
+	config := Config{
+		Loglevel: LevelFrom(logging.LevelInfo),
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:        ipfamily.IPv4,
+						ASN:             "65001",
+						Addr:            "192.168.1.2",
+						AddressFamilies: []string{"unicast", "evpn"},
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{"192.169.1.0/24"},
+							PrefixesV6: []string{},
+						},
+					},
+					{
+						IPFamily:        ipfamily.IPv6,
+						ASN:             "65002",
+						Addr:            "2001:db8::1",
+						EBGPMultiHop:    true,
+						AddressFamilies: []string{"evpn"},
+					},
+				},
+				IPV4Prefixes: []string{"192.169.1.0/24"},
+				EVPN: &EVPNConfig{
+					AdvertiseVNIs: ptr.To("All"),
+					AdvertiseSVI:  true,
+					L2VNIs: []L2VNI{
+						{
+							VNI: 1000,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1000",
+								ImportRTs: []string{"65000:1000"},
+								ExportRTs: []string{"65000:1000"},
+							},
+						},
+						{
+							VNI: 1001,
+							VNIProperties: VNIProperties{
+								RD:        "65000:1001",
+								ImportRTs: []string{"65000:1001", "65000:1099"},
+								ExportRTs: []string{"65000:1001"},
+							},
+						},
+						{
+							VNI: 1002,
+						},
+					},
+				},
+			},
+			{
+				MyASN: 65000,
+				VRF:   "red",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 3000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:3000",
+							ImportRTs: []string{"65000:3000"},
+							ExportRTs: []string{"65000:3000"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+			{
+				MyASN: 65000,
+				VRF:   "blue",
+				EVPN: &EVPNConfig{
+					L3VNI: &L3VNI{
+						VNI: 4000,
+						VNIProperties: VNIProperties{
+							RD:        "65000:4000",
+							ImportRTs: []string{"65000:4000", "65000:4099"},
+							ExportRTs: []string{"65000:4000", "65000:4099"},
+						},
+						AdvertisePrefixes: []string{"unicast"},
+					},
+				},
+			},
+		},
 	}
 	err := frr.ApplyConfig(&config)
 	if err != nil {

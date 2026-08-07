@@ -59,6 +59,7 @@ type RawConfig struct {
 type BGPConfig struct {
 	// Routers is the list of routers we want FRR to configure (one per VRF).
 	// +optional
+	// +kubebuilder:validation:MaxItems=50
 	Routers []Router `json:"routers,omitempty"`
 	// BFDProfiles is the list of bfd profiles to be used when configuring the neighbors.
 	// +optional
@@ -88,6 +89,10 @@ type Router struct {
 	// Imports is the list of imported VRFs we want for this router / vrf.
 	// +optional
 	Imports []Import `json:"imports,omitempty"`
+
+	// EVPN specific configuration for the router.
+	// +optional
+	EVPN *EVPNConfig `json:"evpn,omitempty"`
 }
 
 // Import represents the possible imported VRFs to a given router.
@@ -189,11 +194,12 @@ type Neighbor struct {
 	EnableGracefulRestart bool `json:"enableGracefulRestart,omitempty"`
 
 	// ToAdvertise represents the list of prefixes to advertise to the given neighbor
-	// and the associated properties.
+	// and the associated properties. Only applies to IPv4 and IPv6 unicast address families.
 	// +optional
 	ToAdvertise Advertise `json:"toAdvertise,omitempty"`
 
 	// ToReceive represents the list of prefixes to receive from the given neighbor.
+	// Only applies to IPv4 and IPv6 unicast address families.
 	// +optional
 	ToReceive Receive `json:"toReceive,omitempty"`
 
@@ -222,6 +228,30 @@ type Neighbor struct {
 	// +kubebuilder:validation:Maximum=4294967295
 	// +kubebuilder:validation:Format=int64
 	LocalASN uint32 `json:"localASN,omitempty"`
+
+	// AllowAsIn controls whether routes with the local AS number in the AS path
+	// are accepted from this neighbor for the enabled address families.
+	// This is useful in hub-and-spoke or route-leaking topologies where the
+	// same AS number may appear multiple times in the path.
+	// Possible values:
+	// - "" (empty, default): routes with the local AS in the path are rejected.
+	//   Does not reject other AllowAsIn values targeting the same neighbor.
+	// - "none": routes with the local AS in the path are rejected.
+	//   Rejects other AllowAsIn values targeting the same neighbor.
+	// - "origin": routes are accepted only if the local AS appears as the origin (last AS in the path).
+	// - "1"-"10": routes are accepted with up to this many occurrences of the local AS in the path.
+	// When multiple configurations target the same neighbor, any combination of
+	// values resolves to the least restrictive, except "none" which rejects
+	// all other values.
+	// +optional
+	AllowAsIn AllowAsInMode `json:"allowAsIn,omitempty"`
+
+	// AddressFamilies specifies which address families to activate this neighbor for.
+	// Supported values: "unicast" (IPv4/IPv6 unicast based on neighbor IP), "evpn" (L2VPN EVPN).
+	// +optional
+	// +kubebuilder:default:={"unicast"}
+	// +kubebuilder:validation:MaxItems=2
+	AddressFamilies []AddressFamily `json:"addressFamilies,omitempty"`
 }
 
 // Advertise represents a list of prefixes to advertise to the given neighbor.
@@ -231,6 +261,11 @@ type Advertise struct {
 	// Allowed is is the list of prefixes allowed to be propagated to
 	// this neighbor. They must match the prefixes defined in the router.
 	Allowed AllowedOutPrefixes `json:"allowed,omitempty"`
+
+	// NextHop sets the BGP next-hop address to advertise with prefixes
+	// sent to this neighbor.
+	// +optional
+	NextHop NextHop `json:"nextHop,omitempty"`
 
 	// PrefixesWithLocalPref is a list of prefixes that are associated to a local
 	// preference when being advertised. The prefixes associated to a given local pref
@@ -243,6 +278,19 @@ type Advertise struct {
 	// must be in the prefixes allowed to be advertised.
 	// +optional
 	PrefixesWithCommunity []CommunityPrefixes `json:"withCommunity,omitempty"`
+}
+
+// NextHop sets the BGP next-hop address for advertised prefixes.
+type NextHop struct {
+	// IPv4 is the next-hop address to advertise with IPv4 prefixes.
+	// +optional
+	// +kubebuilder:validation:Format=ipv4
+	IPv4 string `json:"ipv4,omitempty"`
+
+	// IPv6 is the next-hop address to advertise with IPv6 prefixes.
+	// +optional
+	// +kubebuilder:validation:Format=ipv6
+	IPv6 string `json:"ipv6,omitempty"`
 }
 
 // Receive represents a list of prefixes to receive from the given neighbor.
@@ -427,3 +475,150 @@ const (
 	InternalASNMode DynamicASNMode = "internal"
 	ExternalASNMode DynamicASNMode = "external"
 )
+
+// AddressFamily specifies an address family for BGP neighbor activation.
+// +kubebuilder:validation:Enum=unicast;evpn
+type AddressFamily string
+
+const (
+	AddressFamilyUnicast AddressFamily = "unicast"
+	AddressFamilyEVPN    AddressFamily = "evpn"
+)
+
+// AllowAsInMode specifies whether routes with the local AS in the path are accepted from a neighbor.
+// +kubebuilder:validation:Enum="";none;origin;"1";"2";"3";"4";"5";"6";"7";"8";"9";"10"
+type AllowAsInMode string
+
+const (
+	AllowAsInNone   AllowAsInMode = "none"
+	AllowAsInOrigin AllowAsInMode = "origin"
+)
+
+// AdvertisePrefixType specifies a prefix type to advertise as EVPN type-5 routes.
+// +kubebuilder:validation:Enum=unicast
+type AdvertisePrefixType string
+
+const (
+	AdvertisePrefixUnicast AdvertisePrefixType = "unicast"
+)
+
+// EVPNConfig contains configuration related to EVPN.
+type EVPNConfig struct {
+	// AdvertiseVNIs controls how VNIs are advertised to EVPN neighbors.
+	// - "Disabled": No VNI advertisements
+	// - "All": Avertise all VNIs
+	// Note: Can only be provided for router instances with EVPN neighbors.
+	// +optional
+	// +kubebuilder:validation:Enum=Disabled;All
+	AdvertiseVNIs *VNIAdvertisement `json:"advertiseVNIs,omitempty"`
+
+	// AdvertiseSVI enables advertising the SVI IP/MAC as a type-2 route.
+	// +optional
+	AdvertiseSVI bool `json:"advertiseSVI,omitempty"`
+
+	// L2VNIs contains configuration for Layer 2 VNIs.
+	// Note: Can only be provided for router instances with EVPN neighbors.
+	// +optional
+	// +kubebuilder:validation:MaxItems=10
+	L2VNIs []L2VNI `json:"l2vnis,omitempty"`
+
+	// L3VNI contains configuration for the Layer 3 VNI.
+	// Note: Can only be provided for router instances with no neighbors.
+	// This is a temporary limitation until proper EVPN prefix filtering is implemented.
+	// +optional
+	L3VNI *L3VNI `json:"l3vni,omitempty"`
+}
+
+// VNIAdvertisement defines how VNIs are advertised in EVPN.
+// +kubebuilder:validation:Enum=Disabled;All
+type VNIAdvertisement string
+
+const (
+	// VNIAdvertisementDisabled disables VNI advertisement.
+	VNIAdvertisementDisabled VNIAdvertisement = "Disabled"
+
+	// VNIAdvertisementAll enables advertisement of all VNIs.
+	VNIAdvertisementAll VNIAdvertisement = "All"
+)
+
+// VNIProperties contains common properties for all VNI types.
+type VNIProperties struct {
+	// RD is the route distinguisher for this VNI.
+	// Format: A.B.C.D:MN|EF:OPQR|GHJK:MN (e.g., "65000:100" or "192.0.2.1:100")
+	// +optional
+	RD RouteDistinguisher `json:"rd,omitempty"`
+
+	// ImportRTs is the list of route targets to import.
+	// Format: A.B.C.D:MN|EF:OPQR|GHJK:MN|*:MN|*:OPQR (e.g., "65000:100", "192.0.2.1:100", "*:100")
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	ImportRTs []ImportRouteTarget `json:"importRTs,omitempty"`
+
+	// ExportRTs is the list of route targets to export.
+	// Format: A.B.C.D:MN|EF:OPQR|GHJK:MN (e.g., "65000:100", "192.0.2.1:100")
+	// +optional
+	// +kubebuilder:validation:MaxItems=100
+	ExportRTs []ExportRouteTarget `json:"exportRTs,omitempty"`
+}
+
+// L2VNI represents a Layer 2 VNI configuration.
+type L2VNI struct {
+	// VNI is the VXLAN Network Identifier (1-16777215).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=16777215
+	VNI uint32 `json:"vni"`
+
+	VNIProperties `json:",inline"`
+}
+
+// L3VNI represents a Layer 3 VNI configuration.
+type L3VNI struct {
+	// VNI is the VXLAN Network Identifier (1-16777215).
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=16777215
+	VNI uint32 `json:"vni"`
+
+	VNIProperties `json:",inline"`
+
+	// AdvertisePrefixes controls which prefixes to advertise as EVPN type-5 routes.
+	// - "unicast": advertise the unicast prefixes of the router.
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:MaxItems=1
+	AdvertisePrefixes []AdvertisePrefixType `json:"advertisePrefixes"`
+}
+
+// RouteDistinguisher defines an 8-byte BGP identifier.
+// +kubebuilder:validation:MaxLength=21
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() == 2",message="RD must contain exactly one colon"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || (isIP(self.split(':')[0]) || self.split(':')[0].matches('[0-9]+'))",message="RD global administrator must be either an IPv4 address or a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[1].matches('[0-9]+')",message="RD local administrator must be a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || !self.split(':')[0].contains('.') || (self.split(':')[1].matches('[0-9]+') && uint(self.split(':')[1]) <= 65535u)",message="RD with IPv4 global administrator must have format A.B.C.D:MN where MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) <= 65535u || uint(self.split(':')[1]) <= 65535u",message="RD with 4-byte ASN global administrator must have format GHJK:MN where GHJK <= 4294967295 and MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) > 65535u || uint(self.split(':')[1]) <= 4294967295u",message="RD with 2-byte ASN global administrator must have format EF:OPQR where EF <= 65535 and OPQR <= 4294967295"
+type RouteDistinguisher string
+
+// ImportRouteTarget defines a BGP Extended Community for route filtering on import.
+// Supports wildcard matching with "*" as the global administrator (e.g., "*:100").
+// +kubebuilder:validation:MaxLength=21
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() == 2",message="RT must contain exactly one colon"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || (self.startsWith('*:') || isIP(self.split(':')[0]) || self.split(':')[0].matches('[0-9]+'))",message="RT global administrator must be either '*', an IPv4 address, or a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[1].matches('[0-9]+')",message="RT local administrator must be a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || !self.startsWith('*:') || (self.split(':')[1].matches('[0-9]+') && uint(self.split(':')[1]) <= 4294967295u)",message="RT with wildcard global administrator must have format *:OPQR where OPQR <= 4294967295"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || !self.split(':')[0].contains('.') || (self.split(':')[1].matches('[0-9]+') && uint(self.split(':')[1]) <= 65535u)",message="RT with IPv4 global administrator must have format A.B.C.D:MN where MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.startsWith('*:') || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) <= 65535u || uint(self.split(':')[1]) <= 65535u",message="RT with 4-byte ASN global administrator must have format GHJK:MN where GHJK <= 4294967295 and MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.startsWith('*:') || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) > 65535u || uint(self.split(':')[1]) <= 4294967295u",message="RT with 2-byte ASN global administrator must have format EF:OPQR where EF <= 65535 and OPQR <= 4294967295"
+type ImportRouteTarget string
+
+// ExportRouteTarget defines a BGP Extended Community for route filtering on export.
+// Does NOT support wildcard matching (wildcards are only valid for import).
+// +kubebuilder:validation:MaxLength=21
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() == 2",message="RT must contain exactly one colon"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || (isIP(self.split(':')[0]) || self.split(':')[0].matches('[0-9]+'))",message="RT global administrator must be either an IPv4 address or a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[1].matches('[0-9]+')",message="RT local administrator must be a number"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || !self.split(':')[0].contains('.') || (self.split(':')[1].matches('[0-9]+') && uint(self.split(':')[1]) <= 65535u)",message="RT with IPv4 global administrator must have format A.B.C.D:MN where MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) <= 65535u || uint(self.split(':')[1]) <= 65535u",message="RT with 4-byte ASN global administrator must have format GHJK:MN where GHJK <= 4294967295 and MN <= 65535"
+// +kubebuilder:validation:XValidation:rule="self.split(':').size() != 2 || self.split(':')[0].contains('.') || !self.split(':')[0].matches('[0-9]+') || !self.split(':')[1].matches('[0-9]+') || uint(self.split(':')[0]) > 65535u || uint(self.split(':')[1]) <= 4294967295u",message="RT with 2-byte ASN global administrator must have format EF:OPQR where EF <= 65535 and OPQR <= 4294967295"
+type ExportRouteTarget string
