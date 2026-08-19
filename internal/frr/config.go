@@ -12,6 +12,7 @@ import (
 	"slices"
 	"sort"
 	"strconv"
+	"strings"
 	"syscall"
 	"text/template"
 	"time"
@@ -123,21 +124,25 @@ func (a *AllowedIn) AllPrefixes() []IncomingFilter {
 }
 
 type AllowedOut struct {
-	PrefixesV4                 []string
-	PrefixesV6                 []string
-	NextHopV4                  string
-	NextHopV6                  string
-	LocalPrefPrefixesModifiers []LocalPrefPrefixList
-	CommunityPrefixesModifiers []CommunityPrefixList
+	PrefixesV4                     []string
+	PrefixesV6                     []string
+	NextHopV4                      string
+	NextHopV6                      string
+	LocalPrefPrefixesModifiers     []LocalPrefPrefixList
+	CommunityPrefixesModifiers     []CommunityPrefixList
+	AsPathPrependPrefixesModifiers []AsPathPrependPrefixList
 }
 
 func (a AllowedOut) PrefixLists() []PropertyPrefixList {
-	res := make([]PropertyPrefixList, len(a.LocalPrefPrefixesModifiers)+len(a.CommunityPrefixesModifiers))
+	res := make([]PropertyPrefixList, len(a.LocalPrefPrefixesModifiers)+len(a.CommunityPrefixesModifiers)+len(a.AsPathPrependPrefixesModifiers))
 	for i, v := range a.LocalPrefPrefixesModifiers {
 		res[i] = v
 	}
 	for i, v := range a.CommunityPrefixesModifiers {
 		res[i+len(a.LocalPrefPrefixesModifiers)] = v
+	}
+	for i, v := range a.AsPathPrependPrefixesModifiers {
+		res[i+len(a.LocalPrefPrefixesModifiers)+len(a.CommunityPrefixesModifiers)] = v
 	}
 	sort.Slice(res, func(i, j int) bool {
 		return res[i].PrefixListName() < res[j].PrefixListName()
@@ -179,6 +184,20 @@ type LocalPrefPrefixList struct {
 
 func (pl LocalPrefPrefixList) SetStatement() string {
 	return fmt.Sprintf("set local-preference %d", pl.LocalPref)
+}
+
+type AsPathPrependPrefixList struct {
+	PrefixList
+	PrependASN   string
+	PrependCount uint8
+}
+
+func (pl AsPathPrependPrefixList) SetStatement() string {
+	parts := make([]string, pl.PrependCount)
+	for i := range parts {
+		parts[i] = pl.PrependASN
+	}
+	return fmt.Sprintf("set as-path prepend %s", strings.Join(parts, " "))
 }
 
 type PropertyPrefixList interface {

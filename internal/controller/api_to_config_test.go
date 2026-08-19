@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -14,6 +15,7 @@ import (
 	v1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 	"github.com/metallb/frr-k8s/internal/frr"
 	"github.com/metallb/frr-k8s/internal/ipfamily"
+	"k8s.io/apimachinery/pkg/util/sets"
 
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -389,6 +391,251 @@ func TestConversion(t *testing.T) {
 			err: nil,
 		},
 		{
+			name: "Neighbor with prefixes with AS path prepending",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+													{
+														Prefixes:      []string{"192.0.2.0/24"},
+														AsPathPrepend: 3,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      "65041",
+								Addr:     "192.0.2.21",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+									AsPathPrependPrefixesModifiers: []frr.AsPathPrependPrefixList{
+										asPathPrependPrefixListFor("192.0.2.21", "65040", 3, "ip", []string{"192.0.2.0/24"}),
+									},
+								},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "Neighbor with prefixes with AS path prepending equal 0",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+													{
+														Prefixes:      []string{"192.0.2.0/24"},
+														AsPathPrepend: 0,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("AsPathPrepend can't be zero"),
+		},
+		{
+			name: "Neighbor with LocalASN with prefixes with AS path prepending",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:      65041,
+											LocalASN: 64520,
+											Address:  "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+													{
+														Prefixes:      []string{"192.0.2.0/24"},
+														AsPathPrepend: 3,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:    65040,
+						RouterID: "192.0.2.20",
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      "65041",
+								LocalASN: 64520,
+								Addr:     "192.0.2.21",
+								Outgoing: frr.AllowedOut{
+									PrefixesV4: []string{"192.0.2.0/24"},
+									AsPathPrependPrefixesModifiers: []frr.AsPathPrependPrefixList{
+										asPathPrependPrefixListFor("192.0.2.21", "64520", 3, "ip", []string{"192.0.2.0/24"}),
+									},
+								},
+							},
+						},
+						IPV4Prefixes: []string{"192.0.2.0/24"},
+					},
+				},
+			},
+			err: nil,
+		},
+		{
+			name: "One neighbor, trying to set multiple asPathPrepend values for a prefix",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+													{
+														Prefixes:      []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24"},
+														AsPathPrepend: 2,
+													},
+													{
+														Prefixes:      []string{"192.0.4.0/24", "192.0.3.0/24"},
+														AsPathPrepend: 3,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24", "192.0.3.0/24", "192.0.4.0/24", "2001:db8::/64"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("prefix %s is configured with both as path prepend %d and %d", []string{"192.0.4.0/24", "192.0.3.0/24"}, 2, 3),
+		},
+		{
+			name: "Invalid asPathPrepend prefix",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToAdvertise: v1beta1.Advertise{
+												Allowed: v1beta1.AllowedOutPrefixes{
+													Prefixes: []string{"192.0.2.0/24"},
+													Mode:     v1beta1.AllowRestricted,
+												},
+												PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+													{
+														Prefixes:      []string{"192.0.2.0/24", "12!34!56!78"},
+														AsPathPrepend: 2,
+													},
+												},
+											},
+										},
+									},
+									Prefixes: []string{"192.0.2.0/24"},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets:  map[string]v1.Secret{},
+			expected: nil,
+			err:      fmt.Errorf("invalid prefixes %s for asPathPrepend %d for neighbor %s, err: unknown ipfamily for %s", []string{"192.0.2.0/24", "12!34!56!78"}, 2, "65041@192.0.2.21", "12!34!56!78"),
+		},
+		{
 			name: "IPv6 neighbor with ToAdvertise next hop",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{
@@ -536,7 +783,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("failed to process neighbor %s for router %d-: invalid ipv4 next hop \"%s\" for neighbor %s", "65041@192.0.2.21", 65040, "2001:db8::1", "65041@192.0.2.21"),
 		},
 		{
 			name: "Invalid ipv6 next hop",
@@ -570,7 +817,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("failed to process neighbor %s for router %d-: invalid ipv6 next hop \"%s\" for neighbor %s", "65041@2001:db8::21", 65040, "192.0.2.1", "65041@2001:db8::21"),
 		},
 		{
 			name: "IPv4 neighbor with ipv6 next hop",
@@ -604,7 +851,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("failed to process neighbor %s for router %d-: ipv6 next hop \"%s\" set for neighbor %s without an ipv6 address family", "65041@192.0.2.21", 65040, "2001:db8::1", "65041@192.0.2.21"),
 		},
 		{
 			name: "IPv6 neighbor with ipv4 next hop",
@@ -638,7 +885,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("failed to process neighbor %s for router %d-: ipv4 next hop \"%s\" set for neighbor %s without an ipv4 address family", "65041@2001:db8::21", 65040, "192.0.2.1", "65041@2001:db8::21"),
 		},
 		{
 			name: "Two Neighbor with ToAdvertise, one advertise all",
@@ -976,7 +1223,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("prefix %s is not an allowed prefix", "192.0.3.0/24"),
+			err:      fmt.Errorf("trying to advertise non configured prefix %s to neighbor %s", "192.0.3.0/24", "65041@192.0.2.21"),
 		},
 		{
 			name: "One neighbor, trying to set community on an unallowed prefix",
@@ -1019,7 +1266,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("prefix %s with community %s not in allowed list for neighbor %s", "192.0.10.10/32", "10:100", "192.0.2.21"),
+			err:      fmt.Errorf("failed to process neighbor %s for router %d-: failed to process local pref for neighbor %s, err: community %s is already defined", "65041@192.0.2.21", 65040, "65041@192.0.2.21", "10:100"),
 		},
 		{
 			name: "One neighbor, trying to set localPref on an unallowed prefix",
@@ -1062,7 +1309,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("localPref associated to non existing prefix %s", "192.0.10.10/32"),
+			err:      fmt.Errorf("failed to process neighbor %s for router %d-: failed to process local pref for neighbor %s, err: localPref %d associated to non existing prefix %s", "65041@192.0.2.21", 65040, "65041@192.0.2.21", 101, "192.0.10.10/32"),
 		},
 		{
 			name: "One neighbor, trying to set multiple localPrefs for a prefix",
@@ -1105,7 +1352,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("multiple local prefs specified for prefix %s", "192.0.4.0/24"),
+			err:      fmt.Errorf("prefix %s is configured with both local preference %d and %d", []string{"192.0.4.0/24"}, 100, 104),
 		},
 		{
 			name: "One neighbor, trying to set samelocalPrefs for different prefix entries",
@@ -1148,7 +1395,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("a not nil error"),
+			err:      fmt.Errorf("failed to process neighbor %s for router %d-: failed to process local pref for neighbor %s, err: local preference %d is already defined", "65041@192.0.2.21", 65040, "65041@192.0.2.21", 100),
 		},
 		{
 			name: "One neighbor, trying to set localpref on non existing prefix",
@@ -1182,7 +1429,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("a not nil error"),
+			err:      fmt.Errorf("failed to process neighbor %s for router %d-: failed to process local pref for neighbor %s, err: localPref %d associated to non existing prefix %s", "65041@192.0.2.21", 65040, "65041@192.0.2.21", 100, "10.0.0.0/24"),
 		},
 		{
 			name: "One neighbor, trying to set samelocalPrefs for a prefix twice",
@@ -1221,7 +1468,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      fmt.Errorf("a not nil error"),
+			err:      fmt.Errorf("failed to process neighbor %s for router %d-: failed to process local pref for neighbor %s, err: prefix %s is already defined for local preference %d", "65041@192.0.2.21", 65040, "65041@192.0.2.21", "192.0.2.0/24", 100),
 		},
 		{
 			name: "Neighbor with ToReceiveAll",
@@ -1435,7 +1682,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      errors.New("failed to process neighbor 65041@192.0.2.21 for router 65040-: invalid prefix 192.0.2.0/24 selector: GE 12 > LE 10"),
+			err:      fmt.Errorf("failed to process neighbor 65041@192.0.2.21 for router 65040-: invalid selector lengths: ge 12 is bigger than le 10"),
 		},
 		{
 			name: "Multiple FRRConfigurations - Single Router and neighbor, one config for advertise the other for receiving",
@@ -2031,7 +2278,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			expected: nil,
-			err:      errors.New("failed to process neighbor 65012@192.0.2.7 for router 65010-: secret ref not found for neighbor 65012@192.0.2.7"),
+			err:      fmt.Errorf("failed to process neighbor 65012@192.0.2.7 for router 65010-: secret secret1 not found for neighbor 65012@192.0.2.7"),
 		},
 		{
 			name: "Specifying both cleartext password and secret ref",
@@ -2246,7 +2493,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      errors.New("got failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
+			err:      fmt.Errorf("failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
 		},
 		{
 			name: "Neighbor with BFDProfile in different config",
@@ -2286,7 +2533,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      errors.New("got failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
+			err:      fmt.Errorf("failed to process neighbor 65041@192.0.2.21 for router 65040-: neighbor 65041@192.0.2.21 referencing non existing BFDProfile bfd2"),
 		},
 		{
 			name: "Two BFDProfiles, but identical",
@@ -2407,7 +2654,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: one of KeepaliveTime/HoldTime specified, both must be set or none`),
+			err:      fmt.Errorf("failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid timers for neighbor 65002@192.0.2.2, err: one of KeepaliveTime/HoldTime specified, both must be set or none"),
 		},
 		{
 			name: "KeepaliveTime without HoldTime",
@@ -2434,7 +2681,7 @@ func TestConversion(t *testing.T) {
 			},
 			secrets:  map[string]v1.Secret{},
 			expected: nil,
-			err:      errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: one of KeepaliveTime/HoldTime specified, both must be set or none`),
+			err:      fmt.Errorf("failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid timers for neighbor 65002@192.0.2.2, err: one of KeepaliveTime/HoldTime specified, both must be set or none"),
 		},
 		{
 			name: "HoldTime bigger than keepalive time",
@@ -2466,7 +2713,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New(`failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid keepaliveTime {"50s"}`),
+			err:     fmt.Errorf("failed to process neighbor 65002@192.0.2.2 for router 65001-: invalid timers for neighbor 65002@192.0.2.2, err: invalid keepaliveTime \"&Duration{Duration:50s,}\", must be lower than holdTime \"&Duration{Duration:40s,}\""),
 		},
 		{
 			name: "With alwaysblock",
@@ -3016,7 +3263,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("failed to process neighbor %s for router %d-: neighbor with ASN %d has no address and no interface", "65010@", 65010, 65010),
 		},
 		{
 			name: "Single router two neighbors same address different ASN",
@@ -3045,7 +3292,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			expected: nil,
-			err:      errors.New("a not nil error"),
+			err:      fmt.Errorf("multiple asns specified for %s", "192.0.2.21"),
 		},
 		{
 			name: "Single router two neighbors same interface different ASN",
@@ -3075,7 +3322,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("multiple asns specified for %s", "eth0"),
 		},
 		{
 			name: "Single router two neighbors different interface",
@@ -3167,7 +3414,7 @@ func TestConversion(t *testing.T) {
 				},
 			},
 			secrets: map[string]v1.Secret{},
-			err:     errors.New("a not nil error"),
+			err:     fmt.Errorf("multiple asns specified for %s-%s", "eth0", "blue"),
 		},
 		{
 			name: "Multiple routers same vrf two neighbors different interface",
@@ -3789,6 +4036,10 @@ func TestConversion(t *testing.T) {
 				t.Fatalf("expected no error, got %v", err)
 			}
 
+			if test.err != nil && err != nil && !strings.Contains(err.Error(), test.err.Error()) {
+				t.Fatalf("expected error containing %q, got %q", test.err.Error(), err.Error())
+			}
+
 			if diff := cmp.Diff(frr, test.expected,
 				cmpopts.EquateEmpty(),
 				cmp.Comparer(communityComparer),
@@ -3906,5 +4157,33 @@ func TestFilterForSelector(t *testing.T) {
 				t.Fatalf("filter different from expected: %s", diff)
 			}
 		})
+	}
+}
+
+func TestPrefixesWithAsPathPrependToFRR_DualStackFilter(t *testing.T) {
+	toAdd := make(map[string]frr.AsPathPrependPrefixList)
+	neighbor := &frr.NeighborConfig{LocalASN: 65040}
+
+	// Simulate a dual-stack CRD configuration with matching prepend counts
+	toAdvertise := v1beta1.Advertise{
+		PrefixesWithAsPathPrepend: []v1beta1.AsPathPrependPrefixes{
+			{
+				Prefixes:      []string{"192.0.2.0/24"},
+				AsPathPrepend: 3,
+			},
+			{
+				Prefixes:      []string{"2001:db8::/64"},
+				AsPathPrepend: 3,
+			},
+		},
+	}
+
+	routerPrefixes := sets.New("192.0.2.0/24", "2001:db8::/64")
+
+	// Execute the function simulating the IPv4 pass
+	_, err := prefixesWithAsPathPrependToFRR(toAdd, neighbor, toAdvertise, ipfamily.IPv4, routerPrefixes, 65040)
+
+	if err != nil {
+		t.Fatalf("expected no error during IPv4 dual-stack pass, got: %v", err)
 	}
 }
