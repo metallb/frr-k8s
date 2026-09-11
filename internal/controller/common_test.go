@@ -25,12 +25,13 @@ import (
 )
 
 var (
-	cfg       *rest.Config
-	k8sClient client.Client
-	testEnv   *envtest.Environment
-	ctx       context.Context
-	cancel    context.CancelFunc
-	logBuffer bytes.Buffer
+	cfg         *rest.Config
+	k8sClient   client.Client
+	cacheClient client.Client
+	testEnv     *envtest.Environment
+	ctx         context.Context
+	cancel      context.CancelFunc
+	logBuffer   bytes.Buffer
 )
 
 const (
@@ -72,6 +73,7 @@ var _ = BeforeSuite(func() {
 		Scheme: scheme.Scheme,
 	})
 	Expect(err).ToNot(HaveOccurred())
+	cacheClient = k8sManager.GetClient()
 
 	defaultLogLevel := logging.LevelDebug
 	err = logging.InitWithWriter(&logBuffer)
