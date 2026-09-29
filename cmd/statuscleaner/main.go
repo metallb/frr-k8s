@@ -132,10 +132,10 @@ func main() {
 	podSelector := cache.ByObject{
 		Field:     fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
 		Label:     frrk8sSelector,
-		Transform: cache.TransformStripManagedFields(),
+		Transform: stripFRRPodForCleaner,
 	}
 	nodeStateSelector := cache.ByObject{
-		Transform: cache.TransformStripManagedFields(),
+		Transform: stripFRRNodeStateStatus,
 	}
 
 	options := ctrl.Options{
@@ -195,6 +195,31 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// stripFRRPodForCleaner keeps the metadata and node name used to find matching
+// Pods. Removing the remaining spec and status reduces cache memory and copies.
+func stripFRRPodForCleaner(obj any) (any, error) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		return obj, nil
+	}
+	pod.Spec = corev1.PodSpec{NodeName: pod.Spec.NodeName}
+	pod.Status = corev1.PodStatus{}
+	pod.SetManagedFields(nil)
+	return pod, nil
+}
+
+// stripFRRNodeStateStatus releases status data, including running configuration
+// strings. The cleaner only needs the state's identity to delete it.
+func stripFRRNodeStateStatus(obj any) (any, error) {
+	nodeState, ok := obj.(*frrk8sv1beta1.FRRNodeState)
+	if !ok {
+		return obj, nil
+	}
+	nodeState.Status = frrk8sv1beta1.FRRNodeStateStatus{}
+	nodeState.SetManagedFields(nil)
+	return nodeState, nil
 }
 
 func startNodeStateCleaner(mgr manager.Manager, namespace string, frrk8sSelector labels.Selector, defaultLogLevel logging.Level) {
