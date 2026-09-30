@@ -188,6 +188,13 @@ route-map 192.168.1.1-out permit 3
   its `allowed.mode`.
 - Because redistributed prefixes never appear in a neighbor's prefix-list, the
   webhook's outgoing-prefix check (`validateOutgoingPrefixes`) is unchanged.
+- Tag-scoped egress relies on one tagged path per prefix. BGP selects a single
+  best path per prefix before a neighbor's outbound policy runs; if the same
+  prefix could enter from two tables, only the winning table's tag would reach
+  the `-out` route-map, and a neighbor opted into the other table would
+  silently not advertise it (FRR does not fall back to the losing path). The
+  design therefore rejects overlapping table filters (see Validation) instead
+  of promising per-table advertisement it cannot keep.
 
 ### Merge semantics
 
@@ -221,6 +228,17 @@ FRRConfigurations sharing a router merge as follows:
   IPv4-mapped IPv6 prefixes. A selector FRR rejects would fail the whole reload
   and take down every advertisement on the node.
 - Reject duplicate `(protocol, table)` pairs within one router.
+- Reject overlapping table filters within one router, checked per family on the
+  merged router: two `redistribute` entries overlap when a prefix could be
+  admitted by both. A selector is a CIDR plus a length window
+  (`[ge, le]`, defaulting to the prefix length); two selectors overlap when one
+  CIDR contains the other's network address and the windows intersect.
+  `mode: all` is the family-wide selector, so two `mode: all` entries of one
+  family always overlap; entries of different families never do. Exact prefixes
+  are the degenerate window case, so one predicate covers every combination.
+  The check inspects selector space, not kernel-table content: an agent may
+  still install one route in two tables, but non-overlapping filters admit it
+  from at most one of them, so advertisement stays correct.
 - Reject `redistribute` on VRF routers.
 - Reject `toAdvertise.redistributed.tables` entries that do not match a
   `redistribute` entry of the merged router, and duplicate ids.
@@ -282,11 +300,17 @@ Unit (api_to_config / golden files):
   `ge > le`, `le` shorter than the mask, `le 128` on IPv4, IPv4-mapped IPv6;
   duplicate `(protocol, table)`; VRF router; `redistributed.tables` referencing
   an undeclared table or listing an id twice.
+- Overlap rejects: the same exact prefix in two tables; nested CIDRs with
+  intersecting windows (`10.0.0.0/8 le 32` vs `10.1.0.0/16`); two `mode: all`
+  entries of one family. Overlap accepts (must not be over-rejected): nested
+  CIDRs with disjoint windows (`10.0.0.0/8 le 16` vs `10.1.0.0/16 ge 24`);
+  disjoint CIDRs; the same prefix in an IPv4 and an IPv6 table.
 - Merge: same table with disjoint selectors (union, deduplicated); `filtered` +
   `all` in either order (`all`); different tables kept; neighbor `tables` union;
   table declared in one FRRConfiguration and referenced by a neighbor in another
   (accepted); the same table in two FRRConfigurations merges rather than tripping
-  the single-router duplicate rule.
+  the single-router duplicate rule; overlapping filters split across two
+  FRRConfigurations are rejected at merge time with both sources named.
 - A `rawConfig` clause `permit 3` appended to the redistribute route-map still
   renders after `deny 2`.
 
