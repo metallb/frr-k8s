@@ -5,7 +5,8 @@
 This proposal adds route redistribution to the FRRConfiguration CRD.
 Users can advertise routes from a kernel routing table.
 The reachability decision stays in the kernel table.
-The CRD only bounds which prefixes may leave.
+The CRD decides which routes from the table enter BGP, and which neighbors advertise them.
+Routes learned from other neighbors are never re-advertised as a side effect.
 
 ## Motivation
 
@@ -17,7 +18,7 @@ This gives automatic per-node withdrawal and ECMP across healthy nodes.
 Today the CRD cannot express this:
 
 1. `router.prefixes` renders unconditional `network` statements. This bypasses the gating.
-2. `toAdvertise.allowed.mode: all` only allows prefixes declared in `router.prefixes`. Redistributed routes are always filtered out on egress.
+2. `toAdvertise.allowed.mode: all` only allows prefixes declared in `router.prefixes` (and imported VRF prefixes). Redistributed routes are always filtered out on egress.
 
 The only workaround is `rawConfig`. It must append permits to the generated `<neighbor>-out` route-maps.
 That couples user config to internal naming and sequence numbers. It can silently break on frr-k8s upgrade.
@@ -27,7 +28,9 @@ OpenShift's BGP-based VIP management plans to use this pattern in production and
 ### Goals
 
 - Advertise routes redistributed from a kernel table (`table-direct`).
-- Filter egress to an explicit prefix allow-list.
+- Bound which table routes enter BGP with the same selector shape `toReceive` uses, or opt in to the whole table explicitly.
+- Let each neighbor opt in to the redistributed routes it advertises.
+- Preserve the existing guarantee that routes received from one neighbor are never re-advertised to another.
 - Compose with the generated per-neighbor route-maps. No raw config.
 
 ### Non-Goals
@@ -35,7 +38,7 @@ OpenShift's BGP-based VIP management plans to use this pattern in production and
 - Redistributing other protocols (connected, static, kernel, OSPF). The API leaves room for them.
 - Import policy or route modification (communities, med) for redistributed routes.
 - Managing the kernel table content. That is the user's agent's job.
-- VRF routers. Deferred until FRR's per-VRF `table-direct` behavior is verified and we actually need that.
+- VRF routers. Deferred until FRR's per-VRF `table-direct` behavior is verified and a concrete need exists.
 
 ## Proposal
 
@@ -44,12 +47,13 @@ OpenShift's BGP-based VIP management plans to use this pattern in production and
 As a cluster administrator, I want to:
 
 1. Advertise a VIP only while my health-check agent keeps its route in a kernel table.
-2. Bound the advertisement to an explicit prefix list so nothing else can leak.
-3. Upgrade frr-k8s without my egress filters breaking.
+2. Bound what enters BGP from that table to an explicit selector list so nothing else can leak.
+3. Choose which neighbors advertise the redistributed routes.
+4. Upgrade frr-k8s without my egress filters breaking.
 
 ### API Changes
 
-Add a `redistribute` list to `Router`:
+Two additions: a `redistribute` list on `Router`, and a `redistributed` opt-in under `Neighbor.toAdvertise`.
 
 ```yaml
 apiVersion: frrk8s.metallb.io/v1beta1
@@ -65,7 +69,9 @@ spec:
         asn: 64513
         toAdvertise:
           allowed:
-            mode: all
+            mode: filtered
+          redistributed:
+            tables: [198]
       redistribute:
       - protocol: table-direct
         table: 198
@@ -76,11 +82,12 @@ spec:
           - prefix: 192.168.111.5/32
 ```
 
-Fields:
+#### `router.redistribute[]`
 
 - `protocol`: only `table-direct` initially. Enum, extensible.
-- `table`: kernel table id. Required for `table-direct`.
-- `allowed`: the filter deciding which routes from the table enter BGP.
+- `table`: kernel table id. Required for `table-direct`, forbidden for future protocols
+  without a table (CEL: `protocol == 'table-direct'` if and only if `has(table)`).
+- `allowed`: the table filter deciding which routes from the table enter BGP.
   Same shape as `toReceive.allowed`, reusing the existing `PrefixSelector` type:
   - `mode`: `filtered` (default) or `all`. With `all`, every route in the table
     enters BGP; `prefixes` must be empty.
@@ -90,88 +97,157 @@ Fields:
     contained route, identical to `toReceive` semantics.
 
 Defaults keep the filter fail-closed: `allowed` omitted, or `mode: filtered` with
-no `prefixes`, renders a filter that lets nothing through. Advertising an entire
-table is always an explicit `mode: all`.
+no `prefixes`, lets nothing through. Advertising an entire table is always an
+explicit `mode: all`. This matches the `filtered` default of `toReceive.allowed`
+and ensures a typo or an empty list can never advertise a whole table.
 
-The same selector shape for `toReceive` and `redistribute` gives one mental model
-for every filter in the CRD, and a flat prefix list would have no room to grow.
+#### `neighbor.toAdvertise.redistributed`
+
+- `tables`: the kernel table ids whose redistributed routes this neighbor
+  advertises. Each id must match a `redistribute` entry of the router (after
+  merging, so the table and the neighbor may come from different
+  FRRConfigurations). Omitted or empty: the neighbor advertises no
+  redistributed routes.
+
+Redistribution is opt-in per neighbor and independent of `toAdvertise.allowed`:
+a `filtered` neighbor advertises its declared prefixes plus the tables it opted
+in to, without listing the redistributed prefixes. The opt-in is an object so
+per-neighbor knobs can be added later without renaming the field.
 
 ### Dual-stack
 
 `allowed.prefixes` may mix IPv4 and IPv6. The renderer splits them by family.
 Each family gets its own route-map, prefix-list and `address-family` block.
-With `mode: filtered`, a family with no prefixes renders nothing; with `mode: all`,
-both families render. No validation against neighbor families is needed.
+With `mode: filtered`, a family with no selector renders nothing for that family
+(no `redistribute` statement, route-map or prefix-list). With `mode: all`, both
+families render. No validation against neighbor families is needed.
 `table-direct` supports both families in FRR.
 
 ### Generated FRR Configuration
 
-Names are scoped by VRF and family: `redistribute-<vrf>-<table>-<family>`.
-An empty `vrf` field maps to the literal `default` (never an empty name segment). Initially always `default`.
-The VRF placeholder future-proofs the naming for VRF support.
+Names are scoped by VRF, protocol, table and family:
+`redistribute-<vrf>-<protocol>-<table>-<family>`. An empty `vrf` field maps to the
+literal `default` (never an empty name segment); initially always `default`. The
+protocol segment keeps the names stable when a table-less protocol is added.
 
-```
+Every route that enters BGP from the table is tagged with the table id. The tag
+is FRR-internal (carried on the BGP path, never sent on the wire) and is what
+scopes egress to redistributed routes.
+
+```text
 router bgp 64512
  address-family ipv4 unicast
-  redistribute table-direct 198 route-map redistribute-default-198-ipv4
-route-map redistribute-default-198-ipv4 permit 1
- match ip address prefix-list redistribute-default-198-allowed-ipv4
-route-map redistribute-default-198-ipv4 deny 2
-ip prefix-list redistribute-default-198-allowed-ipv4 seq 1 permit 192.168.111.4/32
-ip prefix-list redistribute-default-198-allowed-ipv4 seq 2 permit 192.168.111.5/32
+  redistribute table-direct 198 route-map redistribute-default-table-direct-198-ipv4
+route-map redistribute-default-table-direct-198-ipv4 permit 1
+ match ip address prefix-list redistribute-default-table-direct-198-allowed-ipv4
+ set tag 198
+route-map redistribute-default-table-direct-198-ipv4 deny 2
+ip prefix-list redistribute-default-table-direct-198-allowed-ipv4 seq 1 permit 192.168.111.4/32
+ip prefix-list redistribute-default-table-direct-198-allowed-ipv4 seq 2 permit 192.168.111.5/32
 ```
 
 Length modifiers render as prefix-list modifiers: `{prefix: 10.0.0.0/8, le: 32}`
 becomes `permit 10.0.0.0/8 le 32`. `mode: all` renders the permit clause without
-a `match` (everything in the table passes); the explicit `deny 2` stays in every
-variant so config merged later cannot widen the filter. An empty filter renders
-only the deny clause.
+a `match` (everything in the table passes, still tagged). The explicit `deny 2`
+stays in every variant so a `rawConfig` clause appended with a higher sequence
+number cannot widen the filter (FRR's implicit end-of-map deny would otherwise
+be the only guard).
 
 IPv6 prefixes render the same under `address-family ipv6 unicast`, with `ipv6 prefix-list` and `-ipv6` names.
 
-#### Two filter layers
-
-The redistribute filter and `toAdvertise` are independent layers and both apply:
-
-1. `redistribute[].allowed` decides what enters BGP **from the table**.
-2. `neighbor.toAdvertise` decides what leaves **toward that neighbor**.
-
-For neighbors with `toAdvertise.allowed.mode: all`, the redistribute selectors are
-appended to the neighbor's generated allowed prefix-lists
-(`ToAdvertisePrefixListV4`/`V6`), modifiers included. For `mode: all`
-redistribution the appended entry is the family-wide selector
-(`0.0.0.0/0 le 32`, `::/0 le 128`). No extra route-map clauses.
-When the neighbor has no declared prefixes, the appended entries must replace the
-`deny any` placeholder entry, not follow it. Prefix-lists are first-match.
-Neighbor modifiers like `set ip next-hop` live in the main permit rule and apply uniformly.
-Neighbors with explicit `allowed.prefixes` are untouched. They advertise a redistributed route only if it also matches their own allow-list.
-`toAdvertise` semantics for declared prefixes stay unchanged.
-
-```
-# neighbor 192.168.1.1 with toAdvertise.allowed.mode: all, redistribute {table 198, filtered, 192.168.111.0/24 le 32}
-ip prefix-list 192.168.1.1-pl-ipv4 seq 1 permit 192.168.111.0/24 le 32
-```
-
 `table-direct` reads the kernel table directly. No `ip import-table` is needed.
+
+#### Origin-scoped egress
+
+The generated `<neighbor>-out` route-map is today the only egress gate of a
+neighbor, and it matches prefixes only: `match ip address prefix-list
+<neighbor>-allowed-<family>`. That list holds the router's declared prefixes,
+which is the sole reason routes learned from one neighbor are never
+re-advertised to another. Redistributed routes must not be let out by widening
+that prefix-list: a range or a whole-table permit there would also match routes
+received from other neighbors and turn the node into a transit router.
+
+Instead, a neighbor that opted in gets one additional clause per table,
+matching the tag set on ingress:
+
+```text
+route-map 192.168.1.1-out permit 3
+ match tag 198
+ set ip next-hop 192.168.1.10
+```
+
+- The clause is added for each id in `toAdvertise.redistributed.tables`, after the
+  existing prefix-list clauses. Only routes tagged on ingress from that table can
+  match; received, imported and declared routes carry no tag.
+- The neighbor's `set` statements (next-hop, and any future modifiers) are
+  repeated in the clause so redistributed routes get the same treatment as
+  declared ones.
+- The neighbor's `-allowed-` prefix-lists and existing clauses are untouched.
+  `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and a
+  neighbor that did not opt in advertises no redistributed routes regardless of
+  its `allowed.mode`.
+- Because redistributed prefixes never appear in a neighbor's prefix-list, the
+  webhook's outgoing-prefix check (`validateOutgoingPrefixes`) is unchanged.
+
+### Merge semantics
+
+FRRConfigurations sharing a router merge as follows:
+
+- `redistribute` entries merge per `(router, protocol, table)`: the union of the
+  selectors. If any producer declares `mode: all`, the merged filter is `all` -
+  one producer widens what enters BGP from the whole table. This mirrors how
+  permit unions already behave for `toReceive.allowed` and must be stated in the
+  field documentation. Declaring the same table with different protocols fails
+  the merge (vacuous while the enum has one value; kept so the rule exists when
+  a second protocol lands).
+- `toAdvertise.redistributed.tables` merges per neighbor as the union of the ids.
+- Neighbor references are validated against the merged router, so the table
+  filter and the opting-in neighbor may be owned by different FRRConfigurations.
+  Because egress is tag-scoped, a table declared by producer B is advertised by
+  producer A's neighbor only if A (or B, for the same neighbor) opted that
+  neighbor in; nothing widens egress implicitly.
 
 ### Validation
 
-- Reject `table` outside 1-65535. This mirrors FRR's `redistribute table-direct (1-65535)`.
-- Reject `mode: all` combined with a non-empty `prefixes`.
-- `prefixes` entries follow the `toReceive` rules: valid CIDR, `le`/`ge` not
-  shorter than the prefix length, `ge <= le` when both are set.
-- Reject duplicate `(protocol, table)` pairs within one router. Future table-less protocols are not affected.
+- Reject `table` outside 1-65535 (FRR's `redistribute table-direct (1-65535)`),
+  and reject 253, 254 and 255: the kernel's default, main and local tables, which
+  would redistribute connected, kernel and default routes.
+- Reject `mode: all` combined with a non-empty `prefixes`. This is stricter than
+  `toReceive`, which silently ignores `prefixes` in `all` mode, so an accidental
+  `all` is not masked by a populated list.
+- `prefixes` entries follow the `toReceive` rules (valid CIDR, `le`/`ge` not
+  shorter than the prefix length, `ge <= le`), plus the family maximum the
+  `toReceive` path lacks: `le`/`ge` at most 32 for IPv4 and 128 for IPv6, and no
+  IPv4-mapped IPv6 prefixes. A selector FRR rejects would fail the whole reload
+  and take down every advertisement on the node.
+- Reject duplicate `(protocol, table)` pairs within one router.
 - Reject `redistribute` on VRF routers.
-- Merge across FRRConfigurations, per router and table: the union of the
-  selectors. If any producer declares `mode: all`, the merged filter is `all` -
-  one producer widens advertisement for the whole table; this mirrors how
-  permit unions already behave for `toReceive` and must be called out in the
-  field documentation. Fail the merge if the same table is declared with
-  different protocols.
-- The webhook's outgoing-prefix check (`validateOutgoingPrefixes`) must
-  accept redistributed routes: the redistribute selectors join the router's
-  known prefixes (`mode: all` joins the family-wide selector). Otherwise a
-  `filtered` neighbor listing a redistributed prefix is falsely rejected.
+- Reject `toAdvertise.redistributed.tables` entries that do not match a
+  `redistribute` entry of the merged router, and duplicate ids.
+- `PrefixSelector`'s documentation ("a filter of prefixes to receive") and the
+  generated API docs are updated to describe it as a generic prefix selector.
+
+### Security considerations
+
+The table filter is the only bound between node-local route writers and external
+peers. Any process on the node with `CAP_NET_ADMIN` (a privileged hostNetwork pod,
+a compromised health-check agent, a debug shell) can install routes into the
+redistributed table. With `mode: filtered` the CRD selectors decide what such a
+process can make the node announce; with `mode: all` that decision moves to the
+node, and the FRRConfiguration author is trusting every `CAP_NET_ADMIN` process on
+it. `mode: filtered` with tight selectors is the recommended production setting.
+
+The per-neighbor opt-in means no neighbor advertises table routes unless a
+producer said so, and tag-scoped egress means received routes cannot ride along.
+Peers' `maximum-prefix` remains the only bound on how many routes a `mode: all`
+table can inject.
+
+### Internal types
+
+`RouterConfig` gains a `Redistribute []RedistributeConfig` (protocol, table,
+mode, per-family selector lists) and `NeighborConfig.Outgoing` gains
+`RedistributedTables []int`. `AllowedOut.PrefixesV4/V6` are untouched: they keep
+carrying declared CIDRs only.
 
 ## Alternatives Considered
 
@@ -181,13 +257,49 @@ ip prefix-list 192.168.1.1-pl-ipv4 seq 1 permit 192.168.111.0/24 le 32
   Exact-match only, no room for length modifiers or a whole-table mode, and a
   second filter vocabulary next to `toReceive.allowed`. Rejected in review in
   favor of the shared selector shape.
+- **Appending the table selectors to the neighbor's allowed prefix-list.** The
+  second revision. The neighbor prefix-list is source-blind, so a range or a
+  whole-table permit there also matches routes received from other neighbors:
+  the node becomes a transit router without anyone declaring it. Rejected for
+  tag-scoped egress.
+- **A boolean opt-in (`redistributed: true`).** All-or-nothing across tables;
+  adding per-table selection later would be a breaking change. The `tables`
+  list costs nothing more today.
 
 ## Test Plan
 
-- Unit: api_to_config coverage for the new stanza.
-- Unit: neighbor modifiers (e.g. `set ip next-hop`) apply to redistributed prefixes.
-- Unit: `mode: all` with non-empty `prefixes` is rejected; omitted `allowed` renders a deny-only filter; merge with one `mode: all` producer yields `all`.
-- E2E: install route in table, expect advertisement; remove route, expect withdrawal; verify a non-allowed prefix in the table never leaves.
-- E2E: an `le` selector advertises a covered /32 and not an uncovered one.
-- E2E: `mode: all` advertises an arbitrary table route while a `filtered` neighbor's `toAdvertise` still drops it.
-- E2E: dual-stack variant (mixed v4/v6 selectors).
+Unit (api_to_config / golden files):
+
+- Rendering variants: filtered with exact prefixes; `le`/`ge` modifiers; `mode: all`
+  (permit without match, tag set, both families, no prefix-list); omitted
+  `allowed` and `filtered` with no prefixes (nothing rendered for the family);
+  dual-stack split; two tables on one router with distinct names.
+- Egress: an opted-in neighbor gets one `match tag` clause per table with its
+  `set` statements repeated; a neighbor that did not opt in gets none; the
+  neighbor `-allowed-` prefix-lists are byte-identical with and without
+  `redistribute` present.
+- Validation rejects: table 0, 65536, 253-255; `mode: all` with prefixes;
+  `ge > le`, `le` shorter than the mask, `le 128` on IPv4, IPv4-mapped IPv6;
+  duplicate `(protocol, table)`; VRF router; `redistributed.tables` referencing
+  an undeclared table or listing an id twice.
+- Merge: same table with disjoint selectors (union, deduplicated); `filtered` +
+  `all` in either order (`all`); different tables kept; neighbor `tables` union;
+  table declared in one FRRConfiguration and referenced by a neighbor in another
+  (accepted); the same table in two FRRConfigurations merges rather than tripping
+  the single-router duplicate rule.
+- A `rawConfig` clause `permit 3` appended to the redistribute route-map still
+  renders after `deny 2`.
+
+E2E:
+
+- Install a route in the table on every node, expect advertisement; remove it on
+  one node, expect that node's next-hop to disappear while the others remain
+  (the ECMP claim); remove everywhere, expect withdrawal within a stated timeout.
+- A non-allowed prefix in the table, and an allowed prefix in a different table,
+  are `Consistently` absent at the peer.
+- **No transit**: peer A advertises X; with `mode: all` redistribution and peer B
+  opted in, B must not receive X.
+- `mode: all` advertises an arbitrary table route to an opted-in neighbor and not
+  to a neighbor that did not opt in.
+- Dual-stack: one route per family; a v4-only peer sees only the v4 route, a
+  v6-only peer only the v6 route, a dual-stack peer both.
