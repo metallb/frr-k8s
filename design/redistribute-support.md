@@ -167,25 +167,37 @@ re-advertised to another. Redistributed routes must not be let out by widening
 that prefix-list: a range or a whole-table permit there would also match routes
 received from other neighbors and turn the node into a transit router.
 
-Instead, a neighbor that opted in gets one additional clause per table,
-matching the tag set on ingress:
+Instead, every clause of the `-out` route-map is scoped by origin. The existing
+declared-prefix clauses additionally match untagged routes only, and a neighbor
+that opted in gets one additional clause per table, matching the tag set on
+ingress:
 
 ```text
+route-map 192.168.1.1-out permit 1
+ match ip address prefix-list 192.168.1.1-allowed-ipv4
+ match tag untagged
+ set ip next-hop 192.168.1.10
 route-map 192.168.1.1-out permit 3
  match tag 198
  set ip next-hop 192.168.1.10
 ```
 
-- The clause is added for each id in `toAdvertise.redistributed.tables`, after the
-  existing prefix-list clauses. Only routes tagged on ingress from that table can
-  match; received, imported and declared routes carry no tag.
+- The declared-prefix clauses gain `match tag untagged` (an FRR keyword; the
+  matches of a clause are ANDed). Declared, received and imported routes carry
+  no tag, so their handling is unchanged. A table route that shares an NLRI with
+  a declared prefix no longer exits through the prefix clause: tagged routes
+  fall through every prefix clause and can only exit through an opt-in clause,
+  so opting in stays orthogonal to `toAdvertise.allowed`. The prefix-list
+  contents are untouched; only the clause gains a match.
+- The opt-in clause is added for each id in `toAdvertise.redistributed.tables`,
+  after the prefix clauses. Only routes tagged on ingress from that table can
+  match.
 - The neighbor's `set` statements (next-hop, and any future modifiers) are
-  repeated in the clause so redistributed routes get the same treatment as
-  declared ones.
-- The neighbor's `-allowed-` prefix-lists and existing clauses are untouched.
-  `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and a
-  neighbor that did not opt in advertises no redistributed routes regardless of
-  its `allowed.mode`.
+  repeated in the opt-in clause so redistributed routes get the same treatment
+  as declared ones.
+- `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and a
+  neighbor which did not opt in advertises no redistributed routes regardless
+  of its `allowed.mode`.
 - Because redistributed prefixes never appear in a neighbor's prefix-list, the
   webhook's outgoing-prefix check (`validateOutgoingPrefixes`) is unchanged.
 - Tag-scoped egress relies on one tagged path per prefix. BGP selects a single
@@ -257,6 +269,8 @@ it. `mode: filtered` with tight selectors is the recommended production setting.
 
 The per-neighbor opt-in means no neighbor advertises table routes unless a
 producer said so, and tag-scoped egress means received routes cannot ride along.
+A node-local writer installing a table route that overlaps a declared prefix
+gains nothing either: tagged routes exit only through an opt-in clause.
 Peers' `maximum-prefix` remains the only bound on how many routes a `mode: all`
 table can inject.
 
@@ -265,7 +279,8 @@ table can inject.
 `RouterConfig` gains a `Redistribute []RedistributeConfig` (protocol, table,
 mode, per-family selector lists) and `NeighborConfig.Outgoing` gains
 `RedistributedTables []int`. `AllowedOut.PrefixesV4/V6` are untouched: they keep
-carrying declared CIDRs only.
+carrying declared CIDRs only. The `match tag untagged` on the declared-prefix
+clauses is a template-only change.
 
 ## Alternatives Considered
 
@@ -292,10 +307,11 @@ Unit (api_to_config / golden files):
   (permit without match, tag set, both families, no prefix-list); omitted
   `allowed` and `filtered` with no prefixes (nothing rendered for the family);
   dual-stack split; two tables on one router with distinct names.
-- Egress: an opted-in neighbor gets one `match tag` clause per table with its
-  `set` statements repeated; a neighbor that did not opt in gets none; the
-  neighbor `-allowed-` prefix-lists are byte-identical with and without
-  `redistribute` present.
+- Egress: every declared-prefix clause carries `match tag untagged`, with and
+  without `redistribute` present; an opted-in neighbor gets one `match tag`
+  clause per table with its `set` statements repeated; a neighbor which did
+  not opt in gets none; the neighbor `-allowed-` prefix-lists are byte-identical
+  with and without `redistribute` present.
 - Validation rejects: table 0, 65536, 253-255; `mode: all` with prefixes;
   `ge > le`, `le` shorter than the mask, `le 128` on IPv4, IPv4-mapped IPv6;
   duplicate `(protocol, table)`; VRF router; `redistributed.tables` referencing
@@ -324,6 +340,9 @@ E2E:
 - **No transit**: peer A advertises X; with `mode: all` redistribution and peer B
   opted in, B must not receive X.
 - `mode: all` advertises an arbitrary table route to an opted-in neighbor and not
-  to a neighbor that did not opt in.
+  to a neighbor which did not opt in.
+- **No bypass through declared prefixes**: declare prefix P toward neighbor N
+  without opting N into the table, install P in the table; N must
+  `Consistently` not advertise it. Opt N in; P is advertised.
 - Dual-stack: one route per family; a v4-only peer sees only the v4 route, a
   v6-only peer only the v6 route, a dual-stack peer both.
