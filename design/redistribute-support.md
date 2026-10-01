@@ -96,6 +96,8 @@ spec:
     matches only the /24 itself; `192.168.111.0/24 le 32` matches every
     contained route, identical to `toReceive` semantics.
 
+`allowed.prefixes` may mix IPv4 and IPv6; `mode: all` covers both families.
+
 Defaults keep the filter fail-closed: `allowed` omitted, or `mode: filtered` with
 no `prefixes`, lets nothing through. Advertising an entire table is always an
 explicit `mode: all`. This matches the `filtered` default of `toReceive.allowed`
@@ -114,101 +116,6 @@ a `filtered` neighbor is sent its declared prefixes plus the tables it is opted
 in to, without listing the redistributed prefixes. The opt-in is an object so
 per-neighbor knobs can be added later without renaming the field.
 
-### Dual-stack
-
-`allowed.prefixes` may mix IPv4 and IPv6. The renderer splits them by family.
-Each family gets its own route-map, prefix-list and `address-family` block.
-With `mode: filtered`, a family with no selector renders nothing for that family
-(no `redistribute` statement, route-map or prefix-list). With `mode: all`, both
-families render. No validation against neighbor families is needed.
-`table-direct` supports both families in FRR.
-
-### Generated FRR Configuration
-
-Names are scoped by VRF, protocol, table and family:
-`redistribute-<vrf>-<protocol>-<table>-<family>`. An empty `vrf` field maps to the
-literal `default` (never an empty name segment); initially always `default`. The
-protocol segment keeps the names stable when a table-less protocol is added.
-
-Every route that enters BGP from the table is tagged with the table id. The tag
-is FRR-internal (carried on the BGP path, never sent on the wire) and is what
-scopes egress to redistributed routes.
-
-```text
-router bgp 64512
- address-family ipv4 unicast
-  redistribute table-direct 198 route-map redistribute-default-table-direct-198-ipv4
-route-map redistribute-default-table-direct-198-ipv4 permit 1
- match ip address prefix-list redistribute-default-table-direct-198-allowed-ipv4
- set tag 198
-route-map redistribute-default-table-direct-198-ipv4 deny 2
-ip prefix-list redistribute-default-table-direct-198-allowed-ipv4 seq 1 permit 192.168.111.4/32
-ip prefix-list redistribute-default-table-direct-198-allowed-ipv4 seq 2 permit 192.168.111.5/32
-```
-
-Length modifiers render as prefix-list modifiers: `{prefix: 10.0.0.0/8, le: 32}`
-becomes `permit 10.0.0.0/8 le 32`. `mode: all` renders the permit clause without
-a `match` (everything in the table passes, still tagged). The explicit `deny 2`
-stays in every variant so a `rawConfig` clause appended with a higher sequence
-number cannot widen the filter (FRR's implicit end-of-map deny would otherwise
-be the only guard).
-
-IPv6 prefixes render the same under `address-family ipv6 unicast`, with `ipv6 prefix-list` and `-ipv6` names.
-
-`table-direct` reads the kernel table directly. No `ip import-table` is needed.
-
-#### Origin-scoped egress
-
-The generated `<neighbor>-out` route-map is today the only egress gate of a
-neighbor, and it matches prefixes only: `match ip address prefix-list
-<neighbor>-allowed-<family>`. That list holds the router's declared prefixes,
-which is the sole reason routes learned from one neighbor are never
-re-advertised to another. Redistributed routes must not be let out by widening
-that prefix-list: a range or a whole-table permit there would also match routes
-received from other neighbors and turn the node into a transit router.
-
-Instead, every clause of the `-out` route-map is scoped by origin. The existing
-declared-prefix clauses additionally match untagged routes only, and a neighbor
-that opted in gets one additional clause per table, matching the tag set on
-ingress:
-
-```text
-route-map 192.168.1.1-out permit 1
- match ip address prefix-list 192.168.1.1-allowed-ipv4
- match tag untagged
- set ip next-hop 192.168.1.10
-route-map 192.168.1.1-out permit 3
- match tag 198
- set ip next-hop 192.168.1.10
-```
-
-- The declared-prefix clauses gain `match tag untagged` (an FRR keyword; the
-  matches of a clause are ANDed). Declared, received and imported routes carry
-  no tag, so their handling is unchanged. A table route that shares an NLRI with
-  a declared prefix no longer exits through the prefix clause: tagged routes
-  fall through every prefix clause and can only exit through an opt-in clause,
-  so opting in stays orthogonal to `toAdvertise.allowed`. The prefix-list
-  contents are untouched; only the clause gains a match.
-- The opt-in clause is added for each id in `toAdvertise.redistributed.tables`,
-  after the prefix clauses. Only routes tagged on ingress from that table can
-  match.
-- The neighbor's `set` statements (next-hop, and any future modifiers) are
-  repeated in the opt-in clause so redistributed routes get the same treatment
-  as declared ones.
-- `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and no
-  redistributed routes are advertised to a neighbor which was not opted in,
-  regardless of its `allowed.mode`.
-- Because redistributed prefixes never appear in a neighbor's prefix-list, the
-  webhook's outgoing-prefix check (`validateOutgoingPrefixes`) is unchanged.
-- Tag-scoped egress relies on one tagged path per prefix. BGP selects a single
-  best path per prefix before a neighbor's outbound policy runs; if the same
-  prefix could enter from two tables, only the winning table's tag would reach
-  the `-out` route-map, and the route would silently not be advertised to a
-  neighbor opted into the other table (FRR does not fall back to the losing
-  path). The
-  design therefore rejects overlapping table filters (see Validation) instead
-  of promising per-table advertisement it cannot keep.
-
 ### Merge semantics
 
 FRRConfigurations sharing a router merge as follows:
@@ -223,9 +130,9 @@ FRRConfigurations sharing a router merge as follows:
 - `toAdvertise.redistributed.tables` merges per neighbor as the union of the ids.
 - Neighbor references are validated against the merged router, so the table
   filter and the opting-in neighbor may be owned by different FRRConfigurations.
-  Because egress is tag-scoped, a table declared by producer B is advertised by
-  producer A's neighbor only if A (or B, for the same neighbor) opted that
-  neighbor in; nothing widens egress implicitly.
+  A table declared by producer B is advertised to producer A's neighbor only if
+  A (or B, for the same neighbor) opted that neighbor in; nothing widens egress
+  implicitly.
 
 ### Validation
 
@@ -242,8 +149,10 @@ FRRConfigurations sharing a router merge as follows:
   and take down every advertisement on the node.
 - Reject duplicate `(protocol, table)` pairs within one router.
 - Reject overlapping table filters within one router, checked per family on the
-  merged router: two `redistribute` entries overlap when a prefix could be
-  admitted by both. A selector is a CIDR plus a length window
+  merged router. BGP selects a single best path per prefix before per-neighbor
+  policy runs, so the same prefix admissible from two tables could not be
+  advertised per table; the design rejects the overlap rather than promise it.
+  Two `redistribute` entries overlap when a prefix could be admitted by both. A selector is a CIDR plus a length window
   (`[ge, le]`, defaulting to the prefix length); two selectors overlap when one
   CIDR contains the other's network address and the windows intersect.
   `mode: all` is the family-wide selector, so two `mode: all` entries of one
@@ -269,20 +178,11 @@ node, and the FRRConfiguration author is trusting every `CAP_NET_ADMIN` process 
 it. `mode: filtered` with tight selectors is the recommended production setting.
 
 The per-neighbor opt-in means table routes are advertised to a neighbor only if
-a producer opted it in, and tag-scoped egress means received routes cannot ride
-along.
-A node-local writer installing a table route that overlaps a declared prefix
-gains nothing either: tagged routes exit only through an opt-in clause.
-Peers' `maximum-prefix` remains the only bound on how many routes a `mode: all`
-table can inject.
-
-### Internal types
-
-`RouterConfig` gains a `Redistribute []RedistributeConfig` (protocol, table,
-mode, per-family selector lists) and `NeighborConfig.Outgoing` gains
-`RedistributedTables []int`. `AllowedOut.PrefixesV4/V6` are untouched: they keep
-carrying declared CIDRs only. The `match tag untagged` on the declared-prefix
-clauses is a template-only change.
+a producer opted it in. Routes received from other neighbors, imported, or
+declared are never advertised as redistributed routes, and a table route that
+shares a prefix with a declared one cannot bypass the opt-in. Peers'
+`maximum-prefix` remains the only bound on how many routes a `mode: all` table
+can inject.
 
 ## Alternatives Considered
 
@@ -296,24 +196,15 @@ clauses is a template-only change.
   second revision. The neighbor prefix-list is source-blind, so a range or a
   whole-table permit there also matches routes received from other neighbors:
   the node becomes a transit router without anyone declaring it. Rejected for
-  tag-scoped egress.
+  origin-scoped egress.
 - **A boolean opt-in (`redistributed: true`).** All-or-nothing across tables;
   adding per-table selection later would be a breaking change. The `tables`
   list costs nothing more today.
 
 ## Test Plan
 
-Unit (api_to_config / golden files):
+Unit:
 
-- Rendering variants: filtered with exact prefixes; `le`/`ge` modifiers; `mode: all`
-  (permit without match, tag set, both families, no prefix-list); omitted
-  `allowed` and `filtered` with no prefixes (nothing rendered for the family);
-  dual-stack split; two tables on one router with distinct names.
-- Egress: every declared-prefix clause carries `match tag untagged`, with and
-  without `redistribute` present; an opted-in neighbor gets one `match tag`
-  clause per table with its `set` statements repeated; a neighbor which did
-  not opt in gets none; the neighbor `-allowed-` prefix-lists are byte-identical
-  with and without `redistribute` present.
 - Validation rejects: table 0, 65536, 253-255; `mode: all` with prefixes;
   `ge > le`, `le` shorter than the mask, `le 128` on IPv4, IPv4-mapped IPv6;
   duplicate `(protocol, table)`; VRF router; `redistributed.tables` referencing
@@ -329,8 +220,6 @@ Unit (api_to_config / golden files):
   (accepted); the same table in two FRRConfigurations merges rather than tripping
   the single-router duplicate rule; overlapping filters split across two
   FRRConfigurations are rejected at merge time with both sources named.
-- A `rawConfig` clause `permit 3` appended to the redistribute route-map still
-  renders after `deny 2`.
 
 E2E:
 
