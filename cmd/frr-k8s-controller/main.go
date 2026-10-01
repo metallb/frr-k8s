@@ -135,6 +135,11 @@ func main() {
 	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
 	}
+	// Reconciliation only reads this node's labels and FRRNodeState. Filter at
+	// the informer so each daemon avoids caching every Node in the cluster.
+	nodeSelector := cache.ByObject{
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", params.nodeName)),
+	}
 
 	options := ctrl.Options{
 		Scheme:                 scheme,
@@ -143,8 +148,10 @@ func main() {
 			ByObject: map[client.Object]cache.ByObject{
 				&corev1.Secret{}:                     namespaceSelector,
 				&corev1.Pod{}:                        namespaceSelector,
+				&corev1.Node{}:                       nodeSelector,
 				&frrk8sv1beta1.FRRConfiguration{}:    namespaceSelector,
 				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}:        nodeSelector,
 			},
 		},
 		Metrics: metricsserver.Options{
