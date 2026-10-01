@@ -5,7 +5,7 @@
 This proposal adds route redistribution to the FRRConfiguration CRD.
 Users can advertise routes from a kernel routing table.
 The reachability decision stays in the kernel table.
-The CRD decides which routes from the table enter BGP, and which neighbors advertise them.
+The CRD decides which routes from the table enter BGP, and which neighbors they are advertised to.
 Routes learned from other neighbors are never re-advertised as a side effect.
 
 ## Motivation
@@ -29,7 +29,7 @@ OpenShift's BGP-based VIP management plans to use this pattern in production and
 
 - Advertise routes redistributed from a kernel table (`table-direct`).
 - Bound which table routes enter BGP with the same selector shape `toReceive` uses, or opt in to the whole table explicitly.
-- Let each neighbor opt in to the redistributed routes it advertises.
+- Let each neighbor be opted in to the redistributed routes advertised to it.
 - Preserve the existing guarantee that routes received from one neighbor are never re-advertised to another.
 - Compose with the generated per-neighbor route-maps. No raw config.
 
@@ -48,7 +48,7 @@ As a cluster administrator, I want to:
 
 1. Advertise a VIP only while my health-check agent keeps its route in a kernel table.
 2. Bound what enters BGP from that table to an explicit selector list so nothing else can leak.
-3. Choose which neighbors advertise the redistributed routes.
+3. Choose which neighbors the redistributed routes are advertised to.
 4. Upgrade frr-k8s without my egress filters breaking.
 
 ### API Changes
@@ -103,14 +103,14 @@ and ensures a typo or an empty list can never advertise a whole table.
 
 #### `neighbor.toAdvertise.redistributed`
 
-- `tables`: the kernel table ids whose redistributed routes this neighbor
-  advertises. Each id must match a `redistribute` entry of the router (after
+- `tables`: the kernel table ids whose redistributed routes are advertised to
+  this neighbor. Each id must match a `redistribute` entry of the router (after
   merging, so the table and the neighbor may come from different
-  FRRConfigurations). Omitted or empty: the neighbor advertises no
-  redistributed routes.
+  FRRConfigurations). Omitted or empty: no redistributed routes are advertised
+  to the neighbor.
 
 Redistribution is opt-in per neighbor and independent of `toAdvertise.allowed`:
-a `filtered` neighbor advertises its declared prefixes plus the tables it opted
+a `filtered` neighbor is sent its declared prefixes plus the tables it is opted
 in to, without listing the redistributed prefixes. The opt-in is an object so
 per-neighbor knobs can be added later without renaming the field.
 
@@ -195,16 +195,17 @@ route-map 192.168.1.1-out permit 3
 - The neighbor's `set` statements (next-hop, and any future modifiers) are
   repeated in the opt-in clause so redistributed routes get the same treatment
   as declared ones.
-- `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and a
-  neighbor which did not opt in advertises no redistributed routes regardless
-  of its `allowed.mode`.
+- `toAdvertise.allowed` semantics for declared prefixes stay unchanged, and no
+  redistributed routes are advertised to a neighbor which was not opted in,
+  regardless of its `allowed.mode`.
 - Because redistributed prefixes never appear in a neighbor's prefix-list, the
   webhook's outgoing-prefix check (`validateOutgoingPrefixes`) is unchanged.
 - Tag-scoped egress relies on one tagged path per prefix. BGP selects a single
   best path per prefix before a neighbor's outbound policy runs; if the same
   prefix could enter from two tables, only the winning table's tag would reach
-  the `-out` route-map, and a neighbor opted into the other table would
-  silently not advertise it (FRR does not fall back to the losing path). The
+  the `-out` route-map, and the route would silently not be advertised to a
+  neighbor opted into the other table (FRR does not fall back to the losing
+  path). The
   design therefore rejects overlapping table filters (see Validation) instead
   of promising per-table advertisement it cannot keep.
 
@@ -267,8 +268,9 @@ process can make the node announce; with `mode: all` that decision moves to the
 node, and the FRRConfiguration author is trusting every `CAP_NET_ADMIN` process on
 it. `mode: filtered` with tight selectors is the recommended production setting.
 
-The per-neighbor opt-in means no neighbor advertises table routes unless a
-producer said so, and tag-scoped egress means received routes cannot ride along.
+The per-neighbor opt-in means table routes are advertised to a neighbor only if
+a producer opted it in, and tag-scoped egress means received routes cannot ride
+along.
 A node-local writer installing a table route that overlaps a declared prefix
 gains nothing either: tagged routes exit only through an opt-in clause.
 Peers' `maximum-prefix` remains the only bound on how many routes a `mode: all`
