@@ -76,6 +76,19 @@ func (f *fakeBGPFetcher) Matches(l frrk8sv1beta1.BGPSessionStateList) error {
 }
 
 var _ = Describe("BGPSessionState Controller", func() {
+	Context("resource labels", func() {
+		It("uses the shared BGPSessionState label keys", func() {
+			reconciler := BGPSessionStateReconciler{NodeName: testNodeName, Namespace: testNamespace}
+			neighbor := &frr.Neighbor{ID: "192.0.2.1"}
+
+			state := reconciler.desiredStateFor(neighbor, "blue", nil)
+
+			Expect(state.Labels).To(HaveKeyWithValue(frrk8sv1beta1.BGPSessionStateNodeLabel, testNodeName))
+			Expect(state.Labels).To(HaveKeyWithValue(frrk8sv1beta1.BGPSessionStatePeerLabel, labelFormatForNeighbor(neighbor.ID)))
+			Expect(state.Labels).To(HaveKeyWithValue(frrk8sv1beta1.BGPSessionStateVRFLabel, "blue"))
+		})
+	})
+
 	Context("SetupWithManager", func() {
 		It("should reconcile correctly", func() {
 			fakeBGP.m = map[string][]*frr.Neighbor{

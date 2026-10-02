@@ -20,6 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+// Labels set on BGPSessionState resources by the status controller.
+const (
+	BGPSessionStateNodeLabel = "frrk8s.metallb.io/node"
+	BGPSessionStatePeerLabel = "frrk8s.metallb.io/peer"
+	BGPSessionStateVRFLabel  = "frrk8s.metallb.io/vrf"
+)
+
 // BGPSessionStateSpec defines the desired state of BGPSessionState.
 type BGPSessionStateSpec struct {
 }

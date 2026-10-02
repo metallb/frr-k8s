@@ -27,6 +27,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -69,6 +70,101 @@ func fakeReloadStatus() {
 var _ = Describe("Frrk8s controller", func() {
 	// This is our expected log level because in common_test.go, we set	defaultLogLevel := logging.LevelDebug.
 	logLevel := logging.LevelDebug
+
+	Context("level-driven event mapping", func() {
+		It("maps FRRConfiguration and Secret events to the same reconciliation key", func() {
+			configuration := &v1beta1.FRRConfiguration{ObjectMeta: metav1.ObjectMeta{Name: "configuration", Namespace: testNamespace}}
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "password", Namespace: testNamespace}}
+
+			configurationRequests := reconcileRequestForFRRConfiguration(context.Background(), configuration)
+			secretRequests := reconcileRequestForFRRConfiguration(context.Background(), secret)
+			expected := types.NamespacedName{Name: frrConfigurationReconcileName, Namespace: testNamespace}
+
+			Expect(configurationRequests).To(HaveLen(1))
+			Expect(secretRequests).To(HaveLen(1))
+			Expect(configurationRequests[0].NamespacedName).To(Equal(expected))
+			Expect(secretRequests[0].NamespacedName).To(Equal(expected))
+		})
+	})
+
+	Context("node selector filtering", func() {
+		It("validates selectors even when their exact labels do not match", func() {
+			configs := []v1beta1.FRRConfiguration{{
+				ObjectMeta: metav1.ObjectMeta{Name: "invalid", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{NodeSelector: metav1.LabelSelector{
+					MatchLabels:      map[string]string{"node": "some-other-node"},
+					MatchExpressions: []metav1.LabelSelectorRequirement{{Key: "environment", Operator: metav1.LabelSelectorOperator("Invalid")}},
+				}},
+			}}
+			_, err := configsForNode(configs, map[string]string{"node": testNodeName})
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("does not match a missing node label against an empty selector value", func() {
+			configs := []v1beta1.FRRConfiguration{{
+				ObjectMeta: metav1.ObjectMeta{Name: "empty-label-value", Namespace: "default"},
+				Spec:       v1beta1.FRRConfigurationSpec{NodeSelector: metav1.LabelSelector{MatchLabels: map[string]string{"example": ""}}},
+			}}
+			matching, err := configsForNode(configs, map[string]string{})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matching).To(BeEmpty())
+		})
+
+		It("returns deep copies of matching configurations", func() {
+			configs := []v1beta1.FRRConfiguration{{
+				ObjectMeta: metav1.ObjectMeta{Name: "matching", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{
+					NodeSelector: metav1.LabelSelector{MatchLabels: map[string]string{"node": testNodeName}},
+					BGP:          v1beta1.BGPConfig{Routers: []v1beta1.Router{{ASN: 64512, Prefixes: []string{"192.0.2.0/24"}}}},
+				},
+			}}
+			before := configs[0].DeepCopy()
+			matching, err := configsForNode(configs, map[string]string{"node": testNodeName})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(matching).To(HaveLen(1))
+			matching[0].Spec.NodeSelector.MatchLabels["node"] = "mutated"
+			matching[0].Spec.BGP.Routers[0].Prefixes[0] = "198.51.100.0/24"
+			Expect(configs[0]).To(Equal(*before))
+		})
+
+		It("does not mutate informer-cached configurations during reconciliation", func() {
+			configuration := &v1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{Name: "cached-configuration", Namespace: "default"},
+				Spec: v1beta1.FRRConfigurationSpec{
+					NodeSelector: metav1.LabelSelector{MatchLabels: map[string]string{"test": "e2e"}},
+					BGP:          v1beta1.BGPConfig{Routers: []v1beta1.Router{{ASN: 64512, Prefixes: []string{"192.0.2.0/24"}}}},
+				},
+			}
+			Expect(k8sClient.Create(context.Background(), configuration)).To(Succeed())
+			var before *v1beta1.FRRConfiguration
+			Eventually(func() bool {
+				list := &v1beta1.FRRConfigurationList{}
+				if err := cacheClient.List(context.Background(), list, client.UnsafeDisableDeepCopy); err != nil {
+					return false
+				}
+				for i := range list.Items {
+					if list.Items[i].Name == configuration.Name {
+						before = list.Items[i].DeepCopy()
+						return true
+					}
+				}
+				return false
+			}).Should(BeTrue())
+
+			reconciler := &FRRConfigurationReconciler{Client: cacheClient, Scheme: scheme.Scheme, FRRHandler: &fakeFRRConfigHandler, NodeName: testNodeName, Namespace: testNamespace, ReloadStatus: fakeReloadStatus, DefaultLogLevel: logLevel}
+			_, err := reconciler.Reconcile(context.Background(), ctrl.Request{})
+			Expect(err).NotTo(HaveOccurred())
+			afterList := &v1beta1.FRRConfigurationList{}
+			Expect(cacheClient.List(context.Background(), afterList, client.UnsafeDisableDeepCopy)).To(Succeed())
+			for i := range afterList.Items {
+				if afterList.Items[i].Name == configuration.Name {
+					Expect(afterList.Items[i]).To(Equal(*before))
+					return
+				}
+			}
+			Fail("cached configuration was not found after reconciliation")
+		})
+	})
 
 	AfterEach(func() {
 		toDel := &v1beta1.FRRConfiguration{}
