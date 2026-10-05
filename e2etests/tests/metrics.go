@@ -21,6 +21,7 @@ import (
 	. "github.com/onsi/gomega"
 	dto "github.com/prometheus/client_model/go"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"go.universe.tf/e2etest/pkg/executor"
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
@@ -456,7 +457,7 @@ func forPod(promPod, target *corev1.Pod) ([]map[string]*dto.MetricFamily, error)
 }
 
 func metricsFromString(metrics string) (map[string]*dto.MetricFamily, error) {
-	var parser expfmt.TextParser
+	var parser = expfmt.NewTextParser(model.UTF8Validation)
 	mf, err := parser.TextToMetricFamilies(strings.NewReader(metrics))
 	if err != nil {
 		return nil, errors.Join(err, fmt.Errorf("failed to parse metrics %s", metrics))
