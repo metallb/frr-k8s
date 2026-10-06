@@ -51,6 +51,7 @@ _Appears in:_
 | `nextHop` _[NextHop](#nexthop)_ | NextHop sets the BGP next-hop address to advertise with prefixes<br />sent to this neighbor. |  | Optional: \{\} <br /> |
 | `withLocalPref` _[LocalPrefPrefixes](#localprefprefixes) array_ | PrefixesWithLocalPref is a list of prefixes that are associated to a local<br />preference when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  | Optional: \{\} <br /> |
 | `withCommunity` _[CommunityPrefixes](#communityprefixes) array_ | PrefixesWithCommunity is a list of prefixes that are associated to a<br />bgp community when being advertised. The prefixes associated to a given local pref<br />must be in the prefixes allowed to be advertised. |  | Optional: \{\} <br /> |
+| `withAsPathPrepend` _[AsPathPrependPrefixes](#aspathprependprefixes) array_ | PrefixesWithAsPathPrepend defines a list of prefixes that will have their<br />BGP AS-Path prepended upon advertisement. Any prefix defined in this list<br />must also be present in the general list of prefixes allowed to be advertised. |  | Optional: \{\} <br /> |
 
 
 #### AdvertisePrefixType
@@ -118,6 +119,23 @@ _Appears in:_
 | Field | Description | Default | Validation |
 | --- | --- | --- | --- |
 | `prefixes` _string array_ |  |  |  |
+
+
+#### AsPathPrependPrefixes
+
+
+
+AsPathPrependPrefixes is a list of prefixes associated with an AS path prepending.
+
+
+
+_Appears in:_
+- [Advertise](#advertise)
+
+| Field | Description | Default | Validation |
+| --- | --- | --- | --- |
+| `prefixes` _string array_ | Prefixes is the list of prefixes associated with the AS path prepending. |  | MinItems: 1 <br />items:Format: cidr <br />Required: \{\} <br /> |
+| `asPathPrepend` _integer_ | AsPathPrepend is the number of times to prepend the local ASN to the AS path for the prefixes. |  | Maximum: 10 <br />Minimum: 1 <br />Required: \{\} <br /> |
 
 
 #### BFDProfile

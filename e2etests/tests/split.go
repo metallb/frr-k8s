@@ -119,6 +119,67 @@ func splitByLocalPref(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRCo
 	return configs, nil
 }
 
+func splitByAsPathPrepend(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
+	if len(cfg.Spec.BGP.Routers) != 1 {
+		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)
+	}
+
+	withAsPathPrependPrefixFor := func(n frrk8sv1beta1.Neighbor, j int) frrk8sv1beta1.Neighbor {
+		res := n.DeepCopy()
+		res.ToAdvertise.PrefixesWithAsPathPrepend = []frrk8sv1beta1.AsPathPrependPrefixes{res.ToAdvertise.PrefixesWithAsPathPrepend[j]}
+		return *res
+	}
+
+	router := cfg.Spec.BGP.Routers[0]
+	configs := []frrk8sv1beta1.FRRConfiguration{}
+
+	// Collect all neighbors that don't have prepends (e.g. iBGP peers)
+	var neighborsWithoutPrepend []frrk8sv1beta1.Neighbor
+	for _, n := range router.Neighbors {
+		if len(n.ToAdvertise.PrefixesWithAsPathPrepend) == 0 {
+			neighborsWithoutPrepend = append(neighborsWithoutPrepend, *n.DeepCopy())
+		}
+	}
+
+	for i, n := range router.Neighbors {
+		if len(n.ToAdvertise.PrefixesWithAsPathPrepend) == 0 {
+			continue
+		}
+
+		for j := range n.ToAdvertise.PrefixesWithAsPathPrepend {
+			// Each split config gets the targeted neighbor with ONE prepend rule,
+			// PLUS all other neighbors that don't have prepend rules so their sessions stay established.
+			neighborsForThisConfig := append([]frrk8sv1beta1.Neighbor{withAsPathPrependPrefixFor(n, j)}, neighborsWithoutPrepend...)
+
+			configs = append(configs, frrk8sv1beta1.FRRConfiguration{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      fmt.Sprintf("%s-%d-%d", cfg.Name, i, j),
+					Namespace: cfg.Namespace,
+				},
+				Spec: frrk8sv1beta1.FRRConfigurationSpec{
+					BGP: frrk8sv1beta1.BGPConfig{
+						Routers: []frrk8sv1beta1.Router{
+							{
+								ASN:       router.ASN,
+								VRF:       router.VRF,
+								Neighbors: neighborsForThisConfig,
+								Prefixes:  router.Prefixes,
+							},
+						},
+					},
+				},
+			})
+		}
+	}
+
+	// Edge case: If no neighbors had prepends at all, return the original config unmodified
+	if len(configs) == 0 {
+		return []frrk8sv1beta1.FRRConfiguration{cfg}, nil
+	}
+
+	return configs, nil
+}
+
 func splitByLocalPrefAndCommunities(cfg frrk8sv1beta1.FRRConfiguration) ([]frrk8sv1beta1.FRRConfiguration, error) {
 	if len(cfg.Spec.BGP.Routers) != 1 {
 		return nil, fmt.Errorf("expected a config with a single router, got %v", cfg)

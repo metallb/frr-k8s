@@ -278,6 +278,12 @@ type Advertise struct {
 	// must be in the prefixes allowed to be advertised.
 	// +optional
 	PrefixesWithCommunity []CommunityPrefixes `json:"withCommunity,omitempty"`
+
+	// PrefixesWithAsPathPrepend defines a list of prefixes that will have their
+	// BGP AS-Path prepended upon advertisement. Any prefix defined in this list
+	// must also be present in the general list of prefixes allowed to be advertised.
+	// +optional
+	PrefixesWithAsPathPrepend []AsPathPrependPrefixes `json:"withAsPathPrepend,omitempty"`
 }
 
 // NextHop sets the BGP next-hop address for advertised prefixes.
@@ -353,6 +359,21 @@ type CommunityPrefixes struct {
 	Prefixes []string `json:"prefixes,omitempty"`
 	// Community is the community associated to the prefixes.
 	Community string `json:"community,omitempty"`
+}
+
+// AsPathPrependPrefixes is a list of prefixes associated with an AS path prepending.
+type AsPathPrependPrefixes struct {
+	// Prefixes is the list of prefixes associated with the AS path prepending.
+	// +required
+	// +kubebuilder:validation:MinItems=1
+	// +kubebuilder:validation:items:Format="cidr"
+	Prefixes []string `json:"prefixes,omitempty"`
+
+	// AsPathPrepend is the number of times to prepend the local ASN to the AS path for the prefixes.
+	// +required
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=10
+	AsPathPrepend uint8 `json:"asPathPrepend,omitempty"`
 }
 
 // BFDProfile is the configuration related to the BFD protocol associated
