@@ -1346,10 +1346,82 @@ func TestSingleSessionExplicitRouterID(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestHasIPv4Address(t *testing.T) {
+	tests := []struct {
+		name   string
+		addrs  []net.Addr
+		expect bool
+	}{
+		{
+			name:   "no addresses",
+			addrs:  nil,
+			expect: false,
+		},
+		{
+			name: "loopback only",
+			addrs: func() []net.Addr {
+				_, lo, _ := net.ParseCIDR("127.0.0.1/8")
+				return []net.Addr{lo}
+			}(),
+			expect: false,
+		},
+		{
+			name: "link-local only",
+			addrs: func() []net.Addr {
+				_, ll, _ := net.ParseCIDR("169.254.1.1/16")
+				return []net.Addr{ll}
+			}(),
+			expect: false,
+		},
+		{
+			name: "loopback and link-local and IPv6",
+			addrs: func() []net.Addr {
+				_, lo, _ := net.ParseCIDR("127.0.0.1/8")
+				_, ll, _ := net.ParseCIDR("169.254.1.1/16")
+				_, v6, _ := net.ParseCIDR("2001:db8::2/64")
+				return []net.Addr{lo, ll, v6}
+			}(),
+			expect: false,
+		},
+		{
+			name: "routable IPv4",
+			addrs: func() []net.Addr {
+				_, a, _ := net.ParseCIDR("192.168.1.10/24")
+				return []net.Addr{a}
+			}(),
+			expect: true,
+		},
+		{
+			name: "routable IPv4 with loopback",
+			addrs: func() []net.Addr {
+				_, lo, _ := net.ParseCIDR("127.0.0.1/8")
+				_, a, _ := net.ParseCIDR("10.0.0.1/24")
+				return []net.Addr{lo, a}
+			}(),
+			expect: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			netInterfaceAddrs = func() ([]net.Addr, error) {
+				return tt.addrs, nil
+			}
+			t.Cleanup(func() { netInterfaceAddrs = net.InterfaceAddrs })
+			got := hasIPv4Address()
+			if got != tt.expect {
+				t.Errorf("hasIPv4Address() = %v, want %v", got, tt.expect)
+			}
+		})
+	}
+}
+
 func TestSingleSessionIPv6OnlyNode(t *testing.T) {
 	testSetup(t)
+	_, lo, _ := net.ParseCIDR("127.0.0.1/8")
+	_, ll, _ := net.ParseCIDR("169.254.1.1/16")
+	_, v6, _ := net.ParseCIDR("2001:db8::2/64")
 	netInterfaceAddrs = func() ([]net.Addr, error) {
-		return nil, nil
+		return []net.Addr{lo, ll, v6}, nil
 	}
 	t.Cleanup(func() { netInterfaceAddrs = net.InterfaceAddrs })
 
