@@ -74,7 +74,8 @@ func hasIPv4Address() bool {
 		return false
 	}
 	for _, a := range addrs {
-		if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.To4() != nil {
+		if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.To4() != nil &&
+			!ipnet.IP.IsLoopback() && !ipnet.IP.IsLinkLocalUnicast() {
 			return true
 		}
 	}
