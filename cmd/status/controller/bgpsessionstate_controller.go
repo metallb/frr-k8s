@@ -27,9 +27,6 @@ import (
 )
 
 const (
-	nodeLabel       = "frrk8s.metallb.io/node"
-	peerLabel       = "frrk8s.metallb.io/peer"
-	vrfLabel        = "frrk8s.metallb.io/vrf"
 	noBFDConfigured = "N/A"
 )
 
@@ -85,7 +82,7 @@ func (r *BGPSessionStateReconciler) Reconcile(ctx context.Context, req ctrl.Requ
 	level.Debug(logger).Log("controller", "BGPSessionState", "log level controller", "debug")
 
 	l := frrk8sv1beta1.BGPSessionStateList{}
-	err := r.List(ctx, &l, client.MatchingLabels{nodeLabel: r.NodeName})
+	err := r.List(ctx, &l, client.MatchingLabels{frrk8sv1beta1.BGPSessionStateNodeLabel: r.NodeName})
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -227,9 +224,9 @@ func (r *BGPSessionStateReconciler) desiredStateFor(neigh *frr.Neighbor, vrf str
 		desired.ObjectMeta = *existing.ObjectMeta.DeepCopy()
 	}
 	desired.Labels = map[string]string{
-		nodeLabel: r.NodeName,
-		peerLabel: labelFormatForNeighbor(neigh.ID),
-		vrfLabel:  vrf,
+		frrk8sv1beta1.BGPSessionStateNodeLabel: r.NodeName,
+		frrk8sv1beta1.BGPSessionStatePeerLabel: labelFormatForNeighbor(neigh.ID),
+		frrk8sv1beta1.BGPSessionStateVRFLabel:  vrf,
 	}
 	bfdStatus := neigh.BFDStatus
 	if bfdStatus == "" {
@@ -246,15 +243,15 @@ func (r *BGPSessionStateReconciler) desiredStateFor(neigh *frr.Neighbor, vrf str
 }
 
 func nodeFor(s frrk8sv1beta1.BGPSessionState) string {
-	return s.Labels[nodeLabel]
+	return s.Labels[frrk8sv1beta1.BGPSessionStateNodeLabel]
 }
 
 func peerFor(s frrk8sv1beta1.BGPSessionState) string {
-	return s.Labels[peerLabel]
+	return s.Labels[frrk8sv1beta1.BGPSessionStatePeerLabel]
 }
 
 func vrfFor(s frrk8sv1beta1.BGPSessionState) string {
-	return s.Labels[vrfLabel]
+	return s.Labels[frrk8sv1beta1.BGPSessionStateVRFLabel]
 }
 
 func labelFormatForNeighbor(id string) string {

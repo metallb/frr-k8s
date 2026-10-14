@@ -146,7 +146,7 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 		if n.LocalASN != 0 && n.ASN != 0 && n.ASN == r.ASN {
 			return nil, fmt.Errorf("neighbor %s: localASN is not supported for iBGP sessions (neighbor ASN %d equals router ASN)", neighborName(n), n.ASN)
 		}
-		frrNeigh, err := neighborToFRR(n, routerPrefixes, alwaysBlock, r.VRF, secrets, bfdProfiles)
+		frrNeigh, err := neighborToFRR(n, routerPrefixes, alwaysBlock, r.VRF, secrets, bfdProfiles, r.ASN)
 		if err != nil {
 			return nil, fmt.Errorf("failed to process neighbor %s for router %d-%s: %w", neighborName(n), r.ASN, r.VRF, err)
 		}
@@ -162,7 +162,7 @@ func routerToFRRConfig(r v1beta1.Router, alwaysBlock []frr.IncomingFilter, secre
 	return res, nil
 }
 
-func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile) (*frr.NeighborConfig, error) {
+func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []frr.IncomingFilter, routerVRF string, passwordSecrets map[string]corev1.Secret, bfdProfiles map[string]*frr.BFDProfile, routerASN uint32) (*frr.NeighborConfig, error) {
 	if n.Address == "" && n.Interface == "" {
 		return nil, fmt.Errorf("neighbor with ASN %s has no address and no interface", asnFor(n))
 	}
@@ -222,7 +222,7 @@ func neighborToFRR(n v1beta1.Neighbor, prefixesInRouter []string, alwaysBlock []
 	if err != nil {
 		return nil, err
 	}
-	res.Outgoing, err = toAdvertiseToFRR(res, n.ToAdvertise, prefixesInRouter)
+	res.Outgoing, err = toAdvertiseToFRR(res, n.ToAdvertise, prefixesInRouter, routerASN)
 	if err != nil {
 		return nil, err
 	}
@@ -276,7 +276,7 @@ func passwordForNeighbor(n v1beta1.Neighbor, passwordSecrets map[string]corev1.S
 	return string(srcPass), nil
 }
 
-func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, prefixesInRouter []string) (frr.AllowedOut, error) {
+func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, prefixesInRouter []string, routerASN uint32) (frr.AllowedOut, error) {
 	neighborIPFamilies := []ipfamily.Family{neighbor.IPFamily}
 	if neighbor.IPFamily == ipfamily.DualStack {
 		neighborIPFamilies = []ipfamily.Family{ipfamily.IPv4, ipfamily.IPv6}
@@ -287,10 +287,11 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 	}
 
 	res := frr.AllowedOut{
-		PrefixesV4:                 make([]string, 0),
-		PrefixesV6:                 make([]string, 0),
-		LocalPrefPrefixesModifiers: make([]frr.LocalPrefPrefixList, 0),
-		CommunityPrefixesModifiers: make([]frr.CommunityPrefixList, 0),
+		PrefixesV4:                     make([]string, 0),
+		PrefixesV6:                     make([]string, 0),
+		LocalPrefPrefixesModifiers:     make([]frr.LocalPrefPrefixList, 0),
+		CommunityPrefixesModifiers:     make([]frr.CommunityPrefixList, 0),
+		AsPathPrependPrefixesModifiers: make([]frr.AsPathPrependPrefixList, 0),
 	}
 
 	if neighborHasIPFamily(neighbor, ipfamily.IPv4) {
@@ -309,6 +310,8 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 	localPreferencePrefixLists := map[string]frr.LocalPrefPrefixList{}
 	// map per ip family per community
 	communityPrefixLists := map[string]frr.CommunityPrefixList{}
+	// map per ip family per AS path prepending
+	asPathPrependPrefixLists := map[string]frr.AsPathPrependPrefixList{}
 
 	for _, ipFamily := range neighborIPFamilies {
 		var err error
@@ -320,9 +323,15 @@ func toAdvertiseToFRR(neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertis
 		if err != nil {
 			return frr.AllowedOut{}, fmt.Errorf("failed to process local pref for neighbor %s, err: %w", neighbor.Name, err)
 		}
+
+		asPathPrependPrefixLists, err = prefixesWithAsPathPrependToFRR(asPathPrependPrefixLists, neighbor, toAdvertise, ipFamily, prefixesForFamily[ipFamily], routerASN)
+		if err != nil {
+			return frr.AllowedOut{}, fmt.Errorf("failed to process as-path prepend for neighbor %s, err: %w", neighbor.Name, err)
+		}
 	}
 	res.LocalPrefPrefixesModifiers = sortMap(localPreferencePrefixLists)
 	res.CommunityPrefixesModifiers = sortMap(communityPrefixLists)
+	res.AsPathPrependPrefixesModifiers = sortMap(asPathPrependPrefixLists)
 
 	return res, nil
 }
@@ -430,6 +439,54 @@ func prefixesWithCommunityToFRR(toAdd map[string]frr.CommunityPrefixList, neighb
 	return toAdd, nil
 }
 
+func prefixesWithAsPathPrependToFRR(toAdd map[string]frr.AsPathPrependPrefixList, neighbor *frr.NeighborConfig, toAdvertise v1beta1.Advertise, ipFamily ipfamily.Family, routerPrefixes sets.Set[string], routerASN uint32) (map[string]frr.AsPathPrependPrefixList, error) {
+	frrFamily := frrIPFamily(ipFamily)
+	for _, prefixes := range toAdvertise.PrefixesWithAsPathPrepend {
+		prependCount := prefixes.AsPathPrepend
+		if prependCount == 0 {
+			return nil, fmt.Errorf("AsPathPrepend can't be zero")
+		}
+
+		ipfamilyPrefixes := ipfamily.FilterPrefixes(prefixes.Prefixes, ipFamily)
+		if len(ipfamilyPrefixes) == 0 {
+			continue
+		}
+
+		asnToPrepend := fmt.Sprintf("%d", routerASN)
+		if neighbor.LocalASN > 0 {
+			asnToPrepend = fmt.Sprintf("%d", neighbor.LocalASN)
+		}
+
+		key := asPathPrependPrefixListKey(asnToPrepend, prependCount, frrFamily)
+		if _, ok := toAdd[key]; ok {
+			return nil, fmt.Errorf("AS path prepending %d is already defined", prefixes.AsPathPrepend)
+		}
+
+		asPathPrependPrefixList := frr.AsPathPrependPrefixList{
+			PrefixList: frr.PrefixList{
+				Name:     asPathPrependPrefixListName(neighbor.ID(), asnToPrepend, prependCount, frrFamily),
+				IPFamily: frrFamily,
+				Prefixes: sets.New[string](),
+			},
+			PrependASN:   asnToPrepend,
+			PrependCount: prependCount,
+		}
+
+		for _, prefix := range ipfamilyPrefixes {
+			if !routerPrefixes.Has(prefix) {
+				return nil, fmt.Errorf("AS path prepending %d associated to non existing prefix %s", prefixes.AsPathPrepend, prefix)
+			}
+			if asPathPrependPrefixList.Prefixes.Has(prefix) {
+				return nil, fmt.Errorf("prefix %s is already defined for AS path prepending %d", prefix, prefixes.AsPathPrepend)
+			}
+
+			asPathPrependPrefixList.Prefixes.Insert(prefix)
+		}
+		toAdd[key] = asPathPrependPrefixList
+	}
+	return toAdd, nil
+}
+
 func neighborHasIPFamily(neighbor *frr.NeighborConfig, ipFamily ipfamily.Family) bool {
 	if neighbor.IPFamily == ipfamily.DualStack {
 		return true
@@ -474,12 +531,20 @@ func communityPrefixListName(neighborID string, comm community.BGPCommunity, ipF
 	return fmt.Sprintf("%s-%s-%s-community-prefixes", neighborID, comm, ipFamily)
 }
 
+func asPathPrependPrefixListName(neighborID string, asnToPrepend string, prependCount uint8, ipFamily string) string {
+	return fmt.Sprintf("%s-%s-%d-%s-aspathprepend-prefixes", neighborID, asnToPrepend, prependCount, ipFamily)
+}
+
 func communityPrefixListKey(comm community.BGPCommunity, frrAddressFamily string) string {
 	return fmt.Sprintf("%s-%s", comm, frrAddressFamily)
 }
 
 func localPrefPrefixListKey(localPref uint32, frrAddressFamily string) string {
 	return fmt.Sprintf("%d-%s", localPref, frrAddressFamily)
+}
+
+func asPathPrependPrefixListKey(asnToPrepend string, prependCount uint8, frrAddressFamily string) string {
+	return fmt.Sprintf("%s-%d-%s", asnToPrepend, prependCount, frrAddressFamily)
 }
 
 func toReceiveToFRR(toReceive v1beta1.Receive) (frr.AllowedIn, error) {
@@ -585,6 +650,20 @@ func validateOutgoingPrefixes(prefixesInRouter []string, routerConfig v1beta1.Ro
 					return fmt.Errorf("prefix %s is configured with both local preference %d and %d", prefixes.Prefixes, existing, prefixes.LocalPref)
 				}
 				localPrefForPrefix[p] = prefixes.LocalPref
+			}
+		}
+
+		asPathPrependForPrefix := map[string]uint8{}
+		for _, prefixes := range n.ToAdvertise.PrefixesWithAsPathPrepend {
+			if err := validatePrefixesForNeighborFamily(prefixes.Prefixes, neighborFamily); err != nil {
+				return fmt.Errorf("invalid prefixes %s for asPathPrepend %d for neighbor %s, err: %w", prefixes.Prefixes, prefixes.AsPathPrepend, neighborName(n), err)
+			}
+
+			for _, p := range prefixes.Prefixes { // check for multiple as path prepend on the same prefix
+				if existing, ok := asPathPrependForPrefix[p]; ok && existing != prefixes.AsPathPrepend {
+					return fmt.Errorf("prefix %s is configured with both as path prepend %d and %d", prefixes.Prefixes, existing, prefixes.AsPathPrepend)
+				}
+				asPathPrependForPrefix[p] = prefixes.AsPathPrepend
 			}
 		}
 

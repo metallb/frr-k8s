@@ -21,6 +21,7 @@ import (
 	"github.com/metallb/frr-k8s/internal/version"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/fields"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -85,6 +86,13 @@ func main() {
 	namespaceSelector := cache.ByObject{
 		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
 	}
+	nodeSelector := cache.ByObject{
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.name=%s", nodeName)),
+	}
+	sessionSelector := cache.ByObject{
+		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", namespace)),
+		Label: labels.SelectorFromSet(labels.Set{frrk8sv1beta1.BGPSessionStateNodeLabel: nodeName}),
+	}
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
 		Scheme:                 scheme,
@@ -95,8 +103,8 @@ func main() {
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
-				&frrk8sv1beta1.BGPSessionState{}:     namespaceSelector,
-				&frrk8sv1beta1.FRRNodeState{}:        {},
+				&frrk8sv1beta1.BGPSessionState{}:     sessionSelector,
+				&frrk8sv1beta1.FRRNodeState{}:        nodeSelector,
 			},
 		},
 	})

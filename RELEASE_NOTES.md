@@ -1,5 +1,19 @@
 # FRRK8s Release Notes
 
+## Release v0.0.27
+
+### New Features
+- ADD: Support for prefix-level AS-Path prepending configuration on BGP neighbors to enable inbound traffic engineering. (#461, @psasnal)
+- Add riscv64 build (#451, @mmoll)
+- Improved scalability of the per-node controller and status exporter by scoping informer caches to node-local resources and reducing `FRRConfiguration` reconciliation allocations. This lowers memory use and reconciliation load in clusters with large numbers of nodes and FRR configurations. No user-facing configuration changes are required. (#493, @koolzz)
+- Reduce statuscleaner memory usage and reconciliation work in large clusters. (#495, @koolzz)
+
+### Bug fixes
+- Fix BGP session setup on IPv6-only nodes: loopback and link-local IPv4 addresses are no longer treated as a usable address, so the hostname-based router-id is used instead of leaving the BGP identifier at 0.0.0.0. (#502, @cgoncalves)
+
+### Other (Cleanup or Flake)
+- Update FRR to 10.6.2 (#498, @fedepaol)
+
 ## Release v0.0.26
 
 ### New Features

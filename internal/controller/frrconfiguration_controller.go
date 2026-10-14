@@ -25,9 +25,11 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1validation "k8s.io/apimachinery/pkg/apis/meta/v1/validation"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/validation/field"
 
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,6 +45,11 @@ import (
 )
 
 const ConversionSuccess = "success"
+
+const frrConfigurationReconcileName = "frrconfig"
+
+// Validation only reads this path; reuse it across configurations.
+var nodeSelectorPath = field.NewPath("nodeSelector")
 
 // FRRConfigurationReconciler reconciles a FRRConfiguration object.
 type FRRConfigurationReconciler struct {
@@ -93,7 +100,9 @@ func (r *FRRConfigurationReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	updates.Inc()
 
 	configs := frrk8sv1beta1.FRRConfigurationList{}
-	err := r.List(ctx, &configs)
+	// The cached objects are treated as immutable. configsForNode returns deep
+	// copies of the small matching subset before it reaches conversion code.
+	err := r.List(ctx, &configs, client.UnsafeDisableDeepCopy)
 	if err != nil {
 		conversionResult = fmt.Sprintf("failed: %v", err)
 		return ctrl.Result{}, err
@@ -204,20 +213,48 @@ func (r *FRRConfigurationReconciler) applyEmptyConfig(logLevel logging.Level) er
 // This also validates that the configuration objects have a valid nodeSelector.
 func configsForNode(cfgs []frrk8sv1beta1.FRRConfiguration, nodeLabels map[string]string) ([]frrk8sv1beta1.FRRConfiguration, error) {
 	valid := []frrk8sv1beta1.FRRConfiguration{}
-	for _, cfg := range cfgs {
-		selector, err := metav1.LabelSelectorAsSelector(&cfg.Spec.NodeSelector)
+	for i := range cfgs {
+		cfg := &cfgs[i]
+		if err := validateNodeSelector(&cfg.Spec.NodeSelector); err != nil {
+			return nil, fmt.Errorf("could not parse nodeSelector for FRRConfiguration %s/%s, err: %w", cfg.Namespace, cfg.Name, err)
+		}
+		matches, err := nodeSelectorMatches(&cfg.Spec.NodeSelector, nodeLabels)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse nodeSelector for FRRConfiguration %s/%s, err: %w", cfg.Namespace, cfg.Name, err)
 		}
-
-		if !selector.Matches(labels.Set(nodeLabels)) {
+		if !matches {
 			continue
 		}
-
-		valid = append(valid, cfg)
+		valid = append(valid, *cfg.DeepCopy())
 	}
 
 	return valid, nil
+}
+
+// validateNodeSelector checks the full selector, including expressions on configurations
+// whose exact labels do not match this node.
+func validateNodeSelector(selector *metav1.LabelSelector) error {
+	return metav1validation.ValidateLabelSelector(selector,
+		metav1validation.LabelSelectorValidationOptions{}, nodeSelectorPath).ToAggregate()
+}
+
+// nodeSelectorMatches checks exact labels before building a selector for expressions.
+// The caller must validate the selector before using this fast path.
+func nodeSelectorMatches(selector *metav1.LabelSelector, nodeLabels map[string]string) (bool, error) {
+	for key, value := range selector.MatchLabels {
+		actual, exists := nodeLabels[key]
+		if !exists || actual != value {
+			return false, nil
+		}
+	}
+	if len(selector.MatchExpressions) == 0 {
+		return true, nil
+	}
+	parsed, err := metav1.LabelSelectorAsSelector(selector)
+	if err != nil {
+		return false, err
+	}
+	return parsed.Matches(labels.Set(nodeLabels)), nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -233,20 +270,26 @@ func (r *FRRConfigurationReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			// The controller is level driven, so we squash all the frrconfiguration changes to a single key.
 			// By doing this, the controller will throttle when there are a large amount of configurations generated
 			// at the same time.
-			handler.EnqueueRequestsFromMapFunc(func(ctx context.Context, obj client.Object) []reconcile.Request {
-				return []reconcile.Request{
-					{NamespacedName: types.NamespacedName{
-						Name:      "frrconfig",
-						Namespace: obj.GetNamespace(),
-					}},
-				}
-			}),
+			handler.EnqueueRequestsFromMapFunc(reconcileRequestForFRRConfiguration),
 		).
 		For(&corev1.Node{}).
-		Watches(&corev1.Secret{}, &handler.EnqueueRequestForObject{}).
+		// Secret changes rebuild the same full configuration. Sharing the key
+		// coalesces bursts (including relists) instead of reconciling once per Secret.
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(reconcileRequestForFRRConfiguration)).
 		Watches(&frrk8sv1beta1.FRRK8sConfiguration{}, &handler.EnqueueRequestForObject{}).
 		WithEventFilter(p).
 		Complete(r)
+}
+
+// reconcileRequestForFRRConfiguration maps configuration and Secret events to one
+// request per namespace; the reconciler reads all configuration and Secret objects.
+func reconcileRequestForFRRConfiguration(_ context.Context, obj client.Object) []reconcile.Request {
+	return []reconcile.Request{
+		{NamespacedName: types.NamespacedName{
+			Name:      frrConfigurationReconcileName,
+			Namespace: obj.GetNamespace(),
+		}},
+	}
 }
 
 func (r *FRRConfigurationReconciler) getSecrets(ctx context.Context) (map[string]corev1.Secret, error) {

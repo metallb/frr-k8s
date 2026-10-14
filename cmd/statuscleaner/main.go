@@ -119,9 +119,23 @@ func main() {
 		setupLog.Error(err, "failed to parse TLS flags")
 		os.Exit(1)
 	}
+	frrk8sSelector, err := labels.Parse(params.frrk8sSelector)
+	if err != nil {
+		setupLog.Error(err, "failed to parse frrk8s selector")
+		os.Exit(1)
+	}
 
 	namespaceSelector := cache.ByObject{
-		Field: fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
+		Field:     fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
+		Transform: cache.TransformStripManagedFields(),
+	}
+	podSelector := cache.ByObject{
+		Field:     fields.ParseSelectorOrDie(fmt.Sprintf("metadata.namespace=%s", params.namespace)),
+		Label:     frrk8sSelector,
+		Transform: stripFRRPodForCleaner,
+	}
+	nodeStateSelector := cache.ByObject{
+		Transform: stripFRRNodeStateStatus,
 	}
 
 	options := ctrl.Options{
@@ -129,8 +143,9 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
-				&corev1.Pod{}:                        namespaceSelector,
-				&frrk8sv1beta1.FRRNodeState{}:        {},
+				&corev1.Pod{}:                        podSelector,
+				&corev1.Secret{}:                     namespaceSelector,
+				&frrk8sv1beta1.FRRNodeState{}:        nodeStateSelector,
 				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
 			},
 		},
@@ -172,7 +187,7 @@ func main() {
 		<-startListeners
 
 		setupWebhook(mgr)
-		startNodeStateCleaner(mgr, params.namespace, params.frrk8sSelector, defaultLogLevel)
+		startNodeStateCleaner(mgr, params.namespace, frrk8sSelector, defaultLogLevel)
 	}()
 
 	setupLog.Info("starting frr-k8s webhook", "version", version.String(), "params", fmt.Sprintf("%+v", params))
@@ -182,27 +197,46 @@ func main() {
 	}
 }
 
-func startNodeStateCleaner(mgr manager.Manager, namespace, frrk8sSelector string, defaultLogLevel logging.Level) {
-	setupLog.Info("Starting node state cleaner controller")
-
-	selector, err := labels.Parse(frrk8sSelector)
-	if err != nil {
-		setupLog.Error(err, "failed to parse frrk8s selector")
-		os.Exit(1)
+// stripFRRPodForCleaner keeps the metadata and node name used to find matching
+// Pods. Removing the remaining spec and status reduces cache memory and copies.
+func stripFRRPodForCleaner(obj any) (any, error) {
+	pod, ok := obj.(*corev1.Pod)
+	if !ok {
+		return obj, nil
 	}
+	pod.Spec = corev1.PodSpec{NodeName: pod.Spec.NodeName}
+	pod.Status = corev1.PodStatus{}
+	pod.SetManagedFields(nil)
+	return pod, nil
+}
+
+// stripFRRNodeStateStatus releases status data, including running configuration
+// strings. The cleaner only needs the state's identity to delete it.
+func stripFRRNodeStateStatus(obj any) (any, error) {
+	nodeState, ok := obj.(*frrk8sv1beta1.FRRNodeState)
+	if !ok {
+		return obj, nil
+	}
+	nodeState.Status = frrk8sv1beta1.FRRNodeStateStatus{}
+	nodeState.SetManagedFields(nil)
+	return nodeState, nil
+}
+
+func startNodeStateCleaner(mgr manager.Manager, namespace string, frrk8sSelector labels.Selector, defaultLogLevel logging.Level) {
+	setupLog.Info("Starting node state cleaner controller")
 
 	nodeStateCleaner := &controller.NodeStateCleaner{
 		Client:         mgr.GetClient(),
 		Scheme:         mgr.GetScheme(),
 		Namespace:      namespace,
-		FRRK8sSelector: selector,
+		FRRK8sSelector: frrk8sSelector,
 	}
 	if err := nodeStateCleaner.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Pod")
 		os.Exit(1)
 	}
 
-	if err = (&controller.FRRK8sConfigurationReconciler{
+	if err := (&controller.FRRK8sConfigurationReconciler{
 		Client:          mgr.GetClient(),
 		Scheme:          mgr.GetScheme(),
 		DefaultLogLevel: defaultLogLevel,
