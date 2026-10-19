@@ -260,13 +260,15 @@ func ParseBFDPeers(vtyshRes string) ([]BFDPeer, error) {
 }
 
 func ParseVRFs(vtyshRes string) ([]string, error) {
-	vrfs := map[string]interface{}{}
+	vrfs := struct {
+		VRFs map[string]json.RawMessage `json:"vrfs"`
+	}{}
 	err := json.Unmarshal([]byte(vtyshRes), &vrfs)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("parseVRFs: failed to parse vtysh response"))
 	}
 	res := make([]string, 0)
-	for v := range vrfs {
+	for v := range vrfs.VRFs {
 		res = append(res, v)
 	}
 	sort.Strings(res)
