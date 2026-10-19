@@ -18,7 +18,10 @@ func Run(args string) (string, error) {
 var _ Cli = Run
 
 func VRFs(frrCli Cli) ([]string, error) {
-	vrfs, err := frrCli("show bgp vrf all json")
+	// "show bgp vrfs json" lists the VRFs only. "show bgp vrf all json" would
+	// dump every VRF's full BGP table, which on a full-table router means
+	// hundreds of MB of JSON and seconds of bgpd CPU per call.
+	vrfs, err := frrCli("show bgp vrfs json")
 	if err != nil {
 		return nil, err
 	}
