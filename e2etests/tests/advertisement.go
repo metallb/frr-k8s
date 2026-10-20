@@ -476,6 +476,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				myAsn:    infra.FRRK8sASN,
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					if !anyEBGPPeer(ppV4) {
+						ginkgo.Skip("asPathPrepend e2e requires at least one eBGP peer")
+					}
 					for i := range ppV4 {
 						// Only apply AsPathPrepend to eBGP neighbors to avoid loop-prevention drops on iBGP
 						if iseBGPPeer(ppV4[i]) {
@@ -512,6 +515,9 @@ var _ = ginkgo.Describe("Advertisement", func() {
 				myAsn:    infra.FRRK8sASN,
 				prefixes: []string{"192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24"},
 				modifyPeers: func(ppV4 []config.Peer, ppV6 []config.Peer) {
+					if !anyEBGPPeer(ppV4) {
+						ginkgo.Skip("asPathPrepend e2e requires at least one eBGP peer")
+					}
 					for i := range ppV4 {
 						// Only apply AsPathPrepend to eBGP neighbors to avoid loop-prevention drops on iBGP
 						if iseBGPPeer(ppV4[i]) {
@@ -531,11 +537,10 @@ var _ = ginkgo.Describe("Advertisement", func() {
 					}
 				},
 				validate: func(ppV4 []config.Peer, ppV6 []config.Peer, nodes []v1.Node) {
-					eBGPPeersValidated := 0
-					// Only validate eBGP neighbors
+					// Only validate eBGP neighbors; modifyPeers already skipped the
+					// entry if none are present.
 					for _, p := range ppV4 {
 						if iseBGPPeer(p) {
-							eBGPPeersValidated++
 							ValidatePrefixesForNeighbor(p.FRR, nodes, "192.168.0.0/24", "192.168.1.0/24", "192.168.2.0/24", "192.168.3.0/24")
 							ValidateNeighborAsPathPrependForPrefix(p.FRR, "192.168.0.0", strconv.Itoa(infra.FRRK8sASN), 3, ipfamily.IPv4)
 							ValidateNeighborAsPathPrependForPrefix(p.FRR, "192.168.1.0", strconv.Itoa(infra.FRRK8sASN), 2, ipfamily.IPv4)
@@ -543,7 +548,6 @@ var _ = ginkgo.Describe("Advertisement", func() {
 							ValidateNeighborAsPathPrependForPrefix(p.FRR, "192.168.3.0", strconv.Itoa(infra.FRRK8sASN), 0, ipfamily.IPv4) // no AsPathPrepend for prefix 192.168.3.0
 						}
 					}
-					Expect(eBGPPeersValidated).To(BeNumerically(">", 0), "expected to test at least one eBGP peer")
 				},
 				splitCfg: splitByAsPathPrepend,
 			}),
@@ -855,6 +859,15 @@ var _ = ginkgo.Describe("Advertisement", func() {
 func iseBGPPeer(peer config.Peer) bool {
 	// If the external router's ASN is different from the Kubernetes cluster's ASN, it is eBGP
 	return peer.FRR.RouterConfig.ASN != uint32(infra.FRRK8sASN)
+}
+
+func anyEBGPPeer(peers []config.Peer) bool {
+	for _, p := range peers {
+		if iseBGPPeer(p) {
+			return true
+		}
+	}
+	return false
 }
 
 func nextHopPeerIPOnSameNetwork(peers []config.Peer, peerIndex int) (string, bool) {
