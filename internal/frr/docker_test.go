@@ -24,7 +24,7 @@ var (
 )
 
 const (
-	frrImageTag = "10.6.2"
+	frrImageTag = "master" // dockertest builds "repo:tag", so a digest cannot be used here; same build as the digest pinned elsewhere
 )
 
 func TestMain(m *testing.M) {
