@@ -195,9 +195,9 @@ frrk8s:
   frr:
     image:
       # -- The FRR image repository.
-      repository: quay.io/frrouting/frr
+      repository: ghcr.io/ricky-rav/frr
       # -- The FRR image tag.
-      tag: 10.6.2
+      tag: master-hidden-revival-fix-v9
       # -- The FRR image pull policy.
       pullPolicy:
     # -- Bind address for FRR metrics.
