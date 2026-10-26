@@ -1764,7 +1764,7 @@ spec:
         env:
         - name: TINI_SUBREAPER
           value: "true"
-        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v9
+        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v11
         livenessProbe:
           failureThreshold: 3
           httpGet:
@@ -1805,7 +1805,7 @@ spec:
         - --metrics-bind-address=0.0.0.0
         command:
         - /etc/frr_metrics/frr-metrics
-        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v9
+        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v11
         name: frr-metrics
         ports:
         - containerPort: 9141
@@ -1839,7 +1839,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.name
-        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v9
+        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v11
         name: frr-status
         volumeMounts:
         - mountPath: /var/run/frr
@@ -1850,7 +1850,7 @@ spec:
           name: frr-status
       - command:
         - /etc/frr_reloader/frr-reloader.sh
-        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v9
+        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v11
         name: reloader
         volumeMounts:
         - mountPath: /var/run/frr
@@ -1865,7 +1865,7 @@ spec:
         - /bin/sh
         - -c
         - cp -rLf /tmp/frr/* /etc/frr/
-        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v9
+        image: ghcr.io/ricky-rav/frr:master-hidden-disable-v11
         name: cp-frr-files
         securityContext:
           runAsGroup: 101
