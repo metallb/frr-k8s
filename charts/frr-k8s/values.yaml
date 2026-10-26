@@ -197,7 +197,7 @@ frrk8s:
       # -- The FRR image repository.
       repository: ghcr.io/ricky-rav/frr
       # -- The FRR image tag.
-      tag: master-hidden-revival-fix-v9
+      tag: master-hidden-disable-v9
       # -- The FRR image pull policy.
       pullPolicy:
     # -- Bind address for FRR metrics.
