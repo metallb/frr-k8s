@@ -37,8 +37,7 @@ func Validate(resources ...client.ObjectList) error {
 }
 
 // Resets secret references for validation, where their values are unknown.
-// Each secret-only neighbor takes a known password from the same peer and VRF
-// so merging does not mistake an unresolved password for no authentication.
+// Each secret-only neighbor takes a known password from the same peer and VRF.
 // Known passwords are left intact, preserving conflict checks.
 // Secret contents, shared-secret consistency across peers, and mutually
 // exclusive password sources are checked during reconciliation.
