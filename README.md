@@ -433,6 +433,17 @@ for a design proposal.
 Please remember the spirit of the `incremental` configuration approach where each new configuration can only extend the existing
 one and not remove any parts out of it.
 
+## Running the metrics exporter outside a cluster
+
+`frr-metrics` reads FRR state with `vtysh`, so it can also run on an external FRR host the cluster peers with, letting you reuse the same dashboards and alerts. Kubernetes authentication and authorization need in-cluster config, so disable them with `--disable-metrics-auth`:
+
+```bash
+frr-metrics --disable-metrics-auth --metrics-bind-address=127.0.0.1
+curl -k https://127.0.0.1:9141/metrics
+```
+
+Anything that can reach the listener can then read the metrics. The default bind address `0.0.0.0` covers both IPv4 and IPv6, so bind to loopback or a management address and restrict access with a firewall.
+
 ## License
 
 Copyright 2023.
