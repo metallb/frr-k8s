@@ -289,6 +289,14 @@
             "runtimeClassName": {
               "type": "string"
             },
+            "statusCleaner": {
+              "type": "object",
+              "properties": {
+                "hostNetwork": {
+                  "type": "boolean"
+                }
+              }
+            },
             "secretName": {
               "type": "string"
             },
