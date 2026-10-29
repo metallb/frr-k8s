@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ template "frrk8s.fullname" . }}-statuscleaner
-  namespace: {{ .Release.Namespace | quote }}
+  namespace: {{ include "frrk8s.namespace" . | quote }}
   labels:
     {{- include "frrk8s.labels" . | nindent 4 }}
     app.kubernetes.io/component: statuscleaner
