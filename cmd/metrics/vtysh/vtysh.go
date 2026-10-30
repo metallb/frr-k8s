@@ -18,7 +18,8 @@ func Run(args string) (string, error) {
 var _ Cli = Run
 
 func VRFs(frrCli Cli) ([]string, error) {
-	vrfs, err := frrCli("show bgp vrf all json")
+	// List VRFs without their routing tables.
+	vrfs, err := frrCli("show bgp vrfs json")
 	if err != nil {
 		return nil, err
 	}
