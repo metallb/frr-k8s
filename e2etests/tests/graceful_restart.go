@@ -3,6 +3,7 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/netip"
 	"time"
@@ -139,6 +140,22 @@ var _ = ginkgo.Describe("Establish BGP session with EnableGracefulRestart", func
 			Eventually(check, time.Minute, time.Second).ShouldNot(HaveOccurred(),
 				"routes should exist before we restart frr-k8s")
 
+			// The external FRRs get their "router bgp" recreated by the
+			// cleanup/pairing done at the beginning of the test, so for the
+			// next restart-time (120s by default) they advertise the Restart
+			// State bit in their graceful restart capability. Per RFC 4724
+			// section 4.2 the restarting speaker does not wait for the
+			// End-of-RIB of such peers, which makes the restarted frr-k8s
+			// bgpd end its deferral right away and zebra purge the preserved
+			// routes before the peers re-advertise them. That is not the
+			// scenario this test covers, so we wait for the external peers
+			// to act as steady helpers before restarting the pods.
+			ginkgo.By("waiting for the external peers to leave their restart window")
+			Eventually(func() error {
+				return peersOutOfRestartWindow(cs)
+			}, 2*frrStartupRestartWindow, 5*time.Second).ShouldNot(HaveOccurred(),
+				"external peers should have been up for longer than their restart window")
+
 			ginkgo.By("GR started")
 			c := make(chan struct{})
 			go func() { // go restart frr-k8s while Consistently check that route exists
@@ -177,6 +194,75 @@ func checkPrefixesOnNode(node string, prefixes []string) error {
 
 		if _, exist := routes[want]; !exist {
 			return fmt.Errorf("no route for prefix %s was found on node %s", prefix, node)
+		}
+	}
+	return nil
+}
+
+// frrStartupRestartWindow is how long a freshly created FRR BGP instance
+// advertises the Restart State bit (bgpd arms its startup timer with the
+// default restart time, regardless of the configured one).
+const frrStartupRestartWindow = 120 * time.Second
+
+// bgpNeighborGRState is the subset of "show bgp neighbors json" needed to
+// tell whether a peer advertised the Restart State bit when the session came
+// up and how long ago that was.
+type bgpNeighborGRState struct {
+	BGPState   string `json:"bgpState"`
+	UptimeMsec int64  `json:"bgpTimerUpMsec"`
+	GRInfo     struct {
+		RBit   bool `json:"rBit"`
+		Timers struct {
+			ReceivedRestartTimer int64 `json:"receivedRestartTimer"`
+		} `json:"timers"`
+	} `json:"gracefulRestartInfo"`
+}
+
+// peersOutOfRestartWindow returns an error if any peer of any frr-k8s pod
+// advertised the Restart State bit and its session has been up for less than
+// the restart window. FRR sets the bit for a fixed time after a BGP instance
+// is created, and a session cannot be older than the instance it belongs to,
+// so once the session uptime exceeds the window the peer is guaranteed to
+// leave the bit unset in its next OPEN. The bit reported by vtysh is the one
+// received at session setup and never clears while the session stays up.
+func peersOutOfRestartWindow(cs clientset.Interface) error {
+	pods, err := k8s.FRRK8sPods(cs)
+	if err != nil {
+		return err
+	}
+	for _, pod := range pods {
+		exc := executor.ForPod(pod.Namespace, pod.Name, k8s.FRRContainerName)
+		out, err := exc.Exec("vtysh", "-c", "show bgp neighbors json")
+		if err != nil {
+			return fmt.Errorf("failed to query the neighbors of pod %s: %w", pod.Name, err)
+		}
+		neighbors := map[string]bgpNeighborGRState{}
+		if err := json.Unmarshal([]byte(out), &neighbors); err != nil {
+			return fmt.Errorf("failed to parse the neighbors of pod %s: %w", pod.Name, err)
+		}
+		if len(neighbors) == 0 {
+			return fmt.Errorf("pod %s has no neighbors", pod.Name)
+		}
+		for ip, n := range neighbors {
+			if n.BGPState != "Established" {
+				return fmt.Errorf("peer %s of pod %s is %s", ip, pod.Name, n.BGPState)
+			}
+			if !n.GRInfo.RBit {
+				continue
+			}
+			// A peer that configured a restart time advertises that value,
+			// but the startup window stays at the default, so the effective
+			// window is never shorter than the startup one.
+			restartWindow := frrStartupRestartWindow
+			if advertised := time.Duration(n.GRInfo.Timers.ReceivedRestartTimer) * time.Second; advertised > restartWindow {
+				restartWindow = advertised
+			}
+			// bgpTimerUpMsec has a one second resolution, keep a margin.
+			uptime := time.Duration(n.UptimeMsec) * time.Millisecond
+			if uptime < restartWindow+time.Second {
+				return fmt.Errorf("peer %s of pod %s advertised the restart state bit %s ago, restart window is %s",
+					ip, pod.Name, uptime, restartWindow)
+			}
 		}
 	}
 	return nil
