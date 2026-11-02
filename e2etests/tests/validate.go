@@ -8,7 +8,6 @@ import (
 	"time"
 
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
-	localfrr "github.com/metallb/frrk8stests/pkg/frr"
 	"github.com/metallb/frrk8stests/pkg/routes"
 	"github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -179,18 +178,22 @@ func ValidateNeighborLocalPrefForPrefix(neigh frrcontainer.FRR, prefix string, e
 func ValidateNeighborAsPathPrependForPrefix(neigh frrcontainer.FRR, prefix string, expectedASN string, expectedAsPathPrependCount int, ipfam ipfamily.Family) {
 	ginkgo.By(fmt.Sprintf("Checking asPathPrepend for prefix %s on neighbor %s", prefix, neigh.Name))
 	Eventually(func() error {
-		asPathPrependList, err := localfrr.AsPathPrependListForPrefix(neigh, prefix, ipfam, expectedASN)
+		asPath, err := frr.AsPathForPrefix(neigh, prefix, ipfam)
 		if err != nil {
 			return err
 		}
 
+		// Exclude the last ASN (the origin ASN).
+		// E.g. if the base ASN is added once natively, and we prepend 3 times, there are 4 ASNs total.
+		asPathPrependList := asPath[:len(asPath)-1]
+
 		if len(asPathPrependList) != expectedAsPathPrependCount {
-			return fmt.Errorf("invalid count of ASN prepends: expected %d, got %d", len(asPathPrependList), expectedAsPathPrependCount)
+			return fmt.Errorf("invalid count of ASN prepends for prefix %s on neighbor %s: expected %d, got %d", prefix, neigh.Name, expectedAsPathPrependCount, len(asPathPrependList))
 		}
 
-		for i := range len(asPathPrependList) {
-			if asPathPrependList[i] != expectedASN {
-				return fmt.Errorf("invalid AS in path at index %d: expected %s, got %s (full path: %s)", i, expectedASN, asPathPrependList[i], asPathPrependList)
+		for i, asn := range asPathPrependList {
+			if asn != expectedASN {
+				return fmt.Errorf("invalid AS in path at index %d for prefix %s on neighbor %s: expected %s, got %s (full path: %s)", i, prefix, neigh.Name, expectedASN, asn, strings.Join(asPath, " "))
 			}
 		}
 
