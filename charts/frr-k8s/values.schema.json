@@ -176,6 +176,10 @@
       "description": "Override fully qualified app name",
       "type": "string"
     },
+    "namespaceOverride": {
+      "description": "Namespace for namespaced objects. Empty uses the release namespace. The override namespace must already exist.",
+      "type": "string"
+    },
     "tls": {
       "description": "TLS configuration for all components",
       "type": "object",
