@@ -60,3 +60,7 @@ service-account*.json
 !.env.template
 !*.example.tfvars
 !*.example.tfvars.json
+
+# Local Superpowers plans, specs, reviews, and session files
+.superpowers/
+superpowers/
