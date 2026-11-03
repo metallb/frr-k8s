@@ -20,6 +20,6 @@ concurrency:
 
 jobs:
   scan:
-    uses: m11s-io/.github/.github/workflows/osv-scanner.yml@9e6797b0fbb9da638bed8558dcc97167ea20d4cb
+    uses: m11s-io/.github/.github/workflows/osv-scanner.yml@main
     with:
       upload-sarif: true
