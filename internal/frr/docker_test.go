@@ -24,7 +24,7 @@ var (
 )
 
 const (
-	frrImageTag = "10.6.2"
+	frrImageTag = "master-hidden-revival-fix-v9"
 )
 
 func TestMain(m *testing.M) {
@@ -57,7 +57,7 @@ func testWithDocker(m *testing.M) {
 	containerHandle, err = pool.RunWithOptions(
 		&dockertest.RunOptions{
 			Name:       "frrtest",
-			Repository: "quay.io/frrouting/frr",
+			Repository: "ghcr.io/ricky-rav/frr",
 			Tag:        frrImageTag,
 			Mounts:     []string{fmt.Sprintf("%s:/etc/tempfrr", frrDir)},
 		},
