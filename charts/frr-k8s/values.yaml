@@ -195,9 +195,9 @@ frrk8s:
   frr:
     image:
       # -- The FRR image repository.
-      repository: quay.io/frrouting/frr
+      repository: quay.io/frrouting/frr@sha256
       # -- The FRR image tag.
-      tag: 10.6.2
+      tag: 9f58c94ebb86d0af7e7cf41abf6e53b44721a7bf71fbd9a9fcd04a5c54b136ec
       # -- The FRR image pull policy.
       pullPolicy:
     # -- Bind address for FRR metrics.
