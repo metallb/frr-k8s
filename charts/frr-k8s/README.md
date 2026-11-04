@@ -76,6 +76,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.startupProbe.enabled | bool | `true` | Enable startup probe. |
 | frrk8s.startupProbe.failureThreshold | int | `30` | Number of failures before the probe is considered failed. |
 | frrk8s.startupProbe.periodSeconds | int | `5` | How often (in seconds) to perform the probe. |
+| frrk8s.statusCleaner.hostNetwork | bool | `true` | Whether the status-cleaner pod uses the host network. |
 | frrk8s.tolerateMaster | bool | `true` | Tolerate master nodes for pod scheduling. |
 | frrk8s.tolerations | list | `[]` | Tolerations for pod assignment. |
 | frrk8s.updateStrategy.type | string | `"RollingUpdate"` | Specify the FRR-K8s daemonset update strategy. |

@@ -126,4 +126,4 @@ spec:
             secretName: frr-k8s-webhook-server-cert
       serviceAccountName: {{ template "frrk8s.serviceAccountName" . }}
       terminationGracePeriodSeconds: 10
-      hostNetwork: true
+      hostNetwork: {{ .Values.frrk8s.statusCleaner.hostNetwork }}

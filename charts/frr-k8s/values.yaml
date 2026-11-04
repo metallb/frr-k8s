@@ -142,6 +142,9 @@ frrk8s:
   ## Selects which runtime class will be used by the pod.
   # -- Runtime class name for the pod.
   runtimeClassName: ""
+  statusCleaner:
+    # -- Whether the status-cleaner pod uses the host network.
+    hostNetwork: true
   # -- Additional annotations to add to the pod.
   podAnnotations: {}
   # -- Additional labels to add to the pod.
