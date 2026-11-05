@@ -13,6 +13,12 @@ import (
 
 var labels = []string{"peer", "vrf"}
 
+var bgpFamilies = map[string][2]string{
+	"ipv4Unicast": {"ipv4", "unicast"},
+	"ipv6Unicast": {"ipv6", "unicast"},
+	"l2VpnEvpn":   {"l2vpn", "evpn"},
+}
+
 var (
 	sessionUpDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, Subsystem, SessionUp.Name),
@@ -32,6 +38,20 @@ var (
 		prometheus.BuildFQName(Namespace, Subsystem, ReceivedPrefixes.Name),
 		ReceivedPrefixes.Help,
 		labels,
+		nil,
+	)
+
+	familyPrefixesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, Subsystem, "family_announced_prefixes"),
+		"Number of prefixes currently being advertised on the BGP session for one address family",
+		[]string{"peer", "vrf", "afi", "safi"},
+		nil,
+	)
+
+	familyReceivedPrefixesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, Subsystem, "family_received_prefixes"),
+		"Number of prefixes currently being received on the BGP session for one address family",
+		[]string{"peer", "vrf", "afi", "safi"},
 		nil,
 	)
 
@@ -125,6 +145,8 @@ func (c *bgp) Describe(ch chan<- *prometheus.Desc) {
 	ch <- sessionUpDesc
 	ch <- prefixesDesc
 	ch <- receivedPrefixesDesc
+	ch <- familyPrefixesDesc
+	ch <- familyReceivedPrefixesDesc
 	ch <- opensSentDesc
 	ch <- opensReceivedDesc
 	ch <- notificationsSentDesc
@@ -159,6 +181,18 @@ func updateNeighborsMetrics(ch chan<- prometheus.Metric, neighbors map[string][]
 			ch <- prometheus.MustNewConstMetric(sessionUpDesc, prometheus.GaugeValue, float64(sessionUp), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(prefixesDesc, prometheus.GaugeValue, float64(n.PrefixSent), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(receivedPrefixesDesc, prometheus.GaugeValue, float64(n.PrefixReceived), peerLabel, vrf)
+			for key, counts := range n.Families {
+				family, known := bgpFamilies[key]
+				if !known {
+					continue
+				}
+				if counts.SentPrefixCounter != nil {
+					ch <- prometheus.MustNewConstMetric(familyPrefixesDesc, prometheus.GaugeValue, float64(*counts.SentPrefixCounter), peerLabel, vrf, family[0], family[1])
+				}
+				if counts.AcceptedPrefixCounter != nil {
+					ch <- prometheus.MustNewConstMetric(familyReceivedPrefixesDesc, prometheus.GaugeValue, float64(*counts.AcceptedPrefixCounter), peerLabel, vrf, family[0], family[1])
+				}
+			}
 			ch <- prometheus.MustNewConstMetric(opensSentDesc, prometheus.CounterValue, float64(n.MsgStats.OpensSent), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(opensReceivedDesc, prometheus.CounterValue, float64(n.MsgStats.OpensReceived), peerLabel, vrf)
 			ch <- prometheus.MustNewConstMetric(notificationsSentDesc, prometheus.CounterValue, float64(n.MsgStats.NotificationsSent), peerLabel, vrf)

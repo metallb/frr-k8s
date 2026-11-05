@@ -3,7 +3,9 @@
 package tests
 
 import (
+	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -21,6 +23,7 @@ import (
 	frrconfig "go.universe.tf/e2etest/pkg/frr/config"
 	frrcontainer "go.universe.tf/e2etest/pkg/frr/container"
 	"go.universe.tf/e2etest/pkg/ipfamily"
+	"go.universe.tf/e2etest/pkg/metrics"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	clientset "k8s.io/client-go/kubernetes"
@@ -149,6 +152,56 @@ var _ = ginkgo.Describe("EVPN sessions", func() {
 				return neighbors
 			}
 
+			validateEVPNMetrics := func(pods []*corev1.Pod) {
+				ginkgo.GinkgoHelper()
+				ginkgo.By("Validating authenticated EVPN metrics against FRR state")
+				promPod, err := metrics.PrometheusPod(cs, PrometheusNamespace)
+				Expect(err).NotTo(HaveOccurred())
+				vni, vniType, vrf := evpnCfg.L2VNI, "L2", "default"
+				if evpnCfg.L3VNI != 0 {
+					vni, vniType, vrf = evpnCfg.L3VNI, "L3", evpnCfg.L3VRF
+				}
+				vniLabel := strconv.FormatUint(uint64(vni), 10)
+				for _, pod := range pods {
+					Eventually(func(g Gomega) {
+						podMetrics, err := forPod(promPod, pod)
+						g.Expect(err).NotTo(HaveOccurred())
+						g.Expect(metrics.ValidateGaugeValue(1, "frrk8s_evpn_scrape_success", nil, podMetrics)).To(Succeed())
+						podExec := executor.ForPod(pod.Namespace, pod.Name, k8s.FRRContainerName)
+						// Summary counters independently check the neighbor-derived gauges.
+						out, err := podExec.Exec("vtysh", "-c", "show bgp vrf default summary json")
+						g.Expect(err).NotTo(HaveOccurred())
+						var summary map[string]struct {
+							Peers map[string]struct {
+								Received *int `json:"pfxRcd"`
+								Sent     *int `json:"pfxSnt"`
+							} `json:"peers"`
+						}
+						g.Expect(json.Unmarshal([]byte(out), &summary)).To(Succeed())
+						for _, peer := range evpnFRRContainer.AddressesForFamily(peerFamily) {
+							counts, ok := summary["l2VpnEvpn"].Peers[peer]
+							g.Expect(ok).To(BeTrue(), "missing EVPN summary peer %s", peer)
+							g.Expect(counts.Received).NotTo(BeNil())
+							g.Expect(counts.Sent).NotTo(BeNil())
+							g.Expect(*counts.Received).To(BeNumerically(">", 0))
+							g.Expect(*counts.Sent).To(BeNumerically(">", 0))
+							labels := map[string]string{"peer": peer, "vrf": "default", "afi": "l2vpn", "safi": "evpn"}
+							g.Expect(metrics.ValidateGaugeValue(*counts.Received, "frrk8s_bgp_family_received_prefixes", labels, podMetrics)).To(Succeed())
+							g.Expect(metrics.ValidateGaugeValue(*counts.Sent, "frrk8s_bgp_family_announced_prefixes", labels, podMetrics)).To(Succeed())
+						}
+						g.Expect(metrics.ValidateGaugeValue(1, "frrk8s_evpn_vni_info", map[string]string{
+							"vni": vniLabel, "vrf": vrf, "type": vniType, "interface": evpnCfg.Vxlan,
+						}, podMetrics)).To(Succeed())
+						if vniType == "L2" {
+							labels := map[string]string{"vni": vniLabel, "vrf": vrf}
+							for name, min := range map[string]int{"macs": 0, "neighbors": 0, "remote_vteps": 1} {
+								g.Expect(metrics.ValidateGaugeValueCompare(metrics.GreaterOrEqualThan(min), "frrk8s_evpn_"+name, labels, podMetrics)).To(Succeed())
+							}
+						}
+					}, 30*time.Second, time.Second).Should(Succeed(), "EVPN metrics on pod %s", pod.Name)
+				}
+			}
+
 			// validateL2VNI validates L2 VNI EVPN state: sessions, VNI visibility,
 			// type-2 routes, and data path connectivity.
 			validateL2VNI := func() {
@@ -201,6 +254,7 @@ var _ = ginkgo.Describe("EVPN sessions", func() {
 					}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
 						"ping from external FRR to node %s (%s) failed", node, targetIP)
 				}
+				validateEVPNMetrics(pods)
 			}
 
 			// validateL3VNI validates L3 VNI EVPN state: sessions, type-5 routes,
@@ -249,6 +303,7 @@ var _ = ginkgo.Describe("EVPN sessions", func() {
 					}, 30*time.Second, time.Second).ShouldNot(HaveOccurred(),
 						"ping from external FRR to node %s (%s) via VRF %s failed", node, targetIP, evpnCfg.L3VRF)
 				}
+				validateEVPNMetrics(pods)
 			}
 
 			ginkgo.Context("with L2 VNI in use", func() {
