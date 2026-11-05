@@ -128,6 +128,31 @@ var _ = ginkgo.Describe("Metrics", func() {
 		pods, err := k8s.FRRK8sPods(cs)
 		Expect(err).NotTo(HaveOccurred())
 
+		// Establishing a session need not send a route refresh. Request one on
+		// the measured nodes before asserting their sent-message counters.
+		ginkgo.By("requesting inbound BGP route refreshes")
+		refresh := "clear bgp * soft in"
+		if p.vrf != "" {
+			refresh = fmt.Sprintf("clear bgp vrf %s * soft in", p.vrf)
+		}
+		selectors := labelsForPeers(frrs, p.ipFamily)
+		for _, pod := range pods {
+			Eventually(func() error {
+				podMetrics, err := forPod(promPod, pod)
+				if err != nil {
+					return err
+				}
+				for _, selector := range selectors {
+					if err := metrics.ValidateGaugeValue(1, "frrk8s_bgp_session_up", selector.labelsBGP, podMetrics); err != nil {
+						return err
+					}
+				}
+				return nil
+			}, time.Minute, time.Second).ShouldNot(HaveOccurred())
+			out, err := executor.ForPod(pod.Namespace, pod.Name, k8s.FRRContainerName).Exec("vtysh", "-d", "bgpd", "-c", refresh)
+			Expect(err).NotTo(HaveOccurred(), "requesting route refresh on %s with %q: %s", pod.Name, refresh, out)
+		}
+
 		ginkgo.By("validating")
 		p.validate(pods, frrs, promPod, p.ipFamily)
 	},
