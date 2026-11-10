@@ -10,6 +10,8 @@ metadata:
     {{ $key }}: {{ $value | quote }}
     {{- end }}
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app.kubernetes.io/component: statuscleaner
