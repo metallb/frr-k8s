@@ -163,54 +163,8 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 		return warnings, err
 	}
 
-	matchingNodes := []nodeAndConfigs{}
-	for _, n := range existingNodes {
-		if selector.Matches(labels.Set(n.Labels)) {
-			matchingNodes = append(matchingNodes, nodeAndConfigs{
-				name:   n.Name,
-				labels: n.Labels,
-				cfgs:   &v1beta1.FRRConfigurationList{},
-			})
-		}
-	}
-
-	for _, n := range matchingNodes {
-		for _, cfg := range existingFRRConfigurations.Items {
-			nodeSelector := cfg.Spec.NodeSelector
-			selector, err := getCachedSelector(nodeSelector)
-			if err != nil {
-				// shouldn't happen as it would have been denied earlier, just in case.
-				continue
-			}
-
-			if cfg.Name == frrConfig.Name {
-				// shouldn't happen for creates as it would be considered an update, and in any case
-				// we add the updated one at the end because for updates we don't want the old and updated resources
-				// to be considered together.
-				for _, rold := range cfg.Spec.BGP.Routers {
-					for _, rnew := range frrConfig.Spec.BGP.Routers {
-						if rold.VRF != rnew.VRF {
-							continue
-						}
-						for _, nold := range rold.Neighbors {
-							for _, nnew := range rnew.Neighbors {
-								if nold.ASN == nnew.ASN && nold.Address == nnew.Address && nold.EnableGracefulRestart != nnew.EnableGracefulRestart {
-									warnings = append(warnings, "Graceful restart configuration changed, it will be available on the next restart")
-									continue
-								}
-							}
-						}
-					}
-				}
-				continue
-			}
-
-			if selector.Matches(labels.Set(n.labels)) {
-				n.cfgs.Items = append(n.cfgs.Items, cfg)
-			}
-		}
-		n.cfgs.Items = append(n.cfgs.Items, *frrConfig)
-	}
+	matchingNodes, groupingWarnings := configsPerMatchingNode(frrConfig, selector, existingNodes, existingFRRConfigurations)
+	warnings = append(warnings, groupingWarnings...)
 
 	for _, n := range matchingNodes {
 		err := Validate(n.cfgs)
@@ -220,6 +174,80 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 	}
 
 	return warnings, nil
+}
+
+// configsPerMatchingNode returns, for every node selected by frrConfig, the
+// existing configurations that apply to that node followed by frrConfig itself,
+// plus any warnings implied by replacing an existing configuration of the same
+// name.
+func configsPerMatchingNode(frrConfig *v1beta1.FRRConfiguration, nodeSelector labels.Selector, existingNodes []corev1.Node, existingConfigs *v1beta1.FRRConfigurationList) ([]nodeAndConfigs, []string) {
+	var warnings []string
+
+	matchingNodes := make([]nodeAndConfigs, 0, len(existingNodes))
+	for _, n := range existingNodes {
+		if nodeSelector.Matches(labels.Set(n.Labels)) {
+			matchingNodes = append(matchingNodes, nodeAndConfigs{
+				name:   n.Name,
+				labels: n.Labels,
+				cfgs:   &v1beta1.FRRConfigurationList{},
+			})
+		}
+	}
+
+	// Resolve each existing config's node selector once and fan it out over the
+	// nodes it matches. Resolving per node re-derives the selector for every
+	// (node, config) pair, so a config selecting every node multiplies that work
+	// by the node count on every admission.
+	for _, cfg := range existingConfigs.Items {
+		if cfg.Name == frrConfig.Name {
+			// shouldn't happen for creates as it would be considered an update, and in any case
+			// we add the updated one at the end because for updates we don't want the old and updated resources
+			// to be considered together.
+			if len(matchingNodes) > 0 {
+				warnings = append(warnings, gracefulRestartChangeWarnings(cfg, *frrConfig)...)
+			}
+			continue
+		}
+
+		cfgSelector, err := getCachedSelector(cfg.Spec.NodeSelector)
+		if err != nil {
+			// shouldn't happen as it would have been denied earlier, just in case.
+			continue
+		}
+
+		for i := range matchingNodes {
+			if cfgSelector.Matches(labels.Set(matchingNodes[i].labels)) {
+				matchingNodes[i].cfgs.Items = append(matchingNodes[i].cfgs.Items, cfg)
+			}
+		}
+	}
+
+	for i := range matchingNodes {
+		matchingNodes[i].cfgs.Items = append(matchingNodes[i].cfgs.Items, *frrConfig)
+	}
+
+	return matchingNodes, warnings
+}
+
+// gracefulRestartChangeWarnings reports a graceful restart change that only
+// takes effect once FRR is restarted.
+func gracefulRestartChangeWarnings(oldCfg, newCfg v1beta1.FRRConfiguration) []string {
+	var warnings []string
+	for _, rold := range oldCfg.Spec.BGP.Routers {
+		for _, rnew := range newCfg.Spec.BGP.Routers {
+			if rold.VRF != rnew.VRF {
+				continue
+			}
+			for _, nold := range rold.Neighbors {
+				for _, nnew := range rnew.Neighbors {
+					if nold.ASN == nnew.ASN && nold.Address == nnew.Address && nold.EnableGracefulRestart != nnew.EnableGracefulRestart {
+						warnings = append(warnings, "Graceful restart configuration changed, it will be available on the next restart")
+					}
+				}
+			}
+		}
+	}
+	return warnings
 }
 
 var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
