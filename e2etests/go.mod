@@ -6,23 +6,23 @@ toolchain go1.27.3
 
 replace (
 	github.com/metallb/frr-k8s => ../
-	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20260521161706-9dd4711408ba
+	go.universe.tf/e2etest => github.com/metallb/metallb/e2etest v0.0.0-20261029110912-67fa25ed8841
 	go.universe.tf/metallb => github.com/metallb/metallb v0.16.0
 )
 
 require (
 	github.com/google/go-cmp v0.7.0
-	github.com/metallb/frr-k8s v0.0.25
-	github.com/onsi/ginkgo/v2 v2.28.0
-	github.com/onsi/gomega v1.39.1
+	github.com/metallb/frr-k8s v0.0.27
+	github.com/onsi/ginkgo/v2 v2.32.1
+	github.com/onsi/gomega v1.43.0
 	github.com/openshift-kni/k8sreporter v1.0.7
-	github.com/prometheus/client_model v0.6.2
-	github.com/prometheus/common v0.70.0
+	github.com/prometheus/client_model v0.6.3
+	github.com/prometheus/common v0.71.0
 	go.universe.tf/e2etest v0.0.0-00010101000000-000000000000
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
 	k8s.io/client-go v0.37.1
-	k8s.io/utils v0.0.0-20260626114624-be93311217bd
+	k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3
 	sigs.k8s.io/controller-runtime v0.25.1
 )
 
@@ -53,7 +53,7 @@ require (
 	github.com/go-openapi/swag/yamlutils v0.27.1 // indirect
 	github.com/go-task/slim-sprig/v3 v3.0.0 // indirect
 	github.com/google/gnostic-models v0.7.0 // indirect
-	github.com/google/pprof v0.0.0-20260115054156-294ebfa9ad83 // indirect
+	github.com/google/pprof v0.0.0-20260402051712-545e8a4df936 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -68,7 +68,7 @@ require (
 	go.uber.org/zap v1.27.1 // indirect
 	go.universe.tf/metallb v0.15.2 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
-	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/mod v0.41.0 // indirect
 	golang.org/x/net v0.61.0 // indirect
 	golang.org/x/oauth2 v0.36.0 // indirect
@@ -86,7 +86,7 @@ require (
 	k8s.io/component-base v0.37.1 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
-	k8s.io/pod-security-admission v0.33.1 // indirect
+	k8s.io/pod-security-admission v0.37.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
 	sigs.k8s.io/structured-merge-diff/v6 v6.4.2 // indirect
