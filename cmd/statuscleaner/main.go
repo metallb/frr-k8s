@@ -17,7 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -186,7 +188,13 @@ func main() {
 	go func() {
 		<-startListeners
 
-		setupWebhook(mgr)
+		if err := setupWebhook(ctx, mgr); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			level.Error(logging.GetLogger()).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
+			os.Exit(1)
+		}
 		startNodeStateCleaner(mgr, params.namespace, frrk8sSelector, defaultLogLevel)
 	}()
 
@@ -289,16 +297,15 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager,
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager) {
+func setupWebhook(ctx context.Context, mgr manager.Manager) error {
 	logger := logging.GetLogger()
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
 	webhooks.Logger = logger
-	webhooks.WebhookClient = mgr.GetAPIReader()
+	// Setup waits for initial cache sync; subsequent changes are visible as
+	// informer watch events arrive, without listing the API on every request.
+	webhooks.WebhookClient = mgr.GetCache()
 	webhooks.Validate = controller.Validate
 
-	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
-		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
-		os.Exit(1)
-	}
+	return (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(ctx, mgr)
 }

@@ -3,6 +3,10 @@
 package webhooks
 
 import (
+	"context"
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -10,6 +14,7 @@ import (
 	"github.com/metallb/frr-k8s/api/v1beta1"
 	v1core "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/webhook"
 )
 
 const TestNamespace = "test-namespace"
@@ -19,6 +24,55 @@ var existingConfig = v1beta1.FRRConfiguration{
 		Name:      "test-config",
 		Namespace: TestNamespace,
 	},
+}
+
+func TestWebhookRegistrationRequiresCacheSync(t *testing.T) {
+	tests := []struct {
+		name    string
+		synced  bool
+		wantErr error
+	}{
+		{name: "cache sync completed", synced: true},
+		{name: "cache sync canceled", wantErr: context.Canceled},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx, cancel := context.WithCancel(t.Context())
+			defer cancel()
+			mux := http.NewServeMux()
+			checkHandlers := func(registered bool) {
+				t.Helper()
+				for _, path := range []string{frrConfigWebhookPath, healthPath} {
+					_, pattern := mux.Handler(httptest.NewRequest(http.MethodGet, path, nil))
+					if (pattern == path) != registered {
+						t.Fatalf("handler %s registered=%t, want %t", path, pattern == path, registered)
+					}
+				}
+			}
+			waited := false
+			c := &webhookStartupCache{}
+			c.wait = func(context.Context) bool {
+				waited = true
+				checkHandlers(false)
+				if !c.nodes || !c.configs {
+					t.Fatal("Node and FRRConfiguration informers must be registered before waiting")
+				}
+				if !test.synced {
+					cancel()
+				}
+				return test.synced
+			}
+			mgr := &webhookStartupManager{cache: c, server: webhook.NewServer(webhook.Options{WebhookMux: mux})}
+			err := (&FRRConfigValidator{}).SetupWebhookWithManager(ctx, mgr)
+			if !waited {
+				t.Fatal("setup did not wait for cache sync")
+			}
+			if !errors.Is(err, test.wantErr) {
+				t.Fatalf("setup error=%v, want %v", err, test.wantErr)
+			}
+			checkHandlers(test.synced)
+		})
+	}
 }
 
 func TestValidateFRRConfiguration(t *testing.T) {

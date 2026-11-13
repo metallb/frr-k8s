@@ -19,6 +19,7 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/utils/lru"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/cache"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
@@ -42,9 +43,20 @@ type FRRConfigValidator struct {
 	decoder admission.Decoder
 }
 
-func (v *FRRConfigValidator) SetupWebhookWithManager(mgr ctrl.Manager) error {
+// SetupWebhookWithManager waits for initial cache sync before registering the
+// handlers. It must run concurrently with mgr.Start so the caches can start.
+func (v *FRRConfigValidator) SetupWebhookWithManager(ctx context.Context, mgr ctrl.Manager) error {
 	v.client = mgr.GetClient()
 	v.decoder = admission.NewDecoder(mgr.GetScheme())
+	if _, err := mgr.GetCache().GetInformer(ctx, &corev1.Node{}, cache.BlockUntilSynced(false)); err != nil {
+		return err
+	}
+	if _, err := mgr.GetCache().GetInformer(ctx, &v1beta1.FRRConfiguration{}, cache.BlockUntilSynced(false)); err != nil {
+		return err
+	}
+	if !mgr.GetCache().WaitForCacheSync(ctx) {
+		return fmt.Errorf("failed to sync webhook caches: %w", ctx.Err())
+	}
 
 	mgr.GetWebhookServer().Register(
 		frrConfigWebhookPath,
@@ -224,7 +236,9 @@ func validateConfig(frrConfig *v1beta1.FRRConfiguration) ([]string, error) {
 
 var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
 	frrConfigurationsList := &v1beta1.FRRConfigurationList{}
-	err := WebhookClient.List(context.Background(), frrConfigurationsList)
+	// Treat informer objects as immutable. Validate deep-copies the selected
+	// configurations before resetting secrets or merging routing state.
+	err := WebhookClient.List(context.Background(), frrConfigurationsList, client.UnsafeDisableDeepCopy)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("failed to get existing FRRConfiguration objects"))
 	}
@@ -233,7 +247,7 @@ var getFRRConfigurations = func() (*v1beta1.FRRConfigurationList, error) {
 
 var getNodes = func() ([]corev1.Node, error) {
 	nodesList := &corev1.NodeList{}
-	err := WebhookClient.List(context.Background(), nodesList)
+	err := WebhookClient.List(context.Background(), nodesList, client.UnsafeDisableDeepCopy)
 	if err != nil {
 		return nil, errors.Join(err, errors.New("failed to get existing Node objects"))
 	}
