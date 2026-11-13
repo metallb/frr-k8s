@@ -25,6 +25,13 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
+Namespace for namespaced objects.
+*/}}
+{{- define "frrk8s.namespace" -}}
+{{- default .Release.Namespace .Values.namespaceOverride }}
+{{- end }}
+
+{{/*
 Create chart name and version as used by the chart label.
 */}}
 {{- define "frrk8s.chart" -}}
