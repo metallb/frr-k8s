@@ -245,11 +245,11 @@ frrk8s:
 statusCleaner:
   # -- Node selector for statuscleaner pod assignment.
   nodeSelector: {}
-  # -- Tolerate master nodes for statuscleaner pod scheduling. When null, inherits frrk8s.tolerateMaster.
+  # -- (bool) Tolerate master nodes for statuscleaner pod scheduling. When null, inherits frrk8s.tolerateMaster.
   tolerateMaster: null
-  # -- Tolerations for statuscleaner pod assignment. When null, inherits frrk8s.tolerations.
+  # -- (list) Tolerations for statuscleaner pod assignment. When null, inherits frrk8s.tolerations.
   tolerations: null
-  # -- Affinity for statuscleaner pod assignment. When null, inherits frrk8s.affinity.
+  # -- (object) Affinity for statuscleaner pod assignment. When null, inherits frrk8s.affinity.
   affinity: null
 
 crds:
