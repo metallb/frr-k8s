@@ -239,6 +239,19 @@ frrk8s:
     pollInterval: "2m"
     # -- Resource limits and requests for the FRR status container.
     resources: {}
+
+# statusCleaner contains scheduling configuration for the statuscleaner Deployment.
+# Null values inherit the matching frrk8s setting for backward compatibility.
+statusCleaner:
+  # -- Node selector for statuscleaner pod assignment.
+  nodeSelector: {}
+  # -- Tolerate master nodes for statuscleaner pod scheduling. When null, inherits frrk8s.tolerateMaster.
+  tolerateMaster: null
+  # -- Tolerations for statuscleaner pod assignment. When null, inherits frrk8s.tolerations.
+  tolerations: null
+  # -- Affinity for statuscleaner pod assignment. When null, inherits frrk8s.affinity.
+  affinity: null
+
 crds:
   # -- Enable installation of CRDs.
   enabled: true
