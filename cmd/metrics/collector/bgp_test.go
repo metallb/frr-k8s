@@ -12,10 +12,17 @@ import (
 )
 
 var (
-	metricsTmpl = `
+	metricsTmpl = scrapeSuccessText("bgp", 1) + `
 	# HELP frrk8s_bgp_announced_prefixes_total Number of prefixes currently being advertised on the BGP session
 	# TYPE frrk8s_bgp_announced_prefixes_total gauge
 	frrk8s_bgp_announced_prefixes_total{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .AnnouncedPrefixes }}
+	# HELP frrk8s_bgp_family_announced_prefixes Number of prefixes currently being advertised on the BGP session for one address family
+	# TYPE frrk8s_bgp_family_announced_prefixes gauge
+	{{ range .Families }}frrk8s_bgp_family_announced_prefixes{afi="{{ . }}", peer="{{ $.NeighborIP }}", safi="unicast", vrf="{{ $.NeighborVRF }}"} 3
+	{{ end }}# HELP frrk8s_bgp_family_received_prefixes Number of prefixes currently being received on the BGP session for one address family
+	# TYPE frrk8s_bgp_family_received_prefixes gauge
+	{{ range .Families }}frrk8s_bgp_family_received_prefixes{afi="{{ . }}", peer="{{ $.NeighborIP }}", safi="unicast", vrf="{{ $.NeighborVRF }}"} 3
+	{{ end }}
 	# HELP frrk8s_bgp_keepalives_received Number of BGP keepalive messages received
 	# TYPE frrk8s_bgp_keepalives_received counter
 	frrk8s_bgp_keepalives_received{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .KeepalivesReceived }}
@@ -59,6 +66,7 @@ var (
 		vtyshOutput          string
 		neighborIP           string
 		neighborVRF          string
+		families             []string
 		announcedPrefixes    int
 		receivedPrefixes     int
 		sessionUp            int
@@ -78,6 +86,7 @@ var (
 			vtyshOutput:          neighborsIPv4Only,
 			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
+			families:             []string{"ipv4"},
 			announcedPrefixes:    3,
 			receivedPrefixes:     3,
 			sessionUp:            1,
@@ -97,6 +106,7 @@ var (
 			vtyshOutput:          neighborsDual,
 			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
+			families:             []string{"ipv4", "ipv6"},
 			announcedPrefixes:    6,
 			receivedPrefixes:     6,
 			sessionUp:            1,
@@ -453,6 +463,7 @@ func TestCollect(t *testing.T) {
 			err = tmpl.Execute(&w, map[string]interface{}{
 				"NeighborIP":           tc.neighborIP,
 				"NeighborVRF":          tc.neighborVRF,
+				"Families":             tc.families,
 				"AnnouncedPrefixes":    tc.announcedPrefixes,
 				"ReceivedPrefixes":     tc.receivedPrefixes,
 				"SessionUp":            tc.sessionUp,

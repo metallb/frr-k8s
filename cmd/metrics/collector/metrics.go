@@ -2,6 +2,17 @@
 
 package collector
 
+import "github.com/prometheus/client_golang/prometheus"
+
+func scrapeSuccessDesc(collector string) *prometheus.Desc {
+	return prometheus.NewDesc(
+		prometheus.BuildFQName(Namespace, "", "scrape_success"),
+		"1 if all collector reads and parses succeeded, 0 otherwise",
+		nil,
+		prometheus.Labels{"collector": collector},
+	)
+}
+
 type metric struct {
 	Name string
 	Help string

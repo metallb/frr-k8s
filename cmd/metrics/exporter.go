@@ -106,6 +106,7 @@ func promHandler() http.Handler {
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(BGPCollector)
 	registry.MustRegister(BFDCollector)
+	registry.MustRegister(collector.NewEVPN(logger))
 
 	return promhttp.HandlerFor(
 		prometheus.Gatherers{prometheus.DefaultGatherer, registry},

@@ -26,6 +26,27 @@ var expectedStats = MessageStats{
 	TotalReceived:      10,
 }
 
+func TestNeighborFamilyPrefixCounters(t *testing.T) {
+	input := `{"net1":{"addressFamilyInfo":{
+		"ipv4Unicast":{"sentPrefixCounter":0},
+		"l2VpnEvpn":{"acceptedPrefixCounter":7},
+		"unknownFamily":{"sentPrefixCounter":11,"acceptedPrefixCounter":13}
+	}}}`
+	n, err := ParseNeighbour(input)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if n.ID != "net1" || n.PrefixSent != 11 || n.PrefixReceived != 20 {
+		t.Fatalf("unexpected identity or legacy totals: %+v", n)
+	}
+	v4, evpn := n.Families["ipv4Unicast"], n.Families["l2VpnEvpn"]
+	if len(n.Families) != 3 || v4.SentPrefixCounter == nil || *v4.SentPrefixCounter != 0 ||
+		v4.AcceptedPrefixCounter != nil || evpn.SentPrefixCounter != nil ||
+		evpn.AcceptedPrefixCounter == nil || *evpn.AcceptedPrefixCounter != 7 {
+		t.Fatalf("family counters lost presence or values: %+v", n.Families)
+	}
+}
+
 func TestNeighbour(t *testing.T) {
 	sample := `{
     "%s":{
