@@ -1,3 +1,15 @@
+{{- $statusCleanerAffinity := .Values.statusCleaner.affinity }}
+{{- if kindIs "invalid" $statusCleanerAffinity }}
+  {{- $statusCleanerAffinity = .Values.frrk8s.affinity }}
+{{- end }}
+{{- $statusCleanerTolerations := .Values.statusCleaner.tolerations }}
+{{- if kindIs "invalid" $statusCleanerTolerations }}
+  {{- $statusCleanerTolerations = .Values.frrk8s.tolerations }}
+{{- end }}
+{{- $statusCleanerTolerateMaster := .Values.statusCleaner.tolerateMaster }}
+{{- if kindIs "invalid" $statusCleanerTolerateMaster }}
+  {{- $statusCleanerTolerateMaster = .Values.frrk8s.tolerateMaster }}
+{{- end }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -98,13 +110,17 @@ spec:
         - name: cert
           mountPath: /tmp/k8s-webhook-server/serving-certs
           readOnly: true
-      {{- with .Values.frrk8s.affinity }}
+      {{- with .Values.statusCleaner.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $statusCleanerAffinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- if or .Values.frrk8s.tolerateMaster .Values.frrk8s.tolerations }}
+      {{- if or $statusCleanerTolerateMaster $statusCleanerTolerations }}
       tolerations:
-      {{- if .Values.frrk8s.tolerateMaster }}
+      {{- if $statusCleanerTolerateMaster }}
       - key: node-role.kubernetes.io/master
         effect: NoSchedule
         operator: Exists
@@ -112,7 +128,7 @@ spec:
         effect: NoSchedule
         operator: Exists
       {{- end }}
-      {{- with .Values.frrk8s.tolerations }}
+      {{- with $statusCleanerTolerations }}
         {{- toYaml . | nindent 6 }}
       {{- end }}
       {{- end }}

@@ -393,6 +393,48 @@
         }
       ]
     },
+    "statusCleaner": {
+      "description": "Statuscleaner Deployment scheduling configuration",
+      "type": "object",
+      "properties": {
+        "nodeSelector": {
+          "type": "object"
+        },
+        "tolerateMaster": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tolerations": {
+          "anyOf": [
+            {
+              "type": "array",
+              "items": {
+                "type": "object"
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "affinity": {
+          "anyOf": [
+            {
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "crds": {
       "description": "CRD configuration",
       "type": "object",
