@@ -145,8 +145,10 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
+				&corev1.Node{}:                       {Transform: stripNodeForWebhook},
 				&corev1.Pod{}:                        podSelector,
 				&corev1.Secret{}:                     namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}:    {Transform: cache.TransformStripManagedFields()},
 				&frrk8sv1beta1.FRRNodeState{}:        nodeStateSelector,
 				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
 			},
@@ -203,6 +205,20 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// stripNodeForWebhook drops node data unused by admission validation, which only
+// reads node names and labels. Keep the remaining metadata for cache bookkeeping.
+func stripNodeForWebhook(obj any) (any, error) {
+	node, ok := obj.(*corev1.Node)
+	if !ok {
+		return obj, nil
+	}
+	node.Spec = corev1.NodeSpec{}
+	node.Status = corev1.NodeStatus{}
+	node.Annotations = nil
+	node.SetManagedFields(nil)
+	return node, nil
 }
 
 // stripFRRPodForCleaner keeps the metadata and node name used to find matching

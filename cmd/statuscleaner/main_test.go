@@ -12,6 +12,29 @@ import (
 	frrk8sv1beta1 "github.com/metallb/frr-k8s/api/v1beta1"
 )
 
+func TestStripNodeForWebhook(t *testing.T) {
+	metadata := metav1.ObjectMeta{
+		Name: "node1", UID: "node-uid", ResourceVersion: "42",
+		Labels: map[string]string{"role": "worker"},
+	}
+	node := &corev1.Node{
+		ObjectMeta: *metadata.DeepCopy(),
+		Spec:       corev1.NodeSpec{PodCIDR: "10.0.0.0/24"},
+		Status:     corev1.NodeStatus{Addresses: []corev1.NodeAddress{{Type: corev1.NodeInternalIP, Address: "192.0.2.1"}}},
+	}
+	node.Annotations = map[string]string{"example.com/network-state": "unused"}
+	node.ManagedFields = []metav1.ManagedFieldsEntry{{Manager: "test"}}
+
+	got, err := stripNodeForWebhook(node)
+	if err != nil {
+		t.Fatalf("stripNodeForWebhook() returned error: %v", err)
+	}
+	want := &corev1.Node{ObjectMeta: metadata}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("stripped node = %#v, want %#v", got, want)
+	}
+}
+
 func TestStripFRRPodForCleaner(t *testing.T) {
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
