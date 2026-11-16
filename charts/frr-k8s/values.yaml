@@ -16,7 +16,7 @@ tls:
   curvePreferences: ""
   # -- Minimum TLS version (VersionTLS12 or VersionTLS13). Defaults to VersionTLS13.
   minVersion: ""
-  # -- The name of the secret to be mounted in the pods to provide TLS certificates for metrics endpoints. If not present, a self-signed certificate is auto-generated.
+  # -- The name of the secret to be mounted in the pods to provide TLS certificates for metrics endpoints. If not present, a self-signed certificate is auto-generated and, by default, Prometheus scrapes the endpoints without verifying it: this is meant for development and testing only.
   metricsTLSSecret: ""
 
 rbac:
@@ -56,10 +56,8 @@ prometheus:
     additionalLabels: {}
     # -- Optional additional annotations for the controller serviceMonitor.
     annotations: {}
-    ## Optional TLS configuration for the controller serviceMonitor, in case secure metrics are enabled.
-    tlsConfig:
-      # -- Disables SSL certificate verification
-      insecureSkipVerify: true
+    # -- TLS configuration for the serviceMonitor endpoints, in the Prometheus Operator `tlsConfig` format. If `insecureSkipVerify` is left out, the chart sets it to `true` when `tls.metricsTLSSecret` is empty, since the auto-generated self-signed certificate cannot be verified, and leaves it out when `tls.metricsTLSSecret` is set, so that the provided certificate is verified: in that case set `ca` and `serverName` to match the certificate. An `insecureSkipVerify` set here to `true` or `false` is used as it is, and `null` keeps verification on.
+    tlsConfig: {}
 
     # -- Job label for scrape target.
     jobLabel: "app.kubernetes.io/name"
