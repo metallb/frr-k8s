@@ -6,6 +6,8 @@
 nameOverride: ""
 # -- String to override the default fully qualified app name.
 fullnameOverride: ""
+# -- Namespace for namespaced objects. Empty uses the release namespace. The override namespace must already exist.
+namespaceOverride: ""
 
 tls:
   # -- Comma-separated list of TLS cipher suites. If empty, uses Go defaults. Only applies to TLS 1.2.

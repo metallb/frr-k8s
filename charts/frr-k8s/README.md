@@ -82,6 +82,7 @@ Kubernetes: `>= 1.19.0-0`
 | frrk8s.webhookPort | int | `19443` | Port for the webhook server. |
 | fullnameOverride | string | `""` | String to override the default fully qualified app name. |
 | nameOverride | string | `""` | String to override the default chart name. |
+| namespaceOverride | string | `""` | Namespace for namespaced objects. Empty uses the release namespace. The override namespace must already exist. |
 | prometheus.namespace | string | `""` | The namespace where Prometheus is deployed. Required when ".Values.prometheus.rbacPrometheus == true" and "prometheus.serviceMonitor.enabled=true". |
 | prometheus.rbacPrometheus | bool | `false` | Give Prometheus permission to scrape metallb's namespace. |
 | prometheus.scrapeAnnotations | bool | `false` | Add Prometheus metric auto-collection annotations to the metrics Service. |
