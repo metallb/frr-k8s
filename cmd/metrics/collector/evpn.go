@@ -33,9 +33,9 @@ type evpn struct {
 	frrCli vtysh.Cli
 }
 
-func NewEVPN(l log.Logger) prometheus.Collector {
+func NewEVPN(l log.Logger, cli vtysh.Cli) prometheus.Collector {
 	log := log.With(l, "collector", evpnSubsystem)
-	return &evpn{Log: log, frrCli: vtysh.Run}
+	return &evpn{Log: log, frrCli: cli}
 }
 
 func (c *evpn) Describe(ch chan<- *prometheus.Desc) {
