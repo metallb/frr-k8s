@@ -40,10 +40,10 @@ frrk8s_bgp_announced_prefixes_total{peer="net1",vrf="red"} 5
 # HELP frrk8s_bgp_received_prefixes_total Number of prefixes currently being received on the BGP session
 # TYPE frrk8s_bgp_received_prefixes_total gauge
 frrk8s_bgp_received_prefixes_total{peer="net1",vrf="red"} 18
-`
+` + scrapeSuccessText("bgp", 1)
 	if err := testutil.CollectAndCompare(c, strings.NewReader(expected),
 		"frrk8s_bgp_family_announced_prefixes", "frrk8s_bgp_family_received_prefixes",
-		"frrk8s_bgp_announced_prefixes_total", "frrk8s_bgp_received_prefixes_total"); err != nil {
+		"frrk8s_bgp_announced_prefixes_total", "frrk8s_bgp_received_prefixes_total", "frrk8s_scrape_success"); err != nil {
 		t.Fatal(err)
 	}
 }

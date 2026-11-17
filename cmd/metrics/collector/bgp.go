@@ -20,6 +20,8 @@ var bgpFamilies = map[string][2]string{
 }
 
 var (
+	bgpSuccessDesc = scrapeSuccessDesc("bgp")
+
 	sessionUpDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, Subsystem, SessionUp.Name),
 		SessionUp.Help,
@@ -142,6 +144,7 @@ func mocknewBGP(l log.Logger) *bgp {
 }
 
 func (c *bgp) Describe(ch chan<- *prometheus.Desc) {
+	ch <- bgpSuccessDesc
 	ch <- sessionUpDesc
 	ch <- prefixesDesc
 	ch <- receivedPrefixesDesc
@@ -160,6 +163,11 @@ func (c *bgp) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *bgp) Collect(ch chan<- prometheus.Metric) {
+	success := 0.0
+	defer func() {
+		ch <- prometheus.MustNewConstMetric(bgpSuccessDesc, prometheus.GaugeValue, success)
+	}()
+
 	neighbors, err := vtysh.GetBGPNeighbors(c.frrCli)
 	if err != nil {
 		level.Error(c.Log).Log("error", err, "msg", "failed to fetch BGP neighbors from FRR")
@@ -167,6 +175,7 @@ func (c *bgp) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	updateNeighborsMetrics(ch, neighbors)
+	success = 1
 }
 
 func updateNeighborsMetrics(ch chan<- prometheus.Metric, neighbors map[string][]*frr.Neighbor) {

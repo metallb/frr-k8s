@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	bfdMetricsTmpl = `
+	bfdMetricsTmpl = scrapeSuccessText("bfd", 1) + `
 	# HELP frrk8s_bfd_session_up BFD session state (1 is up, 0 is down)
 	# TYPE frrk8s_bfd_session_up gauge
 	frrk8s_bfd_session_up{peer="{{ .Peer }}", vrf="{{ .NeighborVRF }}"} {{ .SessionUp }}

@@ -19,7 +19,7 @@ type familyPrefixes struct {
 }
 
 var (
-	metricsTmpl = `
+	metricsTmpl = scrapeSuccessText("bgp", 1) + `
 	# HELP frrk8s_bgp_announced_prefixes_total Number of prefixes currently being advertised on the BGP session
 	# TYPE frrk8s_bgp_announced_prefixes_total gauge
 	frrk8s_bgp_announced_prefixes_total{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .AnnouncedPrefixes }}
