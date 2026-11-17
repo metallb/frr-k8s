@@ -11,11 +11,25 @@ import (
 	"github.com/prometheus/client_golang/prometheus/testutil"
 )
 
+// familyPrefixes holds distinct per-family counts so the test detects
+// swapped address families or announced/received counters.
+type familyPrefixes struct {
+	AFI                 string
+	Announced, Received int
+}
+
 var (
 	metricsTmpl = `
 	# HELP frrk8s_bgp_announced_prefixes_total Number of prefixes currently being advertised on the BGP session
 	# TYPE frrk8s_bgp_announced_prefixes_total gauge
 	frrk8s_bgp_announced_prefixes_total{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .AnnouncedPrefixes }}
+	# HELP frrk8s_bgp_family_announced_prefixes Number of prefixes currently being advertised on the BGP session for one address family
+	# TYPE frrk8s_bgp_family_announced_prefixes gauge
+	{{ range .Families }}frrk8s_bgp_family_announced_prefixes{afi="{{ .AFI }}", peer="{{ $.NeighborIP }}", safi="unicast", vrf="{{ $.NeighborVRF }}"} {{ .Announced }}
+	{{ end }}# HELP frrk8s_bgp_family_received_prefixes Number of prefixes currently being received on the BGP session for one address family
+	# TYPE frrk8s_bgp_family_received_prefixes gauge
+	{{ range .Families }}frrk8s_bgp_family_received_prefixes{afi="{{ .AFI }}", peer="{{ $.NeighborIP }}", safi="unicast", vrf="{{ $.NeighborVRF }}"} {{ .Received }}
+	{{ end }}
 	# HELP frrk8s_bgp_keepalives_received Number of BGP keepalive messages received
 	# TYPE frrk8s_bgp_keepalives_received counter
 	frrk8s_bgp_keepalives_received{peer="{{ .NeighborIP }}", vrf="{{ .NeighborVRF }}"} {{ .KeepalivesReceived }}
@@ -59,6 +73,7 @@ var (
 		vtyshOutput          string
 		neighborIP           string
 		neighborVRF          string
+		families             []familyPrefixes
 		announcedPrefixes    int
 		receivedPrefixes     int
 		sessionUp            int
@@ -78,8 +93,9 @@ var (
 			vtyshOutput:          neighborsIPv4Only,
 			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
+			families:             []familyPrefixes{{AFI: "ipv4", Announced: 3, Received: 2}},
 			announcedPrefixes:    3,
-			receivedPrefixes:     3,
+			receivedPrefixes:     2,
 			sessionUp:            1,
 			updatesTotal:         3,
 			updatesTotalReceived: 3,
@@ -97,7 +113,8 @@ var (
 			vtyshOutput:          neighborsDual,
 			neighborIP:           "172.18.0.4",
 			neighborVRF:          "default",
-			announcedPrefixes:    6,
+			families:             []familyPrefixes{{AFI: "ipv4", Announced: 3, Received: 2}, {AFI: "ipv6", Announced: 5, Received: 4}},
+			announcedPrefixes:    8,
 			receivedPrefixes:     6,
 			sessionUp:            1,
 			updatesTotal:         3,
@@ -205,7 +222,7 @@ var (
 			  "subGroupId":1,
 			  "packetQueueLength":0,
 			  "commAttriSentToNbr":"extendedAndStandard",
-			  "acceptedPrefixCounter":3,
+			  "acceptedPrefixCounter":2,
 			  "sentPrefixCounter":3
 			}
 		  },
@@ -341,7 +358,7 @@ var (
 			  "subGroupId":1,
 			  "packetQueueLength":0,
 			  "commAttriSentToNbr":"extendedAndStandard",
-			  "acceptedPrefixCounter":3,
+			  "acceptedPrefixCounter":2,
 			  "sentPrefixCounter":3
 			},
 			"ipv6Unicast":{
@@ -352,8 +369,8 @@ var (
 			  "commAttriSentToNbr":"extendedAndStandard",
 			  "outboundPathPolicyConfig":true,
 			  "outgoingUpdatePrefixFilterList":"only-host-prefixes",
-			  "acceptedPrefixCounter":3,
-			  "sentPrefixCounter":3
+			  "acceptedPrefixCounter":4,
+			  "sentPrefixCounter":5
 			}
 		  },
 		  "connectionsEstablished":1,
@@ -415,6 +432,7 @@ func TestCollect(t *testing.T) {
 			err = tmpl.Execute(&w, map[string]interface{}{
 				"NeighborIP":           tc.neighborIP,
 				"NeighborVRF":          tc.neighborVRF,
+				"Families":             tc.families,
 				"AnnouncedPrefixes":    tc.announcedPrefixes,
 				"ReceivedPrefixes":     tc.receivedPrefixes,
 				"SessionUp":            tc.sessionUp,
