@@ -22,6 +22,7 @@ func TestScrapeFailureAndRecovery(t *testing.T) {
 		{"bgp", "bgp", "show bgp vrf default neighbors json", "", ""},
 		{"bfd", "bfd", "show bfd vrf default peers json", "", ""},
 		{"bfd counters", "bfd", "show bfd vrf default peers counters json", "frrk8s_bfd_session_up", "frrk8s_bfd_control_packet_input"},
+		{"evpn", "evpn", "show evpn vni json", "", ""},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
 			fail := true
@@ -50,6 +51,7 @@ func TestScrapeEmptyInventory(t *testing.T) {
 	}{
 		{"bgp", "show bgp vrf default neighbors json"},
 		{"bfd", "show bgp vrfs json"},
+		{"evpn", "show evpn vni json"},
 	} {
 		t.Run(tt.collector, func(t *testing.T) {
 			c := scrapeCollector(tt.collector, func(command string) (string, error) {
@@ -68,12 +70,12 @@ func TestScrapeEmptyInventory(t *testing.T) {
 
 func TestScrapeJointRegistration(t *testing.T) {
 	r := prometheus.NewPedanticRegistry()
-	for _, name := range []string{"bgp", "bfd"} {
+	for _, name := range []string{"bgp", "bfd", "evpn"} {
 		if err := r.Register(scrapeCollector(name, scrapeCLI)); err != nil {
 			t.Fatalf("registering %s: %v", name, err)
 		}
 	}
-	expected := scrapeSuccessText("bfd", 1) + "frrk8s_scrape_success{collector=\"bgp\"} 1\n"
+	expected := scrapeSuccessText("bfd", 1) + "frrk8s_scrape_success{collector=\"bgp\"} 1\nfrrk8s_scrape_success{collector=\"evpn\"} 1\n"
 	if err := testutil.GatherAndCompare(r, strings.NewReader(expected), "frrk8s_scrape_success"); err != nil {
 		t.Fatal(err)
 	}
@@ -88,6 +90,10 @@ func scrapeCollector(name string, cli vtysh.Cli) prometheus.Collector {
 		return c
 	case "bfd":
 		c := NewBFD(l).(*bfd)
+		c.frrCli = cli
+		return c
+	case "evpn":
+		c := NewEVPN(l).(*evpn)
 		c.frrCli = cli
 		return c
 	default:
@@ -105,6 +111,8 @@ func scrapeCLI(command string) (string, error) {
 		return peersIPv4, nil
 	case "show bfd vrf default peers counters json":
 		return peersCountersIPv4, nil
+	case "show evpn vni json":
+		return evpnCapture, nil
 	default:
 		return "", fmt.Errorf("unexpected command %q", command)
 	}
