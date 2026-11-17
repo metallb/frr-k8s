@@ -85,17 +85,11 @@ func scrapeCollector(name string, cli vtysh.Cli) prometheus.Collector {
 	l := log.NewNopLogger()
 	switch name {
 	case "bgp":
-		c := NewBGP(l).(*bgp)
-		c.frrCli = cli
-		return c
+		return NewBGP(l, cli)
 	case "bfd":
-		c := NewBFD(l).(*bfd)
-		c.frrCli = cli
-		return c
+		return NewBFD(l, cli)
 	case "evpn":
-		c := NewEVPN(l).(*evpn)
-		c.frrCli = cli
-		return c
+		return NewEVPN(l, cli)
 	default:
 		panic("unknown collector " + name)
 	}

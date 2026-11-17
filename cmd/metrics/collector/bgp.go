@@ -133,9 +133,9 @@ type bgp struct {
 	frrCli vtysh.Cli
 }
 
-func NewBGP(l log.Logger) prometheus.Collector {
+func NewBGP(l log.Logger, cli vtysh.Cli) prometheus.Collector {
 	log := log.With(l, "collector", Subsystem)
-	return &bgp{Log: log, frrCli: vtysh.Run}
+	return &bgp{Log: log, frrCli: cli}
 }
 
 func mocknewBGP(l log.Logger) *bgp {
