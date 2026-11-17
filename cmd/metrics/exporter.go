@@ -102,10 +102,12 @@ func promHandler() http.Handler {
 	logger := logging.GetLogger()
 	BGPCollector := collector.NewBGP(logger)
 	BFDCollector := collector.NewBFD(logger)
+	EVPNCollector := collector.NewEVPN(logger)
 
 	registry := prometheus.NewRegistry()
 	registry.MustRegister(BGPCollector)
 	registry.MustRegister(BFDCollector)
+	registry.MustRegister(EVPNCollector)
 
 	return promhttp.HandlerFor(
 		prometheus.Gatherers{prometheus.DefaultGatherer, registry},
