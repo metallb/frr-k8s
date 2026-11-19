@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	stdlog "log"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -29,7 +30,7 @@ import (
 
 var (
 	metricsPort         = flag.Uint("metrics-port", 9141, "Port to listen on for web interface.")
-	metricsBindAddress  = flag.String("metrics-bind-address", "0.0.0.0", "The address the metric endpoint binds to")
+	metricsBindAddress  = flag.String("metrics-bind-address", "0.0.0.0", "The address the metric endpoint binds to; an IPv6 address goes without brackets")
 	metricsPath         = flag.String("metrics-path", "/metrics", "Path under which to expose metrics.")
 	disableMetricsAuth  = flag.Bool("disable-metrics-auth", false, "Serve metrics without Kubernetes authentication and authorization, e.g. outside a cluster. Anyone who can reach the listener can read them.")
 	tlsCertFile         = flag.String("tls-cert-file", "", "x509 certificate for HTTPS. If empty, a self-signed cert is auto-generated.")
@@ -72,7 +73,7 @@ func main() {
 	}
 
 	srv := &http.Server{
-		Addr:        fmt.Sprintf("%s:%d", *metricsBindAddress, *metricsPort),
+		Addr:        net.JoinHostPort(*metricsBindAddress, fmt.Sprint(*metricsPort)),
 		ReadTimeout: 3 * time.Second,
 		Handler:     mux,
 		TLSConfig:   tlsCfg,
