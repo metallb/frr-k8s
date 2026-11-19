@@ -377,68 +377,30 @@ var (
 	  }	  
 	`
 	vrfVtysh = `{
-		"default":{
-		 "vrfId": 0,
-		 "vrfName": "default",
-		 "tableVersion": 1,
-		 "routerId": "172.18.0.3",
-		 "defaultLocPrf": 100,
-		 "localAS": 64512,
-		 "routes": { "192.168.10.0/32": [
-		  {
-			"valid":true,
-			"bestpath":true,
-			"pathFrom":"external",
-			"prefix":"192.168.10.0",
-			"prefixLen":32,
-			"network":"192.168.10.0\/32",
-			"metric":0,
-			"weight":32768,
-			"peerId":"(unspec)",
-			"path":"",
-			"origin":"IGP",
-			"nexthops":[
-			  {
-				"ip":"0.0.0.0",
-				"hostname":"kind-control-plane",
-				"afi":"ipv4",
-				"used":true
-			  }
-			]
-		  }
-		] }  }
-		,
-		"red":{
-		 "vrfId": 5,
-		 "vrfName": "red",
-		 "tableVersion": 1,
-		 "routerId": "172.31.0.4",
-		 "defaultLocPrf": 100,
-		 "localAS": 64512,
-		 "routes": { "192.168.10.0/32": [
-		  {
-			"valid":true,
-			"bestpath":true,
-			"pathFrom":"external",
-			"prefix":"192.168.10.0",
-			"prefixLen":32,
-			"network":"192.168.10.0\/32",
-			"metric":0,
-			"weight":32768,
-			"peerId":"(unspec)",
-			"path":"",
-			"origin":"IGP",
-			"nexthops":[
-			  {
-				"ip":"0.0.0.0",
-				"hostname":"kind-control-plane",
-				"afi":"ipv4",
-				"used":true
-			  }
-			]
-		  }
-		] }  }
-		}`
+  "vrfs":{
+    "default":{
+      "type":"DFLT",
+      "vrfId":0,
+      "routerId":"172.18.0.2",
+      "numConfiguredPeers":1,
+      "numEstablishedPeers":1,
+      "l3vni":0,
+      "rmac":"00:00:00:00:00:00",
+      "interface":"unknown"
+    },
+    "red":{
+      "type":"VRF",
+      "vrfId":3,
+      "routerId":"172.31.0.2",
+      "numConfiguredPeers":1,
+      "numEstablishedPeers":1,
+      "l3vni":0,
+      "rmac":"00:00:00:00:00:00",
+      "interface":"unknown"
+    }
+  },
+  "totalVrfs":2
+}`
 )
 
 func TestCollect(t *testing.T) {
@@ -475,7 +437,7 @@ func TestCollect(t *testing.T) {
 			l := log.NewNopLogger()
 			collector := mocknewBGP(l)
 			cmdOutput := map[string]string{
-				"show bgp vrf all json":               vrfVtysh,
+				"show bgp vrfs json":                  vrfVtysh,
 				"show bgp vrf default neighbors json": tc.vtyshOutput,
 			}
 			collector.frrCli = func(args string) (string, error) {

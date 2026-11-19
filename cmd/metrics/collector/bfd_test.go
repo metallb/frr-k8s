@@ -202,7 +202,7 @@ func TestBFDCollect(t *testing.T) {
 			l := log.NewNopLogger()
 			collector := mockNewBFD(l)
 			cmdOutput := map[string]string{
-				"show bgp vrf all json":                    vrfVtysh,
+				"show bgp vrfs json":                       vrfVtysh,
 				"show bfd vrf default peers json":          test.vtyshPeersOutput,
 				"show bfd vrf red peers json":              "[]",
 				"show bfd vrf default peers counters json": test.vtyshPeersCountersOutput,
