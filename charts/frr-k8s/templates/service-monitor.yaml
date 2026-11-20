@@ -1,4 +1,5 @@
 {{- if .Values.prometheus.serviceMonitor.enabled }}
+{{- $tlsConfig := include "frrk8s.serviceMonitorTLSConfig" . | fromYaml }}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -32,9 +33,9 @@ spec:
 {{ if .Values.prometheus.secureMetricsPort }}
       bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       scheme: "https"
-{{- if .Values.prometheus.serviceMonitor.tlsConfig }}
+{{- with $tlsConfig }}
       tlsConfig:
-{{ toYaml .Values.prometheus.serviceMonitor.tlsConfig | indent 8 }}      
+{{ toYaml . | indent 8 }}
 {{- end }}
 {{ end }}
 {{ if .Values.frrk8s.frr.secureMetricsPort }}
@@ -53,9 +54,9 @@ spec:
       {{- end }}
       bearerTokenFile: "/var/run/secrets/kubernetes.io/serviceaccount/token"
       scheme: "https"
-{{- if .Values.prometheus.serviceMonitor.tlsConfig }}
+{{- with $tlsConfig }}
       tlsConfig:
-{{ toYaml .Values.prometheus.serviceMonitor.tlsConfig | indent 8 }}      
+{{ toYaml . | indent 8 }}
 {{- end }}
 {{- end }}
   jobLabel: {{ .Values.prometheus.serviceMonitor.jobLabel | quote }}

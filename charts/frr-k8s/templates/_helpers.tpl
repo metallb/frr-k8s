@@ -68,3 +68,28 @@ Create the name of the frrk8s service account to use
 {{- default "default" .Values.frrk8s.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+TLS configuration of the ServiceMonitor endpoints.
+The values in prometheus.serviceMonitor.tlsConfig are used as they are. When
+insecureSkipVerify is not among them, certificate verification is skipped only
+if no certificate is provided via tls.metricsTLSSecret, because the metrics
+endpoints then serve a self-signed certificate that cannot be verified.
+An insecureSkipVerify explicitly set to null is dropped, which keeps
+verification on in both cases, and so does a tlsConfig overridden with a
+value that is not a map, such as false or an empty string.
+*/}}
+{{- define "frrk8s.serviceMonitorTLSConfig" -}}
+{{- $tlsConfig := dict -}}
+{{- if kindIs "map" .Values.prometheus.serviceMonitor.tlsConfig -}}
+{{- $tlsConfig = deepCopy .Values.prometheus.serviceMonitor.tlsConfig -}}
+{{- if not (hasKey $tlsConfig "insecureSkipVerify") -}}
+{{- if not .Values.tls.metricsTLSSecret -}}
+{{- $_ := set $tlsConfig "insecureSkipVerify" true -}}
+{{- end -}}
+{{- else if kindIs "invalid" (get $tlsConfig "insecureSkipVerify") -}}
+{{- $_ := unset $tlsConfig "insecureSkipVerify" -}}
+{{- end -}}
+{{- end -}}
+{{- toYaml $tlsConfig -}}
+{{- end -}}
