@@ -3,6 +3,7 @@
 package webhooks
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/go-kit/log"
@@ -296,5 +297,28 @@ func TestValidateFRRConfiguration(t *testing.T) {
 				t.Fatalf("test %s failed, %s", test.desc, cmp.Diff(test.expected, mock.configs))
 			}
 		})
+	}
+}
+
+// TestSelectorCacheRetainsPerNodeSelectors checks that a cluster using one
+// FRRConfiguration per node keeps every node selector cached. Each admission
+// scans the selectors of all existing configurations, so a cache smaller than
+// the number of distinct selectors misses on nearly every lookup.
+func TestSelectorCacheRetainsPerNodeSelectors(t *testing.T) {
+	selectorCache.Clear()
+	t.Cleanup(selectorCache.Clear)
+
+	const nodes = 1000
+	for i := range nodes {
+		nodeSelector := metav1.LabelSelector{
+			MatchLabels: map[string]string{"kubernetes.io/hostname": fmt.Sprintf("node-%d", i)},
+		}
+		if _, err := getCachedSelector(nodeSelector); err != nil {
+			t.Fatalf("failed to resolve selector for node-%d: %v", i, err)
+		}
+	}
+
+	if got := selectorCache.Len(); got != nodes {
+		t.Fatalf("selector cache holds %d selectors, want %d", got, nodes)
 	}
 }
