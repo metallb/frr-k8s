@@ -101,21 +101,21 @@ func newMetricsHandler(disableAuth bool) (http.Handler, error) {
 
 func promHandler() http.Handler {
 	logger := logging.GetLogger()
-	BGPCollector := collector.NewBGP(logger)
-	BFDCollector := collector.NewBFD(logger)
-
 	registry := prometheus.NewRegistry()
-	registry.MustRegister(BGPCollector)
-	registry.MustRegister(BFDCollector)
+	opts := promhttp.HandlerOpts{
+		ErrorLog:      stdlog.New(log.NewStdlibAdapter(level.Error(logger)), "", 0),
+		ErrorHandling: promhttp.ContinueOnError,
+		Registry:      registry,
+	}
 
-	return promhttp.HandlerFor(
-		prometheus.Gatherers{prometheus.DefaultGatherer, registry},
-		promhttp.HandlerOpts{
-			ErrorLog:      stdlog.New(log.NewStdlibAdapter(level.Error(logger)), "", 0),
-			ErrorHandling: promhttp.ContinueOnError,
-			Registry:      registry,
-		},
-	)
+	// The collectors are built per scrape so that their vtysh calls end with
+	// the request, when Prometheus gives up at its scrape timeout.
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		cli := func(args string) (string, error) { return vtysh.RunContext(r.Context(), args) }
+		collectors := prometheus.NewRegistry()
+		collectors.MustRegister(collector.NewBGP(logger, cli), collector.NewBFD(logger, cli), collector.NewEVPN(logger, cli))
+		promhttp.HandlerFor(prometheus.Gatherers{prometheus.DefaultGatherer, registry, collectors}, opts).ServeHTTP(w, r)
+	})
 }
 
 func rbacFilter() (metricsserver.Filter, error) {

@@ -1008,3 +1008,57 @@ func TestVRFs(t *testing.T) {
 		t.Fatalf("unexpected vrf list: %s", cmp.Diff(parsed, expected))
 	}
 }
+
+// Adapted from FRR 10.4.3's show evpn vni json; distinct counts catch field swaps.
+const evpnVNIs = `{
+"10100":{"vni":10100,"type":"L2","vxlanIf":"vxlan10100","numMacs":2,"numArpNd":0,"numRemoteVteps":1,"tenantVrf":"default","remoteVteps":["10.78.0.3"]},
+"50001":{"vni":50001,"vxlanIf":"vxlan50001","numMacs":0,"numArpNd":0,"numRemoteVteps":"n/a","type":"L3","tenantVrf":"red"}}
+`
+
+func TestEVPNVNIs(t *testing.T) {
+	zero, macs, remote := uint64(0), uint64(2), uint64(1)
+	expected := []EVPNVNI{
+		{VNI: 10100, Type: "L2", Interface: "vxlan10100", VRF: "default", MACs: &macs, Neighbors: &zero, RemoteVTEPs: &remote},
+		{VNI: 50001, Type: "L3", Interface: "vxlan50001", VRF: "red", MACs: &zero, Neighbors: &zero},
+	}
+	for _, out := range []string{evpnVNIs, strings.Replace(evpnVNIs, `"numRemoteVteps":"n/a"`, `"numRemoteVteps":1`, 1)} {
+		vnis, err := ParseEVPNVNIs(out)
+		if err != nil {
+			t.Fatalf("Failed to parse %s", err)
+		}
+		sort.Slice(vnis, func(i, j int) bool {
+			return vnis[i].VNI < vnis[j].VNI
+		})
+		if !cmp.Equal(expected, vnis) {
+			t.Fatal("unexpected EVPN VNIs (-want +got)\n", cmp.Diff(expected, vnis))
+		}
+	}
+}
+
+func TestEVPNVNIsEmptyAndFailures(t *testing.T) {
+	for _, tt := range []struct {
+		name, out string
+		success   bool
+	}{
+		{name: "empty", out: "{}", success: true},
+		{name: "malformed", out: "{"},
+		{name: "wrong shape", out: "[]"},
+		{name: "invalid type", out: strings.Replace(evpnVNIs, `"L2"`, `"unknown"`, 1)},
+		{name: "negative MACs", out: strings.Replace(evpnVNIs, `"numMacs":2`, `"numMacs":-1`, 1)},
+		{name: "invalid neighbors", out: strings.Replace(evpnVNIs, `"numArpNd":0`, `"numArpNd":"bad"`, 1)},
+		{name: "invalid remote count", out: strings.Replace(evpnVNIs, `"numRemoteVteps":1`, `"numRemoteVteps":"n/a"`, 1)},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			vnis, err := ParseEVPNVNIs(tt.out)
+			if tt.success {
+				if err != nil || len(vnis) != 0 {
+					t.Fatalf("expected empty inventory, got %v, error %v", vnis, err)
+				}
+				return
+			}
+			if err == nil || vnis != nil {
+				t.Fatalf("expected parse failure without VNIs, got %v, error %v", vnis, err)
+			}
+		})
+	}
+}
