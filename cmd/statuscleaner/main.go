@@ -17,7 +17,9 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -143,8 +145,10 @@ func main() {
 		HealthProbeBindAddress: "",
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
+				&corev1.Node{}:                       {Transform: stripNodeForWebhook},
 				&corev1.Pod{}:                        podSelector,
 				&corev1.Secret{}:                     namespaceSelector,
+				&frrk8sv1beta1.FRRConfiguration{}:    {Transform: cache.TransformStripManagedFields()},
 				&frrk8sv1beta1.FRRNodeState{}:        nodeStateSelector,
 				&frrk8sv1beta1.FRRK8sConfiguration{}: namespaceSelector,
 			},
@@ -186,7 +190,13 @@ func main() {
 	go func() {
 		<-startListeners
 
-		setupWebhook(mgr)
+		if err := setupWebhook(ctx, mgr); err != nil {
+			if errors.Is(err, context.Canceled) {
+				return
+			}
+			level.Error(logging.GetLogger()).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
+			os.Exit(1)
+		}
 		startNodeStateCleaner(mgr, params.namespace, frrk8sSelector, defaultLogLevel)
 	}()
 
@@ -195,6 +205,20 @@ func main() {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}
+}
+
+// stripNodeForWebhook drops node data unused by admission validation, which only
+// reads node names and labels. Keep the remaining metadata for cache bookkeeping.
+func stripNodeForWebhook(obj any) (any, error) {
+	node, ok := obj.(*corev1.Node)
+	if !ok {
+		return obj, nil
+	}
+	node.Spec = corev1.NodeSpec{}
+	node.Status = corev1.NodeStatus{}
+	node.Annotations = nil
+	node.SetManagedFields(nil)
+	return node, nil
 }
 
 // stripFRRPodForCleaner keeps the metadata and node name used to find matching
@@ -289,16 +313,15 @@ func setupCertRotation(notifyFinished chan struct{}, mgr manager.Manager,
 	return nil
 }
 
-func setupWebhook(mgr manager.Manager) {
+func setupWebhook(ctx context.Context, mgr manager.Manager) error {
 	logger := logging.GetLogger()
 	level.Info(logger).Log("op", "startup", "action", "webhooks enabled")
 
 	webhooks.Logger = logger
-	webhooks.WebhookClient = mgr.GetAPIReader()
+	// Setup waits for initial cache sync; subsequent changes are visible as
+	// informer watch events arrive, without listing the API on every request.
+	webhooks.WebhookClient = mgr.GetCache()
 	webhooks.Validate = controller.Validate
 
-	if err := (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(mgr); err != nil {
-		level.Error(logger).Log("op", "startup", "error", err, "msg", "unable to create webhook", "webhook", "FRRConfigurations")
-		os.Exit(1)
-	}
+	return (&webhooks.FRRConfigValidator{}).SetupWebhookWithManager(ctx, mgr)
 }
