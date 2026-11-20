@@ -262,6 +262,8 @@ metadata:
     app.kubernetes.io/part-of: frr-k8s
     app.kubernetes.io/managed-by: kustomize
 spec:
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       control-plane: statuscleaner
