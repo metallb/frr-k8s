@@ -231,7 +231,7 @@ func configsForNode(cfgs []frrk8sv1beta1.FRRConfiguration, nodeLabels map[string
 	return valid, nil
 }
 
-// validateNodeSelector checks the full selector, including expressions on configurations
+// validateNodeSelector checks checks the full selector, including expressions on configurations
 // whose exact labels do not match this node.
 func validateNodeSelector(selector *metav1.LabelSelector) error {
 	return metav1validation.ValidateLabelSelector(selector,

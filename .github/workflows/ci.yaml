@@ -157,10 +157,18 @@ jobs:
           go-version-file: "go.mod"
           cache: true
 
-      - name: Install kernel modules
+      - name: Install kernel modules and debugging tools
         run: |
           sudo apt-get update
-          sudo apt-get install linux-modules-extra-$(uname -r)
+          sudo apt-get install -y linux-modules-extra-$(uname -r) gdb binutils
+
+      - name: Enable FRR crash backtraces
+        run: |
+          sudo install -d -m 0700 /var/lib/frr-ci-crashes
+          sudo install -m 0755 .github/scripts/frr-crash-backtrace.sh /usr/local/sbin/frr-crash-backtrace
+          # FRR drops privileges, and GDB needs access to the crashing process's root filesystem.
+          sudo sysctl -w fs.suid_dumpable=2 kernel.core_pipe_limit=16
+          sudo sysctl -w 'kernel.core_pattern=|/usr/local/sbin/frr-crash-backtrace %P %t %s %h'
 
       - name: Download frr8ks images
         uses: actions/download-artifact@v4
@@ -193,8 +201,20 @@ jobs:
         run:
           make kind-export-logs
 
+      - name: Collect FRR crash backtraces
+        id: frr-crashes
+        if: ${{ !cancelled() }}
+        run: |
+          mkdir -p /tmp/kind_logs
+          if sudo test -d /var/lib/frr-ci-crashes; then
+            sudo find /var/lib/frr-ci-crashes -maxdepth 1 -type f -name 'bgpd-*.log' -exec cp -t /tmp/kind_logs/ {} +
+          fi
+          if compgen -G '/tmp/kind_logs/bgpd-*.log' > /dev/null; then
+            echo 'captured=true' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Collect Logs
-        if: ${{ failure() }}
+        if: ${{ failure() || steps.frr-crashes.outputs.captured == 'true' }}
         uses: ./.github/workflows/composite/collectlogs
         with:
           artifact-name: kind-logs-${{ matrix.ip-family }}-${{ matrix.deployment }}
