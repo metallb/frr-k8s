@@ -2,3 +2,14 @@ FRR-k8s is now running in the cluster.
 
 Now you can configure it via its CRs. Please refer to the frr-k8s official docs
 on how to use the CRs.
+{{- $tlsConfig := include "frrk8s.serviceMonitorTLSConfig" . | fromYaml }}
+{{- $verifiable := or (get $tlsConfig "insecureSkipVerify") (get $tlsConfig "ca") (get $tlsConfig "caFile") (get $tlsConfig "serverName") }}
+{{- if and .Values.prometheus.serviceMonitor.enabled .Values.tls.metricsTLSSecret (not $verifiable) }}
+
+WARNING: tls.metricsTLSSecret is set and prometheus.serviceMonitor.tlsConfig
+does not tell Prometheus how to verify its certificate: Prometheus checks the
+certificate of the metrics endpoints against its default trust store and the
+address of the node. Unless the certificate is valid for that, the scrapes
+fail: set ca and serverName in prometheus.serviceMonitor.tlsConfig to match
+the certificate.
+{{- end }}

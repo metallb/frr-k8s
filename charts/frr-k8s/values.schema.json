@@ -197,7 +197,7 @@
           "type": "string"
         },
         "metricsTLSSecret": {
-          "description": "Secret name for metrics TLS certificates. If empty, self-signed certs are auto-generated.",
+          "description": "Secret name for metrics TLS certificates. If empty, self-signed certs are auto-generated and the ServiceMonitor skips certificate verification by default (development and testing only).",
           "type": "string"
         }
       }
