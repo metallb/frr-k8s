@@ -1685,6 +1685,66 @@ func TestConversion(t *testing.T) {
 			err:      fmt.Errorf("failed to process neighbor 65041@192.0.2.21 for router 65040-: invalid selector lengths: ge 12 is bigger than le 10"),
 		},
 		{
+			name: "Neighbor with two ToReceive selectors whose prefix, le and ge concatenate identically",
+			fromK8s: []v1beta1.FRRConfiguration{
+				{
+					Spec: v1beta1.FRRConfigurationSpec{
+						BGP: v1beta1.BGPConfig{
+							Routers: []v1beta1.Router{
+								{
+									ASN: 65040,
+									ID:  "192.0.2.20",
+									Neighbors: []v1beta1.Neighbor{
+										{
+											ASN:     65041,
+											Address: "192.0.2.21",
+											ToReceive: v1beta1.Receive{
+												Allowed: v1beta1.AllowedInPrefixes{
+													Prefixes: []v1beta1.PrefixSelector{
+														{Prefix: "2000::/3", LE: 12, GE: 10},
+														{Prefix: "2000::/3", LE: 121},
+													},
+												},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			secrets: map[string]v1.Secret{},
+			expected: &frr.Config{
+				Routers: []*frr.RouterConfig{
+					{
+						MyASN:        65040,
+						RouterID:     "192.0.2.20",
+						IPV4Prefixes: []string{},
+						IPV6Prefixes: []string{},
+						Neighbors: []*frr.NeighborConfig{
+							{
+								IPFamily: ipfamily.IPv4,
+								Name:     "65041@192.0.2.21",
+								ASN:      "65041",
+								Addr:     "192.0.2.21",
+								Incoming: frr.AllowedIn{
+									All:        false,
+									PrefixesV4: []frr.IncomingFilter{},
+									PrefixesV6: []frr.IncomingFilter{
+										{IPFamily: "ipv6", Prefix: "2000::/3", LE: 12, GE: 10},
+										{IPFamily: "ipv6", Prefix: "2000::/3", LE: 121},
+									},
+								},
+							},
+						},
+					},
+				},
+				BFDProfiles: []frr.BFDProfile{},
+			},
+			err: nil,
+		},
+		{
 			name: "Multiple FRRConfigurations - Single Router and neighbor, one config for advertise the other for receiving",
 			fromK8s: []v1beta1.FRRConfiguration{
 				{

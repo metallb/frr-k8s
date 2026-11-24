@@ -318,7 +318,7 @@ func mergeIncomingFilters(curr, toMerge []frr.IncomingFilter) []frr.IncomingFilt
 	mergedIn := map[string]*frr.IncomingFilter{}
 	for _, a := range all {
 		f := a
-		key := fmt.Sprintf("%s%d%d", f.Prefix, f.LE, f.GE)
+		key := fmt.Sprintf("%s-%d-%d", f.Prefix, f.LE, f.GE)
 		mergedIn[key] = &f
 	}
 
