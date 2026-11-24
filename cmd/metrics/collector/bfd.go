@@ -13,6 +13,8 @@ import (
 const subsystem = "bfd"
 
 var (
+	bfdSuccessDesc = scrapeSuccessDesc("bfd")
+
 	bfdSessionUpDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(Namespace, subsystem, SessionUp.Name),
 		"BFD session state (1 is up, 0 is down)",
@@ -75,9 +77,9 @@ type bfd struct {
 	frrCli vtysh.Cli
 }
 
-func NewBFD(l log.Logger) prometheus.Collector {
+func NewBFD(l log.Logger, cli vtysh.Cli) prometheus.Collector {
 	log := log.With(l, "collector", subsystem)
-	return &bfd{Log: log, frrCli: vtysh.Run}
+	return &bfd{Log: log, frrCli: cli}
 }
 
 func mockNewBFD(l log.Logger) *bfd {
@@ -86,6 +88,7 @@ func mockNewBFD(l log.Logger) *bfd {
 }
 
 func (c *bfd) Describe(ch chan<- *prometheus.Desc) {
+	ch <- bfdSuccessDesc
 	ch <- bfdSessionUpDesc
 	ch <- controlPacketInputDesc
 	ch <- controlPacketOutputDesc
@@ -97,6 +100,11 @@ func (c *bfd) Describe(ch chan<- *prometheus.Desc) {
 }
 
 func (c *bfd) Collect(ch chan<- prometheus.Metric) {
+	success := 0.0
+	defer func() {
+		ch <- prometheus.MustNewConstMetric(bfdSuccessDesc, prometheus.GaugeValue, success)
+	}()
+
 	peers, err := vtysh.GetBFDPeers(c.frrCli)
 	if err != nil {
 		level.Error(c.Log).Log("error", err, "msg", "failed to fetch BFD peers from FRR")
@@ -112,6 +120,7 @@ func (c *bfd) Collect(ch chan<- prometheus.Metric) {
 	}
 
 	updatePeersCountersMetrics(ch, peersCounters)
+	success = 1
 }
 
 func updatePeersMetrics(ch chan<- prometheus.Metric, peersPerVRF map[string][]frr.BFDPeer) {

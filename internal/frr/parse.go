@@ -21,6 +21,7 @@ type Neighbor struct {
 	RemoteAS       string
 	PrefixSent     int
 	PrefixReceived int
+	Families       map[string]FamilyPrefixCounters
 	Port           int
 	RemoteRouterID string
 	MsgStats       MessageStats
@@ -40,20 +41,25 @@ type Route struct {
 
 const bgpConnected = "Established"
 
+// FamilyPrefixCounters retains missing measurements separately from explicit zero.
+type FamilyPrefixCounters struct {
+	SentPrefixCounter     *int `json:"sentPrefixCounter"`
+	AcceptedPrefixCounter *int `json:"acceptedPrefixCounter"`
+}
+
 type FRRNeighbor struct {
-	BGPNeighborAddr   string       `json:"bgpNeighborAddr"`
-	RemoteAs          int          `json:"remoteAs"`
-	LocalAs           int          `json:"localAs"`
-	RemoteRouterID    string       `json:"remoteRouterId"`
-	BgpVersion        int          `json:"bgpVersion"`
-	BgpState          string       `json:"bgpState"`
-	PortForeign       int          `json:"portForeign"`
-	MsgStats          MessageStats `json:"messageStats"`
-	VRFName           string       `json:"vrf"`
-	AddressFamilyInfo map[string]struct {
-		SentPrefixCounter     int `json:"sentPrefixCounter"`
-		AcceptedPrefixCounter int `json:"acceptedPrefixCounter"`
-	} `json:"addressFamilyInfo"`
+	BGPNeighborAddr string       `json:"bgpNeighborAddr"`
+	RemoteAs        int          `json:"remoteAs"`
+	LocalAs         int          `json:"localAs"`
+	RemoteRouterID  string       `json:"remoteRouterId"`
+	BgpVersion      int          `json:"bgpVersion"`
+	BgpState        string       `json:"bgpState"`
+	PortForeign     int          `json:"portForeign"`
+	MsgStats        MessageStats `json:"messageStats"`
+	VRFName         string       `json:"vrf"`
+
+	AddressFamilyInfo map[string]FamilyPrefixCounters `json:"addressFamilyInfo"`
+
 	BFDInfo PeerBFDInfo `json:"peerBfdInfo"`
 }
 
@@ -125,6 +131,29 @@ type BFDPeerCounters struct {
 	ZebraNotifications  int    `json:"zebra-notifications"`
 }
 
+type EVPNVNI struct {
+	VNI       uint32
+	Type      string
+	Interface string
+	VRF       string
+	// FRR reuses these counts across VNI types: host MACs and ARP/ND entries for
+	// L2 VNIs, router MACs and next hops for L3 VNIs.
+	MACs        *uint64
+	Neighbors   *uint64
+	RemoteVTEPs *uint64
+}
+
+type FRREVPNVNI struct {
+	VNI       uint32  `json:"vni"`
+	Type      string  `json:"type"`
+	Interface string  `json:"vxlanIf"`
+	VRF       string  `json:"tenantVrf"`
+	MACs      *uint64 `json:"numMacs"`
+	Neighbors *uint64 `json:"numArpNd"`
+	// L3 VNIs report "n/a" instead of a numeric remote-VTEP count.
+	RemoteVTEPs json.RawMessage `json:"numRemoteVteps"`
+}
+
 // parseNeighbour takes the result of a show bgp neighbor x.y.w.z
 // and parses the informations related to the neighbour.
 func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
@@ -147,8 +176,12 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 		prefixSent := 0
 		prefixReceived := 0
 		for _, s := range n.AddressFamilyInfo {
-			prefixSent += s.SentPrefixCounter
-			prefixReceived += s.AcceptedPrefixCounter
+			if s.SentPrefixCounter != nil {
+				prefixSent += *s.SentPrefixCounter
+			}
+			if s.AcceptedPrefixCounter != nil {
+				prefixReceived += *s.AcceptedPrefixCounter
+			}
 		}
 		return &Neighbor{
 			ID:             k,
@@ -158,6 +191,7 @@ func ParseNeighbour(vtyshRes string) (*Neighbor, error) {
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
 			PrefixSent:     prefixSent,
 			PrefixReceived: prefixReceived,
+			Families:       n.AddressFamilyInfo,
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,
@@ -185,8 +219,12 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 		prefixSent := 0
 		prefixReceived := 0
 		for _, s := range n.AddressFamilyInfo {
-			prefixSent += s.SentPrefixCounter
-			prefixReceived += s.AcceptedPrefixCounter
+			if s.SentPrefixCounter != nil {
+				prefixSent += *s.SentPrefixCounter
+			}
+			if s.AcceptedPrefixCounter != nil {
+				prefixReceived += *s.AcceptedPrefixCounter
+			}
 		}
 		res = append(res, &Neighbor{
 			ID:             k,
@@ -196,6 +234,7 @@ func ParseNeighbours(vtyshRes string) ([]*Neighbor, error) {
 			RemoteAS:       strconv.Itoa(n.RemoteAs),
 			PrefixSent:     prefixSent,
 			PrefixReceived: prefixReceived,
+			Families:       n.AddressFamilyInfo,
 			Port:           n.PortForeign,
 			RemoteRouterID: n.RemoteRouterID,
 			MsgStats:       n.MsgStats,
@@ -272,5 +311,37 @@ func ParseVRFs(vtyshRes string) ([]string, error) {
 		res = append(res, v)
 	}
 	sort.Strings(res)
+	return res, nil
+}
+
+// ParseEVPNVNIs takes the result of a show evpn vni json.
+// An empty object is valid when EVPN is disabled or has no VNIs.
+func ParseEVPNVNIs(vtyshRes string) ([]EVPNVNI, error) {
+	toParse := map[string]FRREVPNVNI{}
+	err := json.Unmarshal([]byte(vtyshRes), &toParse)
+	if err != nil {
+		return nil, errors.Join(err, errors.New("failed to parse vtysh response"))
+	}
+	res := make([]EVPNVNI, 0)
+	for key, v := range toParse {
+		if v.Type != "L2" && v.Type != "L3" {
+			return nil, fmt.Errorf("unknown type %q for EVPN VNI %s", v.Type, key)
+		}
+		var remote *uint64
+		if v.Type == "L2" && len(v.RemoteVTEPs) != 0 {
+			if err := json.Unmarshal(v.RemoteVTEPs, &remote); err != nil {
+				return nil, errors.Join(err, fmt.Errorf("failed to parse remote VTEP count for VNI %s", key))
+			}
+		}
+		res = append(res, EVPNVNI{
+			VNI:         v.VNI,
+			Type:        v.Type,
+			Interface:   v.Interface,
+			VRF:         v.VRF,
+			MACs:        v.MACs,
+			Neighbors:   v.Neighbors,
+			RemoteVTEPs: remote,
+		})
+	}
 	return res, nil
 }

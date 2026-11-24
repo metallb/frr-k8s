@@ -72,6 +72,50 @@ func (f *FRR) HasEVPNVNI(vni uint32) error {
 	return nil
 }
 
+// PrefixCounts holds a peer's prefix counts from a BGP summary.
+type PrefixCounts struct {
+	Received int `json:"pfxRcd"`
+	Sent     int `json:"pfxSnt"`
+}
+
+// EVPNPrefixCounts returns each default-VRF peer's l2vpn/evpn prefix counts.
+func (f *FRR) EVPNPrefixCounts() (map[string]PrefixCounts, error) {
+	out, err := f.exec.Exec("vtysh", "-c", "show bgp vrf default summary json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query BGP summary: %w", err)
+	}
+	var summary struct {
+		EVPN struct {
+			Peers map[string]PrefixCounts `json:"peers"`
+		} `json:"l2VpnEvpn"`
+	}
+	if err := json.Unmarshal([]byte(out), &summary); err != nil {
+		return nil, fmt.Errorf("failed to parse BGP summary: %w", err)
+	}
+	return summary.EVPN.Peers, nil
+}
+
+// EVPNVNI holds the counts FRR reports for one VNI. For an L3 VNI, MACs and
+// Neighbors are router MACs and next hops, and RemoteVTEPs is "n/a".
+type EVPNVNI struct {
+	MACs        int             `json:"numMacs"`
+	Neighbors   int             `json:"numArpNd"`
+	RemoteVTEPs json.RawMessage `json:"numRemoteVteps"`
+}
+
+// EVPNVNIs returns FRR's EVPN VNIs keyed by VNI.
+func (f *FRR) EVPNVNIs() (map[uint32]EVPNVNI, error) {
+	out, err := f.exec.Exec("vtysh", "-c", "show evpn vni json")
+	if err != nil {
+		return nil, fmt.Errorf("failed to query EVPN VNIs: %w", err)
+	}
+	var vnis map[uint32]EVPNVNI
+	if err := json.Unmarshal([]byte(out), &vnis); err != nil {
+		return nil, fmt.Errorf("failed to parse EVPN VNIs: %w", err)
+	}
+	return vnis, nil
+}
+
 // HasEVPNType2Routes verifies that EVPN type-2 (MAC/IP) routes exist for
 // the expected MACs with the correct next-hops. Keys are MAC addresses,
 // values are expected next-hop IPs.
