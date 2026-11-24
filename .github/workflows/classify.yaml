@@ -6,7 +6,7 @@ on:
 
 jobs:
   add_labels:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     if: github.actor != 'renovate[bot]'
     steps:
       - name: checkout
