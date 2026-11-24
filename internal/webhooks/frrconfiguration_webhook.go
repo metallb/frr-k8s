@@ -252,8 +252,16 @@ func containsDisableMP(routers []v1beta1.Router) bool {
 	return false
 }
 
+// selectorCacheSize bounds the parsed node selector cache. Every admission
+// resolves the selector of each existing FRRConfiguration, so the cache must
+// hold all distinct selectors to be effective: a cache smaller than that set
+// misses on nearly every lookup of the scan. Configurations are often
+// generated per node, so the size follows the Kubernetes limit of 5000 nodes
+// per cluster. A full cache takes roughly 2MB.
+const selectorCacheSize = 5000
+
 var (
-	selectorCache = lru.New(300)
+	selectorCache = lru.New(selectorCacheSize)
 	selectorMutex sync.RWMutex
 )
 

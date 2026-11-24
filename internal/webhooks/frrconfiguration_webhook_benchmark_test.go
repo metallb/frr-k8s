@@ -14,8 +14,19 @@ import (
 )
 
 func BenchmarkValidateConfig(b *testing.B) {
-	nodes := generateNodes(100)
-	configs := generateFRRConfigurations(nodes, 20)
+	benchmarkValidateConfig(b, 100, 20)
+}
+
+// BenchmarkValidateConfigLargeCluster covers clusters with more distinct
+// per-node selectors than a small selector cache can hold, where every
+// admission scans the selectors of all existing configurations.
+func BenchmarkValidateConfigLargeCluster(b *testing.B) {
+	benchmarkValidateConfig(b, 1000, 3)
+}
+
+func benchmarkValidateConfig(b *testing.B, nodeCount, configsPerNode int) {
+	nodes := generateNodes(nodeCount)
+	configs := generateFRRConfigurations(nodes, configsPerNode)
 	originalGetNodes := getNodes
 	originalGetFRRConfigurations := getFRRConfigurations
 	originalValidate := Validate
