@@ -37,7 +37,7 @@
   neighbor {{$peer}} bfd
   neighbor {{$peer}} bfd profile {{.neighbor.BFDProfile}}
 {{- end }}
-{{- if  mustDisableConnectedCheck .neighbor.IPFamily .routerASN .neighbor.ASN .neighbor.Iface .neighbor.EBGPMultiHop }}
+{{- if  mustDisableConnectedCheck .neighbor.SessionIPFamily .routerASN .neighbor.ASN .neighbor.Iface .neighbor.EBGPMultiHop }}
   neighbor {{.neighbor.Addr}} disable-connected-check
 {{- end }}
 {{- end -}}

@@ -105,6 +105,20 @@ func (n *NeighborConfig) ID() string {
 	return id + vrf
 }
 
+// SessionIPFamily returns the family of the session with the peer. A neighbor
+// enabled for both address families carries DualStack in IPFamily, so for those
+// the family of the session is the one of the peer address.
+func (n *NeighborConfig) SessionIPFamily() ipfamily.Family {
+	if n.IPFamily != ipfamily.DualStack || n.Addr == "" {
+		return n.IPFamily
+	}
+	family, err := ipfamily.ForAddresses(n.Addr)
+	if err != nil {
+		return n.IPFamily
+	}
+	return family
+}
+
 func (n *NeighborConfig) ToAdvertisePrefixListV4() string {
 	return fmt.Sprintf("%s-allowed-%s", n.ID(), "ipv4")
 }

@@ -614,6 +614,44 @@ func TestSingleSessionWithIPv6SingleHop(t *testing.T) {
 	testCheckConfigFile(t)
 }
 
+func TestSingleSessionWithIPv6SingleHopDualStackFamily(t *testing.T) {
+	testSetup(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	frr := testNewFRR(t, ctx)
+
+	config := Config{
+		Routers: []*RouterConfig{
+			{
+				MyASN: 65000,
+				Neighbors: []*NeighborConfig{
+					{
+						IPFamily:     ipfamily.DualStack,
+						ASN:          "65001",
+						Addr:         "2001:db8::1",
+						EBGPMultiHop: false, // Single hop
+						Outgoing: AllowedOut{
+							PrefixesV4: []string{},
+							PrefixesV6: []string{"2001:db8:abcd::/48"},
+						},
+					},
+				},
+				IPV6Prefixes: []string{"2001:db8:abcd::/48"},
+			},
+		},
+		Loglevel: LevelFrom(logging.LevelInfo),
+	}
+
+	err := frr.ApplyConfig(&config)
+	if err != nil {
+		t.Fatalf("Failed to apply config: %s", err)
+	}
+
+	testCheckConfigFile(t)
+}
+
 func TestMultipleNeighborsOneV4AndOneV6(t *testing.T) {
 	testSetup(t)
 
